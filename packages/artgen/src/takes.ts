@@ -11,17 +11,9 @@
  * row so it runs once. It lives here rather than in `@vn/pipeline` because `vnauthor` may not
  * import the pipeline and has to run it too.
  */
-import type {
-  Asset,
-  AssetStore,
-  Logger,
-  ProjectModel,
-  RefBinding,
-  Shot,
-  TaskGraph,
-} from '@vn/types';
+import type { Asset, AssetStore, Logger, ProjectModel, RefBinding, TaskGraph } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { AssetStore as DiskStore, readAllShots, type ProjectPaths } from '@vn/store';
+import { AssetStore as DiskStore, withProduction, type ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import {
   acceptRefusal,
@@ -43,12 +35,14 @@ import {
 } from '@vn/stills';
 
 export interface TakeDeps {
+  /**
+   * The model, with every persisted storyboard in its production map: a shot slot's identity and
+   * its named take both read it.
+   */
   model: ProjectModel;
   config: ProjectConfig;
   store: AssetStore;
   graph: TaskGraph;
-  /** Every scene's persisted storyboard: a shot slot's identity and its named take both read it. */
-  shots: ReadonlyMap<string, readonly Shot[] | null>;
   logger?: Logger;
 }
 
@@ -62,12 +56,12 @@ export async function openTakeDeps(
   config: ProjectConfig,
   logger?: Logger,
 ): Promise<TakeDeps & { store: DiskStore }> {
-  const [store, graph, shots] = await Promise.all([
+  const [store, graph, withShots] = await Promise.all([
     DiskStore.open(paths),
     loadGraph(paths),
-    readAllShots(paths, model),
+    withProduction(paths, model),
   ]);
-  return { model, config, store, graph, shots, ...(logger ? { logger } : {}) };
+  return { model: withShots, config, store, graph, ...(logger ? { logger } : {}) };
 }
 
 /** What the migration decided, for the log and for a host that wants to say what moved. */
@@ -83,7 +77,6 @@ function contextOf(deps: TakeDeps): SlotGraphContext {
     model  : deps.model,
     config : deps.config,
     graph  : deps.graph,
-    shots  : deps.shots,
     assets : deps.store.manifest(),
     angleOf: angleOfTask(deps.graph),
   };
@@ -246,7 +239,6 @@ function prereqContextOf(deps: TakeDeps): PrereqContext {
     model  : deps.model,
     assets : deps.store.manifest(),
     angleOf: angleOfTask(deps.graph),
-    shots  : deps.shots,
   };
 }
 

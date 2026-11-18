@@ -105,7 +105,7 @@ describe('the sheet as a mirror of the row', () => {
       ({ model: m, store, graph } = await p.reload());
       // The slot's task now names the older take, so the repair has nothing to put back
       expect(graph.get(identity.hash)).toMatchObject({ status: 'done', output: first });
-      expect(await repairCurrent({ model: m, config, store, graph, shots: new Map() })).toEqual([]);
+      expect(await repairCurrent({ model: m, config, store, graph })).toEqual([]);
       expect(store.get(first)).toMatchObject({ current: true, accepted: true });
       expect(store.get(draft.hash)).toMatchObject({ current: false, accepted: false });
       expect(approvedPortraitOf(m.characters.get('aiko')!, store.manifest())).toBe(first);
@@ -131,7 +131,7 @@ describe('the sheet as a mirror of the row', () => {
 
       ({ model: m, store, graph } = await p.reload());
       const config = await loadConfig(p.dir);
-      const deps = { model: m, config, store, graph, shots: new Map() };
+      const deps = { model: m, config, store, graph };
       const fixes = await repairCurrent(deps);
       expect(fixes).toEqual([{ slot: 'portrait:aiko', keep: row.hash, drop: [] }]);
       expect(store.get(row.hash)).toMatchObject({ current: true, accepted: true });
@@ -150,7 +150,7 @@ describe('the sheet as a mirror of the row', () => {
       await store.accept(draft.hash);
       await byHand();
       ({ model: m, store, graph } = await p.reload());
-      expect(await repairCurrent({ model: m, config, store, graph, shots: new Map() })).toEqual([]);
+      expect(await repairCurrent({ model: m, config, store, graph })).toEqual([]);
       expect(store.get(row.hash)).toMatchObject({ current: false, accepted: false });
       expect(store.get(draft.hash)).toMatchObject({ current: true, accepted: true });
     } finally {

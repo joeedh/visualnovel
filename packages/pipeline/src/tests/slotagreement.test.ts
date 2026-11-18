@@ -15,7 +15,7 @@ import { logTask } from '@vn/taskgraph/write';
 import { createMockProviders } from '@vn/providers';
 import { planAssetCollection } from '@vn/artgen';
 import { buildSlotGraph, type SlotGraph } from '@vn/stills';
-import { readAllShots, readShots, writeShots } from '@vn/store';
+import { readShots, withProduction, writeShots } from '@vn/store';
 import { character, location, makeProject, model, scene, type TestProject } from '@vn/testkit';
 import { planTasks } from '../index.js';
 
@@ -57,10 +57,12 @@ const staged = (id: string, sheet?: string): Shot => ({
  * a seed and notes of its own, so the sheet's key is in both members' identity.
  */
 function stagedProject(): ProjectModel {
-  const s3 = scene('s3', ['aiko'], 'cafe');
-  s3.shots = [staged('s3__1', 'g1'), staged('s3__2', 'g1'), staged('s3__3')];
-  s3.sheets = { g1: { seed: 4, notes: 'the window stays on the left' } };
-  return project('approved', [s3]);
+  const m = project('approved', [scene('s3', ['aiko'], 'cafe')]);
+  m.production.set('s3', {
+    shots : [staged('s3__1', 'g1'), staged('s3__2', 'g1'), staged('s3__3')],
+    sheets: { g1: { seed: 4, notes: 'the window stays on the left' } },
+  });
+  return m;
 }
 
 /** Plan, complete everything planned, plan again — the scheduler's loop with the models removed. */
@@ -107,13 +109,12 @@ const PLATE_ROW: Asset = {
 };
 
 function slots(m: ProjectModel, graph: TaskGraph, assets?: readonly Asset[]): SlotGraph {
+  // The model's production map holds what the planner decomposed; `buildSlotGraph` never decomposes
   return buildSlotGraph({
     model : m,
     assets: assets ?? (m.characters.get('aiko')?.status === 'approved' ? [PORTRAIT_ROW] : []),
     config,
     graph,
-    // What the planner decomposed and would have persisted; `buildSlotGraph` never decomposes.
-    shots: new Map([...m.scenes].map(([id, s]) => [id, s.shots])),
   });
 }
 
@@ -183,8 +184,9 @@ describe('the slot graph and the planner agree', () => {
 });
 
 /**
- * A project on disk, read the way the desktop and the CLI read one: a fresh model and every
- * storyboard through `readAllShots`. The group's seed and notes live only in the shots file.
+ * A project on disk, read the way the desktop and the CLI read one: a fresh model with every
+ * storyboard put in its production map by `withProduction`. The group's seed and notes live only in
+ * the shots file.
  */
 describe('a staging sheet with its own seed and notes, read from disk', () => {
   let p: TestProject;
@@ -245,9 +247,11 @@ describe('a staging sheet with its own seed and notes, read from disk', () => {
   it('gives each member the identity the planner gave it', async () => {
     const { model, config, store } = await p.reload();
     const graph = await loadGraph(p.paths);
-    const shots = await readAllShots(p.paths, model);
-    const g = buildSlotGraph({ model, config, assets: store.manifest(), graph, shots });
-    const sceneId = [...shots].find(([, list]) => list?.some((s) => s.id === grouped[0]))![0];
+    const withShots = await withProduction(p.paths, model);
+    const g = buildSlotGraph({ model: withShots, config, assets: store.manifest(), graph });
+    const sceneId = [...withShots.production].find(([, board]) =>
+      board.shots.some((s) => s.id === grouped[0]),
+    )![0];
     for (const shotId of grouped) {
       expect(g.nodes.get(`shot:${sceneId}/${shotId}`)!.taskHash).toBe(plannedFor.get(shotId));
     }

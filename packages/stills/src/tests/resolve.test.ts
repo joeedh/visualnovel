@@ -77,7 +77,8 @@ describe('overrideAt', () => {
     coversLines   : [],
     promptOverride: MUTE,
   };
-  const ctx = { model: model([c], [sc], [l]), shots: new Map([['s1', [shot]]]) };
+  const ctx = { model: model([c], [sc], [l]) };
+  ctx.model.production.set('s1', { shots: [shot] });
 
   it('reads each rung, and nothing where none is written', () => {
     expect(overrideAt({ kind: 'character', characterId: 'aiko' }, ctx)).toEqual(MUTE);
@@ -100,7 +101,10 @@ describe('overrideAt', () => {
     // With no storyboards loaded the answer is unknown, which has the same shape as "not
     // overridden".
     expect(
-      overrideAt({ kind: 'shot', sceneId: 's1', shotId: 's1__a' }, { model: ctx.model }),
+      overrideAt(
+        { kind: 'shot', sceneId: 's1', shotId: 's1__a' },
+        { model: { ...ctx.model, production: new Map() } },
+      ),
     ).toBeUndefined();
   });
 

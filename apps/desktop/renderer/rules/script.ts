@@ -413,7 +413,6 @@ export function moveStateOf(coverage: SceneCoverage): ScriptState {
     characters: [],
     lines     : [...coverage.lines],
     choices   : [],
-    shots     : [],
   };
   return { scenes: new Map([[scene.id, scene]]) };
 }

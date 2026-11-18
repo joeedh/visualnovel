@@ -12,13 +12,13 @@ import {
 } from '@vn/stills';
 import { chatBackendFor, chatRoute, type ChatBackend } from '@vn/providers';
 import { TRIAGE_MODEL, type Approvable } from '@vn/authoring';
-import type { RefBinding, Shot } from '@vn/types';
+import type { ProjectModel, RefBinding } from '@vn/types';
 import { bindsTo } from '@vn/types';
 import type { ApproveResult, AssetFailure, GateCandidate } from '../../shared/ipc.js';
 import { reorderApprovals, type ApprovalQueue } from '../workspace/approvals.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
-import { suspensionsOf, driftedFrames, readAllShots, loadProject, relPath } from './core.js';
+import { suspensionsOf, driftedFrames, withShots, loadProject, relPath } from './core.js';
 
 export class GatePart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -183,18 +183,17 @@ export class GatePart {
   async approvable(): Promise<Approvable[]> {
     const project = await loadProject(this.session.dir);
     const manifest = project.store.manifest();
-    const labels = labelContext(project.model, project.graph);
-    const shots = await readAllShots(project);
+    const model = await withShots(project);
+    const labels = labelContext(model, project.graph);
     const slots = buildSlotGraph({
       ...labels,
       assets: manifest,
-      shots,
       config: project.config,
       graph : project.graph,
     });
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
-    const drifted = driftedFrames(project.model, shots);
+    const drifted = driftedFrames(model);
     const out: Approvable[] = [];
     const seen = new Set<string>();
     for (const key of slots.order) {
@@ -223,7 +222,7 @@ export class GatePart {
         const blocked =
           asset.kind === 'portrait'
             ? undefined
-            : prereqRefusal(label, assetPrereqs(asset, { ...labels, assets: manifest, shots }));
+            : prereqRefusal(label, assetPrereqs(asset, { ...labels, assets: manifest }));
         out.push({
           hash,
           kind: asset.kind,
@@ -247,12 +246,11 @@ export class GatePart {
   async approvedAssets(): Promise<Approvable[]> {
     const project = await loadProject(this.session.dir);
     const manifest = project.store.manifest();
-    const labels = labelContext(project.model, project.graph);
-    const shots = await readAllShots(project);
+    const model = await withShots(project);
+    const labels = labelContext(model, project.graph);
     const slots = buildSlotGraph({
       ...labels,
       assets: manifest,
-      shots,
       config: project.config,
       graph : project.graph,
     });
@@ -328,13 +326,12 @@ export class GatePart {
    */
   async suspensions(): Promise<Suspension[]> {
     const project = await loadProject(this.session.dir);
-    const shots = await readAllShots(project);
-    return [...suspensionsOf(project, shots).values()];
+    return [...suspensionsOf(project, await withShots(project)).values()];
   }
 
   /** Why one asset is suspended, against a project already loaded. `undefined` when it is not. */
   private async suspensionFor(project: LoadedProject, hash: string): Promise<string | undefined> {
-    return suspensionsOf(project, await readAllShots(project)).get(hash)?.reason;
+    return suspensionsOf(project, await withShots(project)).get(hash)?.reason;
   }
 
   /**
@@ -342,14 +339,9 @@ export class GatePart {
    * resolves. One slot is resolved rather than the whole graph, which is what keeps this cheap
    * enough for every read of the asset pane.
    */
-  slotTask(
-    project: LoadedProject,
-    binding: RefBinding,
-    shots: ReadonlyMap<string, Shot[] | null>,
-  ): string | undefined {
+  slotTask(project: LoadedProject, binding: RefBinding, model: ProjectModel): string | undefined {
     const decided = resolveSlot(binding, {
-      model: project.model,
-      shots,
+      model,
       config: project.config,
       assets: project.store.manifest(),
       graph : project.graph,

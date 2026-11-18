@@ -18,7 +18,7 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { contract } from '@vn/contracts';
-import { MAX_SHEET_CELLS } from '@vn/types';
+import { MAX_SHEET_CELLS, shotsOf } from '@vn/types';
 import { hashParts } from '@vn/util';
 import { chunk, chunkList, composePrompt } from './chunks.js';
 import { resolveBinding } from './refs.js';
@@ -95,15 +95,15 @@ export function sheetCells(n: number, cell: string): SheetLayout {
   return { aspect, rows, cols, cells };
 }
 
-/** The shots of one group, in the scene's own order, which is the sheet's reading order. */
-export function sheetMembers(scene: Pick<Scene, 'shots'>, group: string): Shot[] {
-  return scene.shots.filter((s) => s.sheet === group);
+/** The shots of one group, in the storyboard's own order, which is the sheet's reading order. */
+export function sheetMembers(shots: readonly Shot[], group: string): Shot[] {
+  return shots.filter((s) => s.sheet === group);
 }
 
-/** The group ids a scene's shots name, in first-appearance order. */
-export function sheetGroups(scene: Pick<Scene, 'shots'>): string[] {
+/** The group ids a storyboard's shots name, in first-appearance order. */
+export function sheetGroups(shots: readonly Shot[]): string[] {
   const seen: string[] = [];
-  for (const shot of scene.shots) {
+  for (const shot of shots) {
     if (shot.sheet !== undefined && !seen.includes(shot.sheet)) seen.push(shot.sheet);
   }
   return seen;
@@ -229,7 +229,8 @@ export interface SheetSeeds {
 /**
  * The seeds for one group, derived once per group by whichever host is about to draw it: the
  * planner for the members' keys, the scheduled runner and the interactive run for the graph's
- * seeded inputs. `undefined` when the scene has no such group.
+ * seeded inputs, from the scene's storyboard in `model.production`. `undefined` when the scene
+ * has no such group.
  */
 export function sheetSeeds(
   scene: Scene,
@@ -238,9 +239,10 @@ export function sheetSeeds(
   config: ProjectConfig,
   assets: readonly Asset[],
 ): SheetSeeds | undefined {
-  const members = sheetMembers(scene, group);
+  const board = model.production.get(scene.id);
+  const members = sheetMembers(board?.shots ?? [], group);
   if (members.length === 0) return undefined;
-  const settings = scene.sheets?.[group];
+  const settings = board?.sheets?.[group];
   const seeds: SheetSeeds = {
     group,
     members,
@@ -281,7 +283,7 @@ export const identityStagingSheet = contract({
     'so no hash that predates the field moved. The seeds are derived from the project and the ' +
     'manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner ' +
     "and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the " +
-    "model scene's `sheets` through `readAllShots`. A sheet is rerolled by changing its seed " +
+    "model's production map beside the members. A sheet is rerolled by changing its seed " +
     '(`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a ' +
     'node feeds more than one output (`sharedAncestors`), because a forced run to one output would ' +
     "redraw the sheet for it alone and leave the other members' frames cut from the old one with " +
@@ -316,7 +318,7 @@ export function sheetKeys(
   assets: readonly Asset[],
 ): Map<string, string> {
   const keys = new Map<string, string>();
-  for (const group of sheetGroups(scene)) {
+  for (const group of sheetGroups(shotsOf(model, scene.id))) {
     const seeds = sheetSeeds(scene, group, model, config, assets);
     if (seeds) keys.set(group, sheetKey(seeds));
   }

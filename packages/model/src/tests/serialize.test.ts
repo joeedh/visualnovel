@@ -414,7 +414,6 @@ describe('sceneToFountain', () => {
         { label: 'Leave', goto: 's14' },
       ],
       next      : undefined,
-      shots     : [],
     });
     const { scenes } = splitScenes(parseFountain(fountain));
     expect(scenes).toHaveLength(1);
@@ -436,7 +435,6 @@ describe('sceneToFountain', () => {
       lines     : [],
       choices   : [],
       next      : 'b',
-      shots     : [],
     });
     const { scenes } = splitScenes(parseFountain(fountain));
     expect(scenes[0]!.next).toBe('b');

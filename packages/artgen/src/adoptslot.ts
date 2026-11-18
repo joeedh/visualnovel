@@ -31,8 +31,8 @@ import type { ProjectConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
 import {
   loadInputs,
+  productionOf,
   readShots,
-  syncSheets,
   writeShots,
   type AssetStore,
   type ProjectPaths,
@@ -169,17 +169,15 @@ async function resolve(
     ...(deps.config.start ? { start: deps.config.start } : {}),
   });
 
-  // A shot's frame is stamped where the scene was decomposed, so this loads the storyboard and
-  // passes it to `resolveSlot` too, which needs the same shots to compute the frame's identity.
-  const shots = new Map<string, readonly Shot[]>();
+  // A shot's frame is stamped where the scene was decomposed, so this loads the storyboard into
+  // the model too, where `resolveSlot` reads the same shots to compute the frame's identity
   let stamp: ShotStamp | undefined;
   if (slot.kind === 'shot') {
     const scene = model.scenes.get(slot.sceneId);
     if (scene) {
       const loaded = await readShots(deps.paths, scene.id, new Set(scene.lines.map((l) => l.id)));
       if (loaded) {
-        shots.set(scene.id, loaded.shots);
-        syncSheets(scene, loaded);
+        model.production.set(scene.id, productionOf(loaded));
         const shot = loaded.shots.find((s) => s.id === slot.shotId);
         if (shot) stamp = { scene, shot, shots: loaded.shots };
       }
@@ -188,7 +186,7 @@ async function resolve(
 
   // The manifest is read because a run plans with it, and a sheet's references resolve from it
   const assets = deps.store.manifest();
-  const decided = resolveSlot(slot, { model, shots, config: deps.config, assets, graph });
+  const decided = resolveSlot(slot, { model, config: deps.config, assets, graph });
   if (!decided.ok) return decided;
   const plan = decided.plan;
   if (plan.kind === 'shot_image') {

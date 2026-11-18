@@ -12,6 +12,7 @@ import {
   type AnyTask,
   type Asset,
   type Character,
+  type ProductionData,
   type ProjectModel,
   type Scene,
   type Shot,
@@ -56,31 +57,43 @@ const tier = (row: number, framing: Shot['framing'], cast: string[]) => ({
 
 const aiko = (): Character => character('aiko', 'approved', PORTRAIT);
 
+/** `m` with each named scene's storyboard already in its production map. */
+function staged(m: ProjectModel, boards: Record<string, ProductionData>): ProjectModel {
+  for (const [id, board] of Object.entries(boards)) m.production.set(id, board);
+  return m;
+}
+
 /** A frame and a two-panel manga page in one scene. */
 function manga(): ProjectModel {
   const room = scene('room', ['aiko'], 'classroom');
-  room.shots = [
-    frame('room', 'room__1'),
-    frame('room', 'room__page1', {
-      framing: 'wide',
-      panels : [tier(0, 'wide', []), tier(1, 'close', ['aiko'])],
-    }),
-  ];
-  return model([aiko()], [room], [location('classroom')]);
+  return staged(model([aiko()], [room], [location('classroom')]), {
+    room: {
+      shots: [
+        frame('room', 'room__1'),
+        frame('room', 'room__page1', {
+          framing: 'wide',
+          panels : [tier(0, 'wide', []), tier(1, 'close', ['aiko'])],
+        }),
+      ],
+    },
+  });
 }
 
 /** One group with no settings, one with a seed and notes, and a shot in neither. */
 function sheets(): ProjectModel {
   const room = scene('room', ['aiko'], 'classroom');
-  room.shots = [
-    frame('room', 'room__1', { sheet: 'g1' }),
-    frame('room', 'room__2', { sheet: 'g1' }),
-    frame('room', 'room__3', { sheet: 'g2' }),
-    frame('room', 'room__4', { sheet: 'g2', framing: 'close' }),
-    frame('room', 'room__5'),
-  ];
-  room.sheets = { g2: { seed: 7, notes: 'the window stays on the left' } };
-  return model([aiko()], [room], [location('classroom')]);
+  return staged(model([aiko()], [room], [location('classroom')]), {
+    room: {
+      shots: [
+        frame('room', 'room__1', { sheet: 'g1' }),
+        frame('room', 'room__2', { sheet: 'g1' }),
+        frame('room', 'room__3', { sheet: 'g2' }),
+        frame('room', 'room__4', { sheet: 'g2', framing: 'close' }),
+        frame('room', 'room__5'),
+      ],
+      sheets: { g2: { seed: 7, notes: 'the window stays on the left' } },
+    },
+  });
 }
 
 /**
@@ -100,16 +113,21 @@ function outfits(): ProjectModel {
     { id: 'night', description: 'lamps on' },
   ];
   const s1: Scene = Object.assign(scene('s1', ['aiko'], 'cafe'), { outfits: { aiko: 'track' } });
-  s1.shots = [
-    frame('s1', 's1__1'),
-    frame('s1', 's1__2', { subjects: [{ characterId: 'aiko', outfit: 'uniform' }] }),
-  ];
   const s2 = scene('s2', ['aiko'], 'cafe');
-  s2.shots = [
-    frame('s2', 's2__1', { location: 'night' }),
-    frame('s2', 's2__2', { subjects: [{ characterId: 'aiko', outfit: 'track' }] }),
-  ];
-  return model([c], [s1, s2], [cafe]);
+  return staged(model([c], [s1, s2], [cafe]), {
+    s1: {
+      shots: [
+        frame('s1', 's1__1'),
+        frame('s1', 's1__2', { subjects: [{ characterId: 'aiko', outfit: 'uniform' }] }),
+      ],
+    },
+    s2: {
+      shots: [
+        frame('s2', 's2__1', { location: 'night' }),
+        frame('s2', 's2__2', { subjects: [{ characterId: 'aiko', outfit: 'track' }] }),
+      ],
+    },
+  });
 }
 
 /** References an author attached: on a shot's style clause, a portrait's and a plate's. */
@@ -122,22 +140,26 @@ function references(): ProjectModel {
     refs: { style: [{ pin: PIN, ext: 'png' }] },
   };
   const s = scene('room', ['aiko'], 'classroom');
-  s.shots = [
-    frame('room', 'room__1', {
-      promptOverride: { mode: 'chunks', refs: { style: [{ pin: PIN, ext: 'png' }] } },
-    }),
-    frame('room', 'room__2'),
-  ];
-  return model([c], [s], [room]);
+  return staged(model([c], [s], [room]), {
+    room: {
+      shots: [
+        frame('room', 'room__1', {
+          promptOverride: { mode: 'chunks', refs: { style: [{ pin: PIN, ext: 'png' }] } },
+        }),
+        frame('room', 'room__2'),
+      ],
+    },
+  });
 }
 
 /** A scene whose cast includes someone no shot shows, still unapproved, beside one that clears. */
 function gated(): ProjectModel {
   const held = scene('held', ['aiko', 'ren'], 'classroom');
-  held.shots = [frame('held', 'held__1')];
   const open = scene('open', ['aiko'], 'classroom');
-  open.shots = [frame('open', 'open__1')];
-  return model([aiko(), character('ren')], [held, open], [location('classroom')]);
+  return staged(model([aiko(), character('ren')], [held, open], [location('classroom')]), {
+    held: { shots: [frame('held', 'held__1')] },
+    open: { shots: [frame('open', 'open__1')] },
+  });
 }
 
 /** The portrait and plate rows a manifest-backed plan resolves a staging sheet's references from. */

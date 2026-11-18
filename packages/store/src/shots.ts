@@ -9,7 +9,14 @@
  * and trusted.
  */
 import fs from 'node:fs/promises';
-import type { PagePanel, ProjectModel, Scene, SheetGroup, Shot, ShotsFile } from '@vn/types';
+import type {
+  PagePanel,
+  ProductionData,
+  ProjectModel,
+  SheetGroup,
+  Shot,
+  ShotsFile,
+} from '@vn/types';
 import {
   promptOverrideFrom,
   promptOverrideIsEmpty,
@@ -284,41 +291,50 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
   return JSON.stringify(file, null, 2) + '\n';
 }
 
-/**
- * Sets a scene's staging-sheet groups to the ones its storyboard file declares, or clears them
- * when it declares none. A member's task identity reads the group's seed and notes off the scene.
- */
-export function syncSheets(scene: Pick<Scene, 'sheets'>, loaded: LoadedShots | null): void {
-  if (loaded?.sheets) scene.sheets = loaded.sheets;
-  else delete scene.sheets;
+/** One loaded storyboard as the model's production map holds it. */
+export function productionOf(loaded: LoadedShots): ProductionData {
+  return { shots: loaded.shots, ...(loaded.sheets ? { sheets: loaded.sheets } : {}) };
+}
+
+/** What {@link readProduction} found: every storyboard that parsed, and the scenes whose did not. */
+export interface ProductionRead {
+  production: Map<string, ProductionData>;
+  /** Scenes whose storyboard file will not parse, which a caller may report or keep art for. */
+  broken: Set<string>;
 }
 
 /**
- * Every scene's persisted storyboard, by scene id. A storyboard that will not parse is one
- * scene's problem. With `reportBroken` it becomes a `null` the tree draws a badge for. Without
- * that option the scene is simply absent, which is what every other reader wants.
- *
- * Each model scene's `sheets` is set from its file as it is read ({@link syncSheets}), so a caller
- * that resolves slot identity against `model` and the returned shots sees the same groups.
+ * Every scene's persisted storyboard, by scene id, writing nothing. A storyboard that will not
+ * parse is one scene's problem: its scene is absent from `production` and listed in `broken`.
  */
-export async function readAllShots(
+export async function readProduction(
   paths: ProjectPaths,
   model: Pick<ProjectModel, 'scenes'>,
-  opts: { reportBroken?: boolean } = {},
-): Promise<Map<string, Shot[] | null>> {
-  const shots = new Map<string, Shot[] | null>();
+): Promise<ProductionRead> {
+  const production = new Map<string, ProductionData>();
+  const broken = new Set<string>();
   for (const scene of model.scenes.values()) {
     const ids = new Set(scene.lines.map((l) => l.id));
     try {
       const loaded = await readShots(paths, scene.id, ids);
-      if (loaded) shots.set(scene.id, loaded.shots);
-      syncSheets(scene, loaded);
+      if (loaded) production.set(scene.id, productionOf(loaded));
     } catch {
-      syncSheets(scene, null);
-      if (opts.reportBroken) shots.set(scene.id, null);
+      broken.add(scene.id);
     }
   }
-  return shots;
+  return { production, broken };
+}
+
+/**
+ * A copy of `model` whose production map holds every persisted storyboard. `model` itself is left
+ * as it was, so a model the planner fills scene by scene is never handed storyboards it has not
+ * reached.
+ */
+export async function withProduction(
+  paths: ProjectPaths,
+  model: ProjectModel,
+): Promise<ProjectModel> {
+  return { ...model, production: (await readProduction(paths, model)).production };
 }
 
 /**

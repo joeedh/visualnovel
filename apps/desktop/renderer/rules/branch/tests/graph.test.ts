@@ -12,7 +12,6 @@ const wired = (id: string, choices: Scene['choices'], next?: string): Scene => (
   location  : 'classroom',
   characters: [],
   lines     : [],
-  shots     : [],
   choices,
   ...(next !== undefined ? { next } : {}),
 });
@@ -27,6 +26,7 @@ const model = (scenes: Scene[]): ProjectModel => ({
   reachable  : new Set(scenes.map((s) => s.id)),
   entry      : scenes[0]?.id,
   diagnostics: [],
+  production : new Map(),
 });
 
 /** greet forks two ways; rooftop continues linearly; ending goes nowhere. */

@@ -3,19 +3,17 @@
  * decides the rest.
  */
 import { allCharacters, allLocationVariants } from '@vn/model';
-import type { ProjectModel, RefBinding, Shot } from '@vn/types';
+import type { ProjectModel, RefBinding } from '@vn/types';
+import { shotsOf } from '@vn/types';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 
 /**
  * Lists every slot the collector keeps art for. The list is wider than `buildSlotGraph`'s, so art
- * the planner has not reached yet is not lost. It holds the shots of every scene with a storyboard,
- * wired into the story or not, and sheets for every outfit a character defines or anything names,
- * cast or not.
+ * the planner has not reached yet is not lost. It holds the shots of every storyboard in the model's
+ * production map, wired into the story or not, and sheets for every outfit a character defines or
+ * anything names, cast or not.
  */
-export function keptSlots(
-  model: ProjectModel,
-  shots: ReadonlyMap<string, readonly Shot[]>,
-): RefBinding[] {
+export function keptSlots(model: ProjectModel): RefBinding[] {
   const out: RefBinding[] = [];
   for (const [locationId, variants] of allLocationVariants(model)) {
     for (const variant of variants) out.push({ kind: 'plate', locationId, variant });
@@ -35,7 +33,7 @@ export function keptSlots(
   }
   for (const scene of model.scenes.values()) {
     for (const [id, outfit] of Object.entries(scene.outfits ?? {})) wear(id, outfit);
-    for (const shot of shots.get(scene.id) ?? []) {
+    for (const shot of shotsOf(model, scene.id)) {
       for (const subject of shot.subjects) wear(subject.characterId, subject.outfit);
     }
   }
@@ -46,8 +44,8 @@ export function keptSlots(
     }
   }
 
-  for (const [sceneId, list] of shots) {
-    for (const shot of list) out.push({ kind: 'shot', sceneId, shotId: shot.id });
+  for (const [sceneId, board] of model.production) {
+    for (const shot of board.shots) out.push({ kind: 'shot', sceneId, shotId: shot.id });
   }
   return out;
 }

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import { readAllShots, type ProjectPaths } from '@vn/store';
+import { withProduction, type ProjectPaths } from '@vn/store';
 import { TaskGraph } from '@vn/taskgraph';
 import { logTask } from '@vn/taskgraph/write';
 import { hashParts, pool, writeFileAtomic } from '@vn/util';
@@ -360,12 +360,11 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
   // a dry run leaves it alone.
   if (!dryRun) {
     await repairCurrent({
-      model,
+      model: await withProduction(paths, model),
       config,
       store,
       graph,
       logger,
-      shots: await readAllShots(paths, model),
     });
   }
 

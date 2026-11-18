@@ -27,7 +27,7 @@ import { slug } from './slug.js';
 
 export const scriptSceneRoundTrip = contract({
   id      : 'script.sceneRoundTrip',
-  rule: 'Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field the model carries except `shots`. `sceneToFountain` writes from `Scene.lines` and the heading fields.',
+  rule: 'Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field of `Scene`. `sceneToFountain` writes from `Scene.lines` and the heading fields.',
   prevents:
     'A prose edit that re-serializes a scene silently changing it, such as turning `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`, which also changes the location variant the plate is drawn from.',
   subjects: [
@@ -260,7 +260,7 @@ export function headingOf(scene: Scene): string {
 
 /**
  * Serialize a Scene back into a Fountain block, the heading from the scene's own heading fields
- * and the body from its lines. `shots` is not serialized.
+ * and the body from its lines.
  *
  * Line ids are written as `[[line:]]` marks and the allocator as `[[nextline:]]`, the same
  * placement `assignLineIds` uses, so a scene this wrote and a scene an author marked by hand

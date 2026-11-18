@@ -96,7 +96,7 @@
         "docs/plans/manga-style.md",
         "docs/research/manga-live-tests.md"
       ],
-      "detail": "What re-keys the members: the members and their order, each member's framing, cast and camera, the plate, and the group's notes and seed. A shot outside a group carries no `extra`, so no hash that predates the field moved. The seeds are derived from the project and the manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the model scene's `sheets` through `readAllShots`. A sheet is rerolled by changing its seed (`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a node feeds more than one output (`sharedAncestors`), because a forced run to one output would redraw the sheet for it alone and leave the other members' frames cut from the old one with nothing to re-key them. Every slot a graph binds shares its one journal and its one `Graph` object in a process, and `runBoundGraph` serialises the runs of one graph, because seeds are written onto the graph's own sockets: two members running at once would read each other's prompt and references, and the sheet would be drawn once per member rather than once per group.",
+      "detail": "What re-keys the members: the members and their order, each member's framing, cast and camera, the plate, and the group's notes and seed. A shot outside a group carries no `extra`, so no hash that predates the field moved. The seeds are derived from the project and the manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the model's production map beside the members. A sheet is rerolled by changing its seed (`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a node feeds more than one output (`sharedAncestors`), because a forced run to one output would redraw the sheet for it alone and leave the other members' frames cut from the old one with nothing to re-key them. Every slot a graph binds shares its one journal and its one `Graph` object in a process, and `runBoundGraph` serialises the runs of one graph, because seeds are written onto the graph's own sockets: two members running at once would read each other's prompt and references, and the sheet would be drawn once per member rather than once per group.",
       "declared": "packages/stills/src/sheet.ts"
     },
     {
@@ -367,7 +367,7 @@
     },
     {
       "id"      : "script.sceneRoundTrip",
-      "rule": "Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field the model carries except `shots`. `sceneToFountain` writes from `Scene.lines` and the heading fields.",
+      "rule": "Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field of `Scene`. `sceneToFountain` writes from `Scene.lines` and the heading fields.",
       "prevents": "A prose edit that re-serializes a scene silently changing it, such as turning `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`, which also changes the location variant the plate is drawn from.",
       "subjects": [
         "module:packages/model/src/serialize.ts",

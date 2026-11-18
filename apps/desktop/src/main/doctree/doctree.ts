@@ -6,7 +6,7 @@
  */
 import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
-import { bindsTo, type Asset, type AssetKind, type ProjectModel, type Shot } from '@vn/types';
+import { bindsTo, shotsOf, type Asset, type AssetKind, type ProjectModel } from '@vn/types';
 import { isBaseKind } from '@vn/store';
 import { assetApproved, sheetAngleOf, slotKey, slotOf, type SlotGraph } from '@vn/stills';
 import { allLocationVariants, topologicalOrder, usedOutfits } from '@vn/model';
@@ -24,11 +24,11 @@ export interface DocTreeInput {
   inputs: LoadedInputs;
   manifest: readonly Asset[];
   /**
-   * Shots by scene id. A missing key means the scene has no decomposition; a `null` value means
-   * its decomposition file exists but could not be read, and the tree displays an error rather
-   * than silently skipping the scene.
+   * Scenes whose decomposition file exists but could not be read, which the tree marks with an
+   * error rather than silently skipping. The readable storyboards are in `model.production`; a
+   * scene in neither has no decomposition.
    */
-  shots: Map<string, Shot[] | null>;
+  broken?: ReadonlySet<string>;
   bible: BibleFile[];
   /** The bible root, workspace-relative — `wiki` normally, and the prefix its nodes carry. */
   wikiDir: string;
@@ -145,7 +145,7 @@ function storyBranch(input: DocTreeInput, cap: number): DocNode {
     return asset !== undefined && assetApproved(asset);
   };
   const scenes = [...input.model.scenes.values()].map((scene) => {
-    const shots = input.shots.get(scene.id);
+    const shots = input.broken?.has(scene.id) ? null : input.model.production.get(scene.id)?.shots;
     const children = !shots
       ? undefined
       : capped(
@@ -311,7 +311,7 @@ function assetLabelOf(input: DocTreeInput, asset: Asset): string {
 function driftedImages(input: DocTreeInput): Set<string> {
   const stale = new Set<string>();
   for (const scene of input.model.scenes.values()) {
-    for (const shot of input.shots.get(scene.id) ?? []) {
+    for (const shot of shotsOf(input.model, scene.id)) {
       if (shot.image !== undefined && driftOf(scene, shot) === 'drifted') stale.add(shot.image);
     }
   }
@@ -606,7 +606,7 @@ function linksFor(
   for (const scene of input.model.scenes.values()) {
     const named = inScene(scene, binding);
     if (named) scenes.push(scene.id);
-    for (const shot of input.shots.get(scene.id) ?? []) {
+    for (const shot of shotsOf(input.model, scene.id)) {
       // A character is framed shot by shot; a location or a scene is framed by the whole scene
       // being the one it names, so every shot in it counts.
       const framed =
@@ -664,8 +664,7 @@ interface Planned {
 
 /** Read once per build from the storyboards the story branch walked; a broken one counts as none. */
 function plannedFor(input: DocTreeInput): Planned {
-  const shots = new Map([...input.shots].map(([scene, list]) => [scene, list ?? []]));
-  return { outfits: usedOutfits(input.model, shots), variants: allLocationVariants(input.model) };
+  return { outfits: usedOutfits(input.model), variants: allLocationVariants(input.model) };
 }
 
 export function buildDocTree(input: DocTreeInput): DocTree {

@@ -9,10 +9,10 @@ import { parseSlot, resolveSlot, sheetSeeds, type Decided } from '@vn/stills';
 import { genNodeSpec } from '@vn/gengraph';
 import type { Graph, GraphId } from '@vn/gengraph';
 import type { GenExecuteOptions } from '@vn/gengraph/state';
-import { readShots } from '@vn/store';
 import type { AssetRef, RefBinding } from '@vn/types';
+import { shotsOf } from '@vn/types';
 import type { LoadedProject } from './core.js';
-import { readAllShots } from './core.js';
+import { withShots } from './core.js';
 
 export type GraphSeeds = NonNullable<GenExecuteOptions['seeds']>;
 
@@ -63,32 +63,19 @@ export async function graphRunPlan(
   const slot = boundSlot(graph, target);
   if (slot === undefined) return { ok: true, plan: { seeds: {} } };
 
-  const { model, config } = project;
-  const shots = await readAllShots(project);
-  const resolved = resolveSlot(slot, { model, shots, config, graph: project.graph });
+  const { config } = project;
+  const model = await withShots(project);
+  const resolved = resolveSlot(slot, { model, config, graph: project.graph });
   if (!resolved.ok) return resolved;
   const { prompt, refs } = resolved.plan.inputs;
 
-  // A member of a staging sheet also seeds the sheet the graph crops it from, read again from
-  // the storyboard because the group's seed lives beside the shots rather than on them
+  // A member of a staging sheet also seeds the sheet the graph crops it from
   let sheet: { prompt: string; refs: readonly AssetRef[] } | undefined;
   if (slot.kind === 'shot') {
     const scene = model.scenes.get(slot.sceneId);
-    const shot = shots.get(slot.sceneId)?.find((s) => s.id === slot.shotId);
+    const shot = shotsOf(model, slot.sceneId).find((s) => s.id === slot.shotId);
     if (scene && shot?.sheet !== undefined) {
-      const loaded = await readShots(
-        project.paths,
-        scene.id,
-        new Set(scene.lines.map((l) => l.id)),
-      );
-      if (loaded) {
-        const board = {
-          ...scene,
-          shots: loaded.shots,
-          ...(loaded.sheets ? { sheets: loaded.sheets } : {}),
-        };
-        sheet = sheetSeeds(board, shot.sheet, model, config, project.store.manifest());
-      }
+      sheet = sheetSeeds(scene, shot.sheet, model, config, project.store.manifest());
     }
   }
   return { ok: true, plan: { seeds: seedsOf(prompt, refs, sheet), slot } };

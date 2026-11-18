@@ -32,14 +32,17 @@ function fixture() {
   const aiko = character('aiko', 'approved', 'a'.repeat(64));
   const ren = character('ren', 'approved', 'b'.repeat(64));
   const room = scene('room', ['aiko', 'ren'], 'classroom');
-  room.shots = [
-    frame('room__1', { framing: 'establishing', subjects: [], sheet: 'g1' }),
-    frame('room__2', { sheet: 'g1', camera: 'over the shoulder' }),
-    frame('room__3', { subjects: [{ characterId: 'ren' }], sheet: 'g1' }),
-    frame('room__4'),
-  ];
-  room.sheets = { g1: { seed: 7, notes: 'the window stays on the left' } };
+  const board = {
+    shots: [
+      frame('room__1', { framing: 'establishing', subjects: [], sheet: 'g1' }),
+      frame('room__2', { sheet: 'g1', camera: 'over the shoulder' }),
+      frame('room__3', { subjects: [{ characterId: 'ren' }], sheet: 'g1' }),
+      frame('room__4'),
+    ],
+    sheets: { g1: { seed: 7, notes: 'the window stays on the left' } },
+  };
   const m = model([aiko, ren], [room], [location('classroom')]);
+  m.production.set('room', board);
   const plate: Asset = {
     hash      : 'c'.repeat(64),
     ext       : 'png',
@@ -62,7 +65,7 @@ function fixture() {
     accepted  : true,
     current   : true,
   }));
-  return { m, room, assets: [plate, ...portraits] };
+  return { m, room, board, assets: [plate, ...portraits] };
 }
 
 describe('the sheet grid', () => {
@@ -91,11 +94,11 @@ describe('the sheet grid', () => {
 
 describe(pins(identityStagingSheet), () => {
   it('names the grid, the room, each cell in scene order, and the group notes', () => {
-    const { m, room } = fixture();
-    const members = sheetMembers(room, 'g1');
+    const { m, room, board } = fixture();
+    const members = sheetMembers(board.shots, 'g1');
     expect(members.map((s) => s.id)).toEqual(['room__1', 'room__2', 'room__3']);
-    expect(sheetGroups(room)).toEqual(['g1']);
-    const text = buildSheetChunks(room, members, m, config, room.sheets!.g1)
+    expect(sheetGroups(board.shots)).toEqual(['g1']);
+    const text = buildSheetChunks(room, members, m, config, board.sheets.g1)
       .map((c) => c.text)
       .join(' ');
     expect(text).toContain('3 cells in a 2 by 2 grid');
@@ -121,11 +124,11 @@ describe(pins(identityStagingSheet), () => {
   });
 
   it('puts the key in a member’s params and leaves a shot in no group untouched', () => {
-    const { m, room } = fixture();
+    const { m, room, board } = fixture();
     const params = { modelId: 'x', aspect: '16:9' };
-    const plain = shotInputs(room.shots[3]!, room, m, config, params, []);
+    const plain = shotInputs(board.shots[3]!, room, m, config, params, []);
     expect(plain.params).toEqual(params);
-    const member = shotInputs(room.shots[1]!, room, m, config, params, [], 'k1');
+    const member = shotInputs(board.shots[1]!, room, m, config, params, [], 'k1');
     expect(member.params.extra).toEqual({ sheet: 'k1' });
     expect(member.params.aspect).toBe('16:9');
   });

@@ -448,7 +448,6 @@ export function newScene(
     lines     : [],
     nextLineId: 1,
     choices   : [],
-    shots     : [],
   };
   const how = synopsis.synopsis ? ' with a synopsis' : '';
   return done(`Created ${id} (${mined.id}/${mined.variant})${how}; nothing points at it yet.`, {
@@ -650,7 +649,6 @@ export function splitScene(
     nextLineId: next,
     choices   : scene.choices.map((c) => ({ ...c })),
     ...(scene.next !== undefined ? { next: scene.next } : {}),
-    shots: [],
   };
   const head: Scene = {
     ...scene,

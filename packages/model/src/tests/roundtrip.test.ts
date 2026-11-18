@@ -3,8 +3,8 @@
  * written in: a block of a single screenplay, and a `scenes/<id>.md` chunk.
  *
  * The property is the sibling of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and it
- * is what makes `sceneToFountain` safe to write with. Comparison is structural — every field
- * the model carries except `shots`, which is never serialized.
+ * is what makes `sceneToFountain` safe to write with. Comparison is structural, over every field
+ * of the scene.
  */
 import { pins } from '@vn/contracts';
 import { parseFountain, parseFrontMatter } from '@vn/parse';
@@ -82,7 +82,6 @@ function sceneOf(id: string, lines: Omit<SceneLine, 'id'>[], extra: Partial<Scen
     nextLineId     : lines.length + 1,
     choices        : [],
     next           : undefined,
-    shots          : [],
     ...extra,
   };
 }

@@ -13,7 +13,7 @@ import {
   ProjectPaths,
   entityFile,
   loadInputs,
-  readAllShots,
+  withProduction,
   writeSceneChunk,
 } from '@vn/store';
 import { Git, openGit } from '@vn/git';
@@ -326,7 +326,7 @@ export class TestProject {
    */
   async acceptAll(): Promise<string[]> {
     const { model, config, store, graph } = await this.reload();
-    const deps = { model, config, store, graph, shots: await readAllShots(this.paths, model) };
+    const deps = { model: await withProduction(this.paths, model), config, store, graph };
     const accepted: string[] = [];
     for (const take of acceptableTakes(deps)) {
       if ((await acceptTake(deps, take.hash)).ok) accepted.push(take.hash);

@@ -17,7 +17,6 @@ const scene = (lines: SceneLine[]): Scene => ({
   characters: [],
   lines,
   choices: [],
-  shots  : [],
 });
 
 const LINES = [

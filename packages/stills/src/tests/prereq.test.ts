@@ -49,7 +49,6 @@ function ctx(assets: Asset[], m?: ProjectModel): PrereqContext {
         [location('cafe')],
       ),
     assets,
-    shots  : new Map(),
     angleOf: () => undefined,
   };
 }
@@ -121,13 +120,13 @@ describe('assetPrereqs', () => {
       },
     });
     const attached = ctx([PLATE, PORTRAIT, FRAME, pinned]);
-    attached.shots = new Map([['arrival', [shot()]]]);
+    attached.model.production.set('arrival', { shots: [shot()] });
     expect(assetPrereqs(FRAME, attached).map((p) => p.hash)).toEqual(['plate1', 'p-aiko', 'pin1']);
 
     // A muted clause is not sent, so its pinned references are not sent either, and they cannot
     // hold up approval of a picture the model never saw them for.
     const muted = ctx([PLATE, PORTRAIT, FRAME, pinned]);
-    muted.shots = new Map([['arrival', [shot(['setting'])]]]);
+    muted.model.production.set('arrival', { shots: [shot(['setting'])] });
     expect(assetPrereqs(FRAME, muted).map((p) => p.hash)).toEqual(['plate1', 'p-aiko']);
   });
 

@@ -69,7 +69,7 @@ import {
   loadProject,
   readProject,
   buildProviders,
-  readAllShots,
+  withShots,
 } from './core.js';
 
 /** Answers with the sent key's label and limits; a wrong key gets a 401 and nothing is billed. */
@@ -84,8 +84,8 @@ const OPENROUTER_ERROR_CHARS = 200;
  */
 async function pageShotCount(project: LoadedProject): Promise<number> {
   let pages = 0;
-  for (const shots of (await readAllShots(project)).values()) {
-    for (const shot of shots ?? []) if (shot.panels) pages += 1;
+  for (const board of (await withShots(project)).production.values()) {
+    for (const shot of board.shots) if (shot.panels) pages += 1;
   }
   return pages;
 }

@@ -38,7 +38,7 @@ import { fileGraphDraw } from '@vn/artgen';
 import { aspectFor, assetSlotLabel, imageParams, sheetSeeds, slotKey } from '@vn/stills';
 import { SHEET_CELL_REF, sheetCellDef, sheetGraph } from '@vn/gengraph';
 import type { SheetCell } from '@vn/gengraph';
-import { readShots } from '@vn/store';
+import { productionOf, readShots } from '@vn/store';
 import { projectModels, resolveRoutes } from '@vn/providers';
 import { runPipeline, type RunSummary } from '@vn/scheduler';
 import type { Asset, RefBinding } from '@vn/types';
@@ -111,10 +111,11 @@ export class GengraphPart {
     if (!loaded) return { refuse: `scene '${sceneId}' has no storyboard yet` };
 
     const said = group.trim();
+    const production = new Map([[sceneId, productionOf(loaded)]]);
     const seeds = sheetSeeds(
-      { ...scene, shots: loaded.shots, ...(loaded.sheets ? { sheets: loaded.sheets } : {}) },
+      scene,
       said,
-      project.model,
+      { ...project.model, production },
       project.config,
       project.store.manifest(),
     );

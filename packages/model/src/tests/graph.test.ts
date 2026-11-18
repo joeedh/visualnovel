@@ -10,7 +10,6 @@ function scene(id: string, next?: string, ...gotos: string[]): [string, Scene] {
       location  : 'cafe',
       characters: [],
       lines     : [],
-      shots     : [],
       choices   : gotos.map((goto) => ({ label: goto, goto })),
       ...(next === undefined ? {} : { next }),
     },

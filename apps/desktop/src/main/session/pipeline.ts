@@ -6,14 +6,14 @@ import { gateStatus, readTaskLog } from '@vn/pipeline';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { buildSlotGraph } from '@vn/stills';
-import { buildPlayable, loadSceneShots, unapprovedSentence, unapprovedTakes } from '@vn/export';
+import { buildPlayable, unapprovedSentence, unapprovedTakes, withSceneShots } from '@vn/export';
 import type { Playable } from '@vn/types';
 import type { PipelineStatus, TaskLogView } from '../../shared/ipc.js';
 import { taskLogView } from './tasklogview.js';
 import { narrowTask } from '../agent/reviews.js';
 import { labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession } from './core.js';
-import { relPath, readAllShots, loadProject } from './core.js';
+import { relPath, withShots, loadProject } from './core.js';
 import { taskActivity } from '../../shared/taskactivity.js';
 
 export class PipelinePart {
@@ -21,9 +21,8 @@ export class PipelinePart {
 
   async playable(): Promise<Playable> {
     const project = await loadProject(this.session.dir);
-    const shots = await loadSceneShots(project.paths, project.model);
-    return buildPlayable(project.model, project.store, {
-      shots,
+    const model = await withSceneShots(project.paths, project.model);
+    return buildPlayable(model, project.store, {
       portraitOverlay: project.config.portrait_overlay,
       bubbleNames    : project.config.bubble_names,
       lettering      : project.config.lettering,
@@ -37,8 +36,8 @@ export class PipelinePart {
    */
   async exportRefusal(): Promise<string | undefined> {
     const project = await loadProject(this.session.dir);
-    const shots = await loadSceneShots(project.paths, project.model);
-    return unapprovedSentence(unapprovedTakes(project.model, project.store, shots));
+    const model = await withSceneShots(project.paths, project.model);
+    return unapprovedSentence(unapprovedTakes(model, project.store));
   }
 
   /**
@@ -48,11 +47,10 @@ export class PipelinePart {
    */
   async exportPlayable(): Promise<{ path: string; scenes: number }> {
     const project = await loadProject(this.session.dir);
-    const shots = await loadSceneShots(project.paths, project.model);
-    const refusal = unapprovedSentence(unapprovedTakes(project.model, project.store, shots));
+    const model = await withSceneShots(project.paths, project.model);
+    const refusal = unapprovedSentence(unapprovedTakes(model, project.store));
     if (refusal !== undefined) throw new VnError('UNAPPROVED', refusal);
-    const playable = buildPlayable(project.model, project.store, {
-      shots,
+    const playable = buildPlayable(model, project.store, {
       portraitOverlay: project.config.portrait_overlay,
       bubbleNames    : project.config.bubble_names,
       lettering      : project.config.lettering,
@@ -95,9 +93,8 @@ export class PipelinePart {
     // The same walk `docTree` reads. Emitted in `order`, so the wire carries the topology the
     // pane needs without shipping the two Maps: upstream is always earlier in the array.
     const slots = buildSlotGraph({
-      ...labelContext(project.model, project.graph),
+      ...labelContext(await withShots(project), project.graph),
       assets: manifest,
-      shots : await readAllShots(project),
       config: project.config,
       graph : project.graph,
     });

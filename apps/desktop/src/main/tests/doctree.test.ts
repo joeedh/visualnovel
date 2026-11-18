@@ -8,7 +8,7 @@ import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { BUILTIN_SKILL_IDS } from '@vn/types';
 import { userSkillsDir } from '@vn/config';
 import type { SlotGraph, SlotNode } from '@vn/stills';
-import type { Asset, ProjectModel, RefBinding, Shot } from '@vn/types';
+import type { Asset, ProductionData, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
 import type { DocNode } from '../../shared/ipc.js';
 import {
@@ -55,7 +55,20 @@ const asset = (hash: string, over: Partial<Asset> = {}): Asset => ({
   ...over,
 });
 
-function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
+/**
+ * A tree input over one approved character, one gate and two scenes. `shots` is each scene's
+ * storyboard, where `null` is one that would not parse.
+ */
+function makeInput(
+  over: Partial<DocTreeInput> & { shots?: Map<string, Shot[] | null> } = {},
+): DocTreeInput {
+  const { shots = new Map([['arrival', [scene('arrival')]]]), ...rest } = over;
+  const production = new Map<string, ProductionData>();
+  const broken = new Set<string>();
+  for (const [id, list] of shots) {
+    if (list) production.set(id, { shots: list });
+    else broken.add(id);
+  }
   const model = {
     title      : 'T',
     characters: new Map([
@@ -89,6 +102,7 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
     reachable  : new Set(['arrival']),
     entry      : 'arrival',
     diagnostics: [],
+    production,
   } as unknown as ProjectModel;
 
   const inputs = {
@@ -112,13 +126,13 @@ function makeInput(over: Partial<DocTreeInput> = {}): DocTreeInput {
         satisfies: [{ sceneId: 'arrival', shotId: 'arrival-s1' }],
       }),
     ],
-    shots   : new Map<string, Shot[] | null>([['arrival', [scene('arrival')]]]),
+    broken,
     bible: [
       { file: 'cast/aiko.md', title: 'Aiko', tags: ['character'], headings: [], bytes: 10 },
       { file: 'history/canal.md', title: 'The canal', tags: [], headings: [], bytes: 20 },
     ],
-    wikiDir : 'wiki',
-    ...over,
+    wikiDir: 'wiki',
+    ...rest,
   };
 }
 
@@ -230,17 +244,18 @@ describe('buildDocTree', () => {
 
   it('calls a frame stale rather than accepted once its scene moved on', () => {
     const base = makeInput();
-    const drifted = buildDocTree({
-      ...base,
-      // The portrait is accepted too, so the gate is cleared with it and it earns the badge
-      manifest: base.manifest.map((a) => ({ ...a, accepted: true })),
-      shots: new Map<string, Shot[] | null>([
-        [
-          'arrival',
-          [scene('arrival', { image: 'b'.repeat(64), proseHash: 'what it used to say' })],
-        ],
-      ]),
-    });
+    const drifted = buildDocTree(
+      makeInput({
+        // The portrait is accepted too, so the gate is cleared with it and it earns the badge
+        manifest: base.manifest.map((a) => ({ ...a, accepted: true })),
+        shots: new Map<string, Shot[] | null>([
+          [
+            'arrival',
+            [scene('arrival', { image: 'b'.repeat(64), proseHash: 'what it used to say' })],
+          ],
+        ]),
+      }),
+    );
     const kinds = branch(drifted.roots, 'branch:assets').children!;
     expect(kinds[1]!.children![0]!.badge).toBe('stale');
     // The portrait keeps its badge: drift is a fact about a shot, not about everything accepted.

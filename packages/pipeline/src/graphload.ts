@@ -6,7 +6,7 @@
  * here, which is also how `vngen` reaches `@vn/gengraph` without importing it: the CLI's
  * allow-list stops at `@vn/pipeline`.
  */
-import type { AnyTask, Asset, ProjectModel, Shot } from '@vn/types';
+import type { AnyTask, Asset, ProjectModel } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
 import { buildSlotGraph } from '@vn/stills';
@@ -235,13 +235,14 @@ export function reportGraphs(
   };
 }
 
-/** What the project holds that says which pictures it implies and which of them exist. */
+/**
+ * What the project holds that says which pictures it implies and which of them exist. The model's
+ * production map holds the persisted storyboards.
+ */
 export interface ProjectSlotInputs {
   model: ProjectModel;
   config: ProjectConfig;
   assets: readonly Asset[];
-  /** A scene's persisted shots, by scene id. */
-  shots: ReadonlyMap<string, readonly Shot[] | null>;
   graph: { get(hash: string): AnyTask | undefined };
 }
 
@@ -255,7 +256,6 @@ export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotIn
     model  : inputs.model,
     config : inputs.config,
     assets : inputs.assets,
-    shots  : inputs.shots,
     graph  : inputs.graph,
     angleOf: (sourceTask) => {
       const task = sourceTask === undefined ? undefined : inputs.graph.get(sourceTask);

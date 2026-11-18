@@ -12,7 +12,7 @@ import {
   AssetStore,
   discoverEntities,
   entityFile,
-  readAllShots,
+  readProduction,
   workspacePath,
   type ProjectPaths,
 } from '@vn/store';
@@ -107,12 +107,12 @@ export async function validateAssets(
 ): Promise<ProjectFinding[]> {
   const rel = (abs: string): string => workspacePath(paths.root, abs);
   const findings: ProjectFinding[] = [];
-  const [base, project, store, graph, shots, entities] = await Promise.all([
+  const [base, project, store, graph, read, entities] = await Promise.all([
     AssetRoot.open(paths.baseObjects, paths.baseManifest),
     AssetRoot.open(paths.assetsDir, paths.manifest),
     AssetStore.open(paths),
     loadGraph(paths),
-    readAllShots(paths, model, { reportBroken: true }),
+    readProduction(paths, model),
     discoverEntities(paths, []),
   ]);
   const roots = [
@@ -213,13 +213,13 @@ export async function validateAssets(
     }
   }
 
-  for (const [sceneId, list] of shots) {
+  for (const sceneId of model.scenes.keys()) {
     const where = rel(paths.shotsFile(sceneId));
-    if (list === null) {
+    if (read.broken.has(sceneId)) {
       findings.push(unparsedFinding(where, `scene ${sceneId}`));
       continue;
     }
-    for (const shot of list) {
+    for (const shot of read.production.get(sceneId)?.shots ?? []) {
       const referrer = `shot ${shot.id}`;
       if (shot.image !== undefined) unnamed(shot.image, where, referrer, `The ${referrer}`);
       for (const { chunk, pin } of pinsOf(shot.promptOverride)) {
@@ -229,7 +229,8 @@ export async function validateAssets(
   }
 
   const assets = store.manifest();
-  for (const fix of overHeld({ model, assets, angleOf: angleOfTask(graph), shots })) {
+  const withShots = { ...model, production: read.production };
+  for (const fix of overHeld({ model: withShots, assets, angleOf: angleOfTask(graph) })) {
     const held = [fix.keep, ...fix.drop].map(short).join(', ');
     findings.push({
       severity: 'blocking',

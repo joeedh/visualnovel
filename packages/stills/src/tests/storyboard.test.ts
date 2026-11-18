@@ -14,7 +14,6 @@ const SCENE: Scene = {
   characters: [],
   lines     : [{ id: 'epilogue:L1', kind: 'narration', text: 'Morning light.' }],
   choices   : [],
-  shots     : [],
 };
 
 const MODEL: ProjectModel = {
@@ -37,6 +36,7 @@ const MODEL: ProjectModel = {
   reachable  : new Set(['epilogue']),
   entry      : 'epilogue',
   diagnostics: [],
+  production : new Map(),
 };
 
 const shot = (id: string) => ({

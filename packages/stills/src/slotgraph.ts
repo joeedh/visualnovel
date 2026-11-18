@@ -17,8 +17,9 @@
  * - Sheets are enumerated for every used outfit whether or not the gate has cleared. That is the
  *   difference between a slot graph and a plan, and it means this is not a prediction of what
  *   `planTasks` emits this wave — `vngen cost` remains that answer.
- * - Shots come only from persisted decompositions. A scene with no `work/shots/<id>.json` has no
- *   shot slots, and none are fabricated, because decomposing is an explicit act with a price.
+ * - Shots come only from the model's production map, which a host fills from the persisted
+ *   decompositions. A scene with no `work/shots/<id>.json` has no shot slots, and none are
+ *   fabricated, because decomposing is an explicit act with a price.
  * - `hash` and `candidates` are different answers and both are needed. See {@link SlotNode}.
  *
  * The reverse index lives here rather than on `TaskGraph` deliberately: `Task.deps` is documented
@@ -35,6 +36,7 @@ import type {
   TaskStatus,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { shotsOf } from '@vn/types';
 import {
   allCharacters,
   allLocationVariants,
@@ -227,8 +229,7 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
     case 'shot': {
       const scene = ctx.model.scenes.get(slot.sceneId);
       if (!scene) return gone(`There is no scene "${slot.sceneId}"`);
-      const board = ctx.shots?.get(slot.sceneId) ?? [];
-      const shot = board.find((s) => s.id === slot.shotId);
+      const shot = shotsOf(ctx.model, slot.sceneId).find((s) => s.id === slot.shotId);
       if (!shot) return gone(`Scene ${scene.id} has no shot "${slot.shotId}"`);
       const upstream = shotUpstream(scene, shot, ctx);
       if (!upstream.ok) return upstream;
@@ -236,9 +237,7 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
       const sheet =
         shot.sheet === undefined
           ? undefined
-          : sheetKeys({ ...scene, shots: [...board] }, ctx.model, ctx.config, ctx.assets ?? []).get(
-              shot.sheet,
-            );
+          : sheetKeys(scene, ctx.model, ctx.config, ctx.assets ?? []).get(shot.sheet);
       return {
         ok  : true,
         plan: {
@@ -347,18 +346,14 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
   for (const character of allCharacters(ctx.model))
     bindings.push({ kind: 'portrait', characterId: character.id });
 
-  const shots = new Map<string, readonly Shot[]>();
-  for (const scene of reachableScenes(ctx.model)) {
-    const persisted = ctx.shots?.get(scene.id);
-    if (persisted) shots.set(scene.id, persisted);
-  }
-  for (const [characterId, outfits] of usedOutfits(ctx.model, shots))
+  for (const [characterId, outfits] of usedOutfits(ctx.model))
     for (const outfit of outfits)
       for (const angle of MODEL_SHEET_ANGLES)
         bindings.push({ kind: 'sheet', characterId, outfit, angle });
 
-  for (const [sceneId, list] of shots)
-    for (const shot of list) bindings.push({ kind: 'shot', sceneId, shotId: shot.id });
+  for (const scene of reachableScenes(ctx.model))
+    for (const shot of shotsOf(ctx.model, scene.id))
+      bindings.push({ kind: 'shot', sceneId: scene.id, shotId: shot.id });
 
   const nodes = new Map<string, SlotNode>();
   for (const binding of bindings) {

@@ -12,7 +12,6 @@ const sceneOf = (outfits?: Record<string, string>): Scene => ({
   characters: ['aiko', 'ren'],
   lines     : [],
   choices   : [],
-  shots     : [],
   ...(outfits ? { outfits } : {}),
 });
 

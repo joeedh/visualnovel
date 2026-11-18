@@ -73,6 +73,7 @@ function ctx(pin: string | undefined, mute = false): SuspendContext {
     [scene('arrival', [], 'cafe')],
     [cafe(pin, mute)],
   );
+  m.production.set('arrival', { shots: [SHOT] });
   return {
     model  : m,
     assets: [
@@ -84,7 +85,6 @@ function ctx(pin: string | undefined, mute = false): SuspendContext {
       asset('plate-dawn', 'location_ref', [{ locationId: 'cafe', variant: 'dawn' }]),
       asset('frame', 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], ['plate-dawn']),
     ],
-    shots  : new Map([['arrival', [SHOT]]]),
     angleOf: () => undefined,
   };
 }

@@ -2,8 +2,8 @@
  * The takes a playable would show that nobody has approved. `buildPlayable` projects the take
  * each slot holds and asks nothing about approval, so a host that publishes asks here first.
  */
-import type { Asset, AssetStore, ProjectModel, Shot } from '@vn/types';
-import { bindsTo } from '@vn/types';
+import type { Asset, AssetStore, ProjectModel } from '@vn/types';
+import { bindsTo, shotsOf } from '@vn/types';
 
 export interface UnapprovedTake {
   /** The slot address: `shot:<sceneId>/<shotId>` or `portrait:<characterId>`. */
@@ -16,19 +16,14 @@ export interface UnapprovedTake {
  * current portrait is, in the order the playable shows them. A slot with no take at all is not
  * listed: the player draws a placeholder for it, and there is nothing to approve.
  */
-export function unapprovedTakes(
-  model: ProjectModel,
-  store: AssetStore,
-  shots?: ReadonlyMap<string, readonly Shot[]>,
-): UnapprovedTake[] {
+export function unapprovedTakes(model: ProjectModel, store: AssetStore): UnapprovedTake[] {
   const assets = store.manifest();
   const out: UnapprovedTake[] = [];
   const current = (predicate: (a: Asset) => boolean): Asset | undefined =>
     assets.find((a) => a.current && predicate(a));
 
   for (const scene of model.scenes.values()) {
-    const own = shots?.get(scene.id) ?? scene.shots;
-    for (const shot of own) {
+    for (const shot of shotsOf(model, scene.id)) {
       const frame = current((a) => a.kind === 'shot_image' && bindsTo(a, { shotId: shot.id }));
       if (frame && !frame.accepted)
         out.push({ slot: `shot:${scene.id}/${shot.id}`, hash: frame.hash });

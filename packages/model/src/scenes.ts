@@ -140,7 +140,6 @@ export function splitScenes(script: FountainScript, opts: SplitOptions = {}): Sp
           lines          : [],
           choices        : [],
           next           : undefined,
-          shots          : [],
         };
         pendingSynopsis = undefined;
         break;

@@ -37,17 +37,15 @@ function cafe(links: Record<string, RefBinding[]>): Location {
   return l;
 }
 
-function ctxOf(loc: Location, shots?: Shot[]): { model: ProjectModel; shots: Map<string, Shot[]> } {
+function ctxOf(loc: Location, shots?: Shot[]): { model: ProjectModel } {
   const aiko = character('aiko', 'approved', 'portrait-hash');
   aiko.outfits = [
     { id: 'default', characterId: 'aiko', description: 'uniform' },
     { id: 'gala', characterId: 'aiko', description: 'a long green dress' },
   ];
-  const s = scene('arrival', ['aiko'], 'cafe');
-  return {
-    model: model([aiko], [s], [loc]),
-    shots: new Map([['arrival', shots ?? []]]),
-  };
+  const m = model([aiko], [scene('arrival', ['aiko'], 'cafe')], [loc]);
+  m.production.set('arrival', { shots: shots ?? [] });
+  return { model: m };
 }
 
 describe('refsOfSlot', () => {

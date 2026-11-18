@@ -51,7 +51,8 @@ export function priceShotChanges(
   };
 
   for (const change of changes) {
-    const board = ctx.shots?.get(change.sceneId) ?? [];
+    const entry = ctx.model.production.get(change.sceneId);
+    const board = entry?.shots ?? [];
     const before = board.find((s) => s.id === change.shot.id);
     const scene = ctx.model.scenes.get(change.sceneId);
     if (!before || !scene) continue;
@@ -59,11 +60,11 @@ export function priceShotChanges(
     const movedScene: Scene =
       change.location === undefined ? scene : { ...scene, location: change.location };
     const scenes = new Map(ctx.model.scenes).set(change.sceneId, movedScene);
-    const shots = new Map(ctx.shots).set(
-      change.sceneId,
-      board.map((s) => (s.id === change.shot.id ? change.shot : s)),
-    );
-    const after = { ...ctx, model: { ...ctx.model, scenes }, shots };
+    const production = new Map(ctx.model.production).set(change.sceneId, {
+      ...entry,
+      shots: board.map((s) => (s.id === change.shot.id ? change.shot : s)),
+    });
+    const after = { ...ctx, model: { ...ctx.model, scenes, production } };
     price(change.sceneId, before, after);
 
     const groups = new Set([before.sheet, change.shot.sheet]);

@@ -6,7 +6,8 @@
  * segment. Pure: every fact comes from the caller; {@link setArtNotes} is the half that touches
  * disk.
  */
-import type { Asset, ProjectModel, Shot } from '@vn/types';
+import type { Asset, ProjectModel } from '@vn/types';
+import { shotsOf } from '@vn/types';
 
 /** One rung of the art-notes chain, parsed from (or formatted into) an `art.setNotes` target. */
 export type ArtTarget =
@@ -66,14 +67,12 @@ export function parseArtTarget(target: string): ArtTarget | undefined {
   return undefined;
 }
 
-/** What a lookup of the rungs needs: the model for entities, the storyboards for shots. */
+/**
+ * What a lookup of the rungs needs: the model, whose production map holds the storyboards a shot
+ * rung lives in. A scene with no storyboard there contributes no shot rung.
+ */
 export interface ArtNotesContext {
   model: ProjectModel;
-  /**
-   * A scene's persisted shots, by scene id. Absent scenes — and the `null` a storyboard that
-   * will not parse leaves — simply contribute no shot rung.
-   */
-  shots?: ReadonlyMap<string, readonly Shot[] | null>;
 }
 
 /** What a rung says today, or `undefined` when the rung does not exist at all. */
@@ -93,7 +92,7 @@ export function rungAt(target: ArtTarget, ctx: ArtNotesContext): ArtRung | undef
     const variant = location.variants.find((v) => v.id === target.variant);
     return variant && rung(address, `${location.name} — ${variant.id}`, variant);
   }
-  const shot = ctx.shots?.get(target.sceneId)?.find((s) => s.id === target.shotId);
+  const shot = shotsOf(ctx.model, target.sceneId).find((s) => s.id === target.shotId);
   return shot && rung(address, `${target.sceneId} · ${shot.id}`, shot);
 }
 

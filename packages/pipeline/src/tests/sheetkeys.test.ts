@@ -19,13 +19,12 @@ const frame = (id: string, extra: Partial<Shot> = {}): Shot => ({
 /** A scene already storyboarded, two of whose three shots share a staging sheet. */
 function project(seed?: number): ProjectModel {
   const room = scene('room', ['aiko'], 'classroom');
-  room.shots = [
-    frame('room__1', { sheet: 'g1' }),
-    frame('room__2', { sheet: 'g1' }),
-    frame('room__3'),
-  ];
-  if (seed !== undefined) room.sheets = { g1: { seed } };
-  return model([character('aiko', 'approved', 'a'.repeat(64))], [room], [location('classroom')]);
+  const m = model([character('aiko', 'approved', 'a'.repeat(64))], [room], [location('classroom')]);
+  m.production.set('room', {
+    shots: [frame('room__1', { sheet: 'g1' }), frame('room__2', { sheet: 'g1' }), frame('room__3')],
+    ...(seed !== undefined ? { sheets: { g1: { seed } } } : {}),
+  });
+  return m;
 }
 
 /** Plan, complete everything planned, plan again, until the shot tasks exist. */

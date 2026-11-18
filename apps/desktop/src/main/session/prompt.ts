@@ -36,7 +36,7 @@ import type {
 } from './core.js';
 import {
   relPath,
-  readAllShots,
+  withShots,
   withPromptOverride,
   characterOverrideEdit,
   locationOverrideEdit,
@@ -78,9 +78,9 @@ export class PromptPart {
   async promptViewOf(project: LoadedProject, hash: string): Promise<PromptView | null> {
     const asset = project.store.manifest().find((a) => a.hash === hash);
     if (!asset) return null;
-    const shots = await readAllShots(project);
+    const model = await withShots(project);
     const task = project.graph.get(asset.sourceTask);
-    const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
+    const ctx = { model, config: project.config, ...(task ? { task } : {}) };
     const chunks = deriveChunks(asset, ctx);
     if (!chunks) {
       // Nothing to compose: a concept, whose prompt was typed rather than derived, or an asset the
@@ -111,7 +111,7 @@ export class PromptPart {
     }
 
     const rung = rungOf(asset);
-    const override = rung ? overrideAt(rung, { model: project.model, shots }) : undefined;
+    const override = rung ? overrideAt(rung, { model }) : undefined;
     const composed = composePrompt(chunks, override);
     // Only a whole-prompt rewrite can lose a clause. In chunks mode the composed text is built
     // directly from the chunks, so marking them would say "not found" about words that are
@@ -258,10 +258,9 @@ export class PromptPart {
       };
     }
 
-    const shots = await readAllShots(project);
     const from = slotOf(asset, labels.angleOf?.(asset.sourceTask));
     if (from) {
-      const path = refCycle(from, binding, { model: project.model, shots });
+      const path = refCycle(from, binding, { model: await withShots(project) });
       if (path) return { ok: false, reason: `Cannot attach: ${cycleRefusal(path)}.` };
     }
     return {
@@ -523,13 +522,13 @@ export class PromptPart {
   > {
     const asset = project.store.manifest().find((a) => a.hash === hash);
     if (!asset) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
-    const shots = await readAllShots(project);
+    const model = await withShots(project);
     const task = project.graph.get(asset.sourceTask);
-    const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
+    const ctx = { model, config: project.config, ...(task ? { task } : {}) };
     const chunks = deriveChunks(asset, ctx);
     const rung = rungOf(asset);
     if (!chunks || !rung) return { ok: false, reason: frozenReason(asset.kind) };
-    return { ok: true, rung, chunks, override: overrideAt(rung, { model: project.model, shots }) };
+    return { ok: true, rung, chunks, override: overrideAt(rung, { model }) };
   }
 
   /**

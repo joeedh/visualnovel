@@ -6,7 +6,8 @@
  * they were already handed. This module goes the other direction, from an asset back to the rung
  * that would be written, which is what a surface needs to show or edit one.
  */
-import type { Asset, ProjectModel, PromptOverride, Shot } from '@vn/types';
+import type { Asset, ProjectModel, PromptOverride } from '@vn/types';
+import { shotsOf } from '@vn/types';
 
 /** The rung that owns one derived prompt. Character- and location-level rungs never hold one. */
 export type PromptRung =
@@ -15,11 +16,9 @@ export type PromptRung =
   | { kind: 'variant'; locationId: string; variant: string }
   | { kind: 'shot'; sceneId: string; shotId: string };
 
-/** The model, plus the storyboards a shot rung lives in. */
+/** The model, whose production map holds the storyboards a shot rung lives in. */
 export interface RungContext {
   model: ProjectModel;
-  /** A scene's persisted shots, by scene id — the same shape `derivePrompt` takes. */
-  shots?: ReadonlyMap<string, readonly Shot[] | null>;
 }
 
 /**
@@ -66,7 +65,7 @@ export function overrideAt(rung: PromptRung, ctx: RungContext): PromptOverride |
       return ctx.model.locations.get(rung.locationId)?.variants.find((v) => v.id === rung.variant)
         ?.promptOverride;
     case 'shot':
-      return ctx.shots?.get(rung.sceneId)?.find((s) => s.id === rung.shotId)?.promptOverride;
+      return shotsOf(ctx.model, rung.sceneId).find((s) => s.id === rung.shotId)?.promptOverride;
   }
 }
 

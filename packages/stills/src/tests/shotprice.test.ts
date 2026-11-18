@@ -1,4 +1,4 @@
-import { projectConfig, type Shot } from '@vn/types';
+import { projectConfig, shotsOf, type Shot } from '@vn/types';
 import { makeTask } from '@vn/taskgraph';
 import { character, location, model, scene } from '@vn/testkit';
 import {
@@ -23,7 +23,6 @@ const frame = (id: string, extra: Partial<Shot> = {}): Shot => ({
 /** Two of three drawn shots share a seeded group, and the café's plate has rendered. */
 function ctx(): SlotResolveContext {
   const arrival = scene('arrival', ['aiko', 'ren'], 'cafe');
-  arrival.sheets = { g1: { seed: 2, notes: 'one long table' } };
   const m = model(
     [character('aiko', 'approved', 'p-aiko'), character('ren', 'approved', 'p-ren')],
     [arrival],
@@ -39,10 +38,10 @@ function ctx(): SlotResolveContext {
     frame('arrival__b', { sheet: 'g1', image: 'img-b' }),
     frame('arrival__c', { image: 'img-c' }),
   ];
+  m.production.set('arrival', { shots, sheets: { g1: { seed: 2, notes: 'one long table' } } });
   return {
     model: m,
     config,
-    shots: new Map([['arrival', shots]]),
     graph: { get: (hash) => (hash === plate.hash ? done : undefined) },
   };
 }
@@ -50,21 +49,21 @@ function ctx(): SlotResolveContext {
 describe('priceShotChanges', () => {
   it('counts the other members of a changed shot’s group, which re-key with it', () => {
     const c = ctx();
-    const a = c.shots!.get('arrival')![0]!;
+    const a = shotsOf(c.model, 'arrival')[0]!;
     const shot = { ...a, subjects: [{ characterId: 'aiko' }] };
     expect(priceShotChanges(c, [{ sceneId: 'arrival', shot }])).toEqual({ moved: 2, rendered: 2 });
   });
 
   it('counts only the changed shot when it is in no group', () => {
     const c = ctx();
-    const third = c.shots!.get('arrival')![2]!;
+    const third = shotsOf(c.model, 'arrival')[2]!;
     const shot = { ...third, subjects: [{ characterId: 'aiko' }] };
     expect(priceShotChanges(c, [{ sceneId: 'arrival', shot }])).toEqual({ moved: 1, rendered: 1 });
   });
 
   it('counts a member once when it is both changed and a sibling of a change', () => {
     const c = ctx();
-    const [a, b] = c.shots!.get('arrival')!;
+    const [a, b] = shotsOf(c.model, 'arrival');
     const changes = [a!, b!].map((s) => ({
       sceneId: 'arrival',
       shot   : { ...s, subjects: [{ characterId: 'aiko' }] },

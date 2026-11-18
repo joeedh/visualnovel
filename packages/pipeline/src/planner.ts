@@ -8,12 +8,13 @@ import type {
   Logger,
   PagePanel,
   PanelBox,
+  ProductionData,
   ProjectModel,
   Scene,
   Shot,
   TaskGraph,
 } from '@vn/types';
-import { defectReportSchema } from '@vn/types';
+import { defectReportSchema, shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
 import {
@@ -23,7 +24,7 @@ import {
   allLocationVariants,
   usedOutfits,
 } from '@vn/model';
-import { type ProjectPaths, readShots, writeShots } from '@vn/store';
+import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
 import { baseRefusal } from '@vn/artgen';
 import {
@@ -73,9 +74,6 @@ function modelSheetTask(
   );
 }
 
-/** What a scene's storyboard holds: the shots, and the staging-sheet groups the file declares. */
-type Storyboard = Pick<Scene, 'shots' | 'sheets'>;
-
 /**
  * A scene's storyboard. Returns the persisted decomposition if one exists. Otherwise decomposes
  * the scene and writes the result out immediately. Re-decomposing over an existing file is never
@@ -90,7 +88,7 @@ async function shotsFor(
   paths?: ProjectPaths,
   logger?: Logger,
   readOnly = false,
-): Promise<Storyboard> {
+): Promise<ProductionData> {
   if (paths) {
     const known = new Set(scene.lines.map((l) => l.id));
     const loaded = await readShots(paths, scene.id, known);
@@ -109,7 +107,7 @@ async function shotsFor(
           lines: u.lineIds,
         });
       }
-      return { shots: loaded.shots, ...(loaded.sheets ? { sheets: loaded.sheets } : {}) };
+      return productionOf(loaded);
     }
   }
   const decomposition = await decomposeScene(scene, model, providers, style);
@@ -217,8 +215,9 @@ function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {
  * (shot images reference the produced location plate) only appear after that upstream task
  * is `done`, and shot tasks for a scene only appear once every character in it is approved.
  *
- * Returns the tasks added or refreshed this pass. Decomposes scenes lazily (mutating
- * `model`) the first time a scene clears the gate.
+ * Returns the tasks added or refreshed this pass. Decomposes scenes lazily the first time a scene
+ * clears the gate, putting each storyboard into `model.production`; the model is expected to hold
+ * only the storyboards earlier passes put there.
  *
  * With `paths`, decompositions are persisted under `work/shots/` and preferred over
  * re-decomposing; without it planning is pure, which is what the unit tests want.
@@ -292,7 +291,7 @@ export async function planTasks(opts: {
   // P5–P7: shots, but only for scenes that have fully cleared the character gate.
   for (const scene of reachableScenes(model)) {
     if (!sceneUnblocked(model, scene.id, opts.assets)) continue;
-    if (scene.shots.length === 0) {
+    if (shotsOf(model, scene.id).length === 0) {
       const storyboard = await shotsFor(
         scene,
         model,
@@ -302,12 +301,12 @@ export async function planTasks(opts: {
         logger,
         readOnlyShots,
       );
-      scene.shots = storyboard.shots;
-      if (storyboard.sheets) scene.sheets = storyboard.sheets;
+      model.production.set(scene.id, storyboard);
     }
     const sheets = sheetKeys(scene, model, config, assets);
 
-    for (const shot of scene.shots) {
+    const shots = shotsOf(model, scene.id);
+    for (const shot of shots) {
       // A shot can only be hashed once its location plate exists (its hash is a ref).
       const locTaskHash = locationTask(
         model.locations.get(scene.location)!,
@@ -372,16 +371,13 @@ export async function planTasks(opts: {
 
     // Written once per pass, including the final pass the scheduler runs after the last wave.
     // That final pass is what gets a completed run's outputs into the file.
-    if (paths && !readOnlyShots) await writeShots(paths, scene.id, scene.shots);
+    if (paths && !readOnlyShots) await writeShots(paths, scene.id, shots);
   }
 
   // The defensive half of §14: `prompt.addRef` refuses a cycle before it can be written, so a
   // cycle here means a hand-edited project. Throwing is deliberate — a reference loop leaves every
   // task in it permanently unplannable, and the plan-run-replan loop would starve silently.
-  const cycle = firstCycle({
-    model,
-    shots: new Map([...model.scenes].map(([id, s]) => [id, s.shots])),
-  });
+  const cycle = firstCycle({ model });
   if (cycle) throw new VnError('REF_CYCLE', cycleRefusal(cycle));
 
   return planned;

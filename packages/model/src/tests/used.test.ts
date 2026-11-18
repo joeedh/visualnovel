@@ -55,8 +55,10 @@ describe('usedOutfits', () => {
   it('adds a scene marker and a shot override on top of the default', () => {
     const s = scene('a', ['aiko'], 'cafe');
     s.outfits = { aiko: 'gala' };
-    s.shots = [shot('a__1', 'a', [{ characterId: 'aiko', outfit: 'swim' }])];
     const m = model([character('aiko')], [s], [location('cafe')]);
+    m.production.set('a', {
+      shots: [shot('a__1', 'a', [{ characterId: 'aiko', outfit: 'swim' }])],
+    });
     expect([...(usedOutfits(m).get('aiko') ?? [])]).toEqual(['default', 'gala', 'swim']);
   });
 
@@ -67,16 +69,16 @@ describe('usedOutfits', () => {
     expect([...(usedOutfits(m).get('aiko') ?? [])]).toEqual(['default', 'gala']);
   });
 
-  it('reads shot overrides from a passed map instead of Scene.shots', () => {
-    // The planner omits `shots` and reads what it has populated wave by wave; a caller holding the
-    // persisted decompositions passes them and gets the whole answer before anything has run.
+  it('reads shot overrides from the production map alone', () => {
+    // The planner's model holds what it has populated wave by wave; a model filled from the
+    // persisted decompositions gets the whole answer before anything has run
     const s = scene('a', ['aiko'], 'cafe');
     const m = model([character('aiko')], [s], [location('cafe')]);
-    const persisted = new Map([
-      ['a', [shot('a__1', 'a', [{ characterId: 'aiko', outfit: 'gala' }])]],
-    ]);
     expect([...(usedOutfits(m).get('aiko') ?? [])]).toEqual(['default']);
-    expect([...(usedOutfits(m, persisted).get('aiko') ?? [])]).toEqual(['default', 'gala']);
+    m.production.set('a', {
+      shots: [shot('a__1', 'a', [{ characterId: 'aiko', outfit: 'gala' }])],
+    });
+    expect([...(usedOutfits(m).get('aiko') ?? [])]).toEqual(['default', 'gala']);
   });
 
   it('ignores unreachable scenes entirely', () => {

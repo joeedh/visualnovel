@@ -7,7 +7,7 @@ import { parseFountain, parseFrontMatter } from '@vn/parse';
 import { buildModel } from '@vn/model';
 import { ProjectPaths, writeShots } from '@vn/store';
 import { SCRIPTS } from '@vn/testkit';
-import { buildPlayable, loadSceneShots } from '../playable.js';
+import { buildPlayable, withSceneShots } from '../playable.js';
 import { unapprovedSentence, unapprovedTakes } from '../unapproved.js';
 
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
@@ -160,23 +160,17 @@ describe('buildPlayable', () => {
 });
 
 describe('unapprovedTakes', () => {
-  const model = sampleModel();
-  const lines = model.scenes.get('arrival')!.lines.map((l) => l.id);
-  const shots = new Map<string, Shot[]>([
-    [
-      'arrival',
-      [
-        {
-          id         : 'arrival__s1',
-          sceneId    : 'arrival',
-          framing    : 'wide',
-          location   : 'evening',
-          subjects   : [],
-          coversLines: lines,
-        },
-      ],
-    ],
-  ]);
+  const base = sampleModel();
+  const lines = base.scenes.get('arrival')!.lines.map((l) => l.id);
+  const shot: Shot = {
+    id         : 'arrival__s1',
+    sceneId    : 'arrival',
+    framing    : 'wide',
+    location   : 'evening',
+    subjects   : [],
+    coversLines: lines,
+  };
+  const model: ProjectModel = { ...base, production: new Map([['arrival', { shots: [shot] }]]) };
   const frame = (over: Partial<Asset>): Asset =>
     asset({
       hash     : 'f1',
@@ -189,11 +183,11 @@ describe('unapprovedTakes', () => {
 
   it('lists the frames and cast portraits the playable would show unapproved, frames first', () => {
     const store = fakeStore([frame({ accepted: false }), portrait({ accepted: false })]);
-    expect(unapprovedTakes(model, store, shots)).toEqual([
+    expect(unapprovedTakes(model, store)).toEqual([
       { slot: 'shot:arrival/arrival__s1', hash: 'f1' },
       { slot: 'portrait:aiko', hash: 'p1' },
     ]);
-    expect(unapprovedSentence(unapprovedTakes(model, store, shots))).toMatch(
+    expect(unapprovedSentence(unapprovedTakes(model, store))).toMatch(
       /^shot:arrival\/arrival__s1 holds a take nobody has approved \(f1…\) and 1 more\./,
     );
   });
@@ -205,10 +199,10 @@ describe('unapprovedTakes', () => {
       frame({ hash: 'f0', current: false, accepted: false }),
       portrait({ accepted: true }),
     ]);
-    expect(unapprovedTakes(model, store, shots)).toEqual([]);
+    expect(unapprovedTakes(model, store)).toEqual([]);
     expect(unapprovedSentence([])).toBeUndefined();
     // Nothing drawn at all: the player shows a placeholder, and there is nothing to approve.
-    expect(unapprovedTakes(model, fakeStore(), shots)).toEqual([]);
+    expect(unapprovedTakes(model, fakeStore())).toEqual([]);
   });
 
   it('reads a portrait off its row, as the gate does; the sheet alone approves nothing', () => {
@@ -221,9 +215,7 @@ describe('unapprovedTakes', () => {
       ),
     };
     const store = fakeStore([portrait({ accepted: false })]);
-    expect(unapprovedTakes(sheetOnly, store, shots)).toEqual([
-      { slot: 'portrait:aiko', hash: 'p1' },
-    ]);
+    expect(unapprovedTakes(sheetOnly, store)).toEqual([{ slot: 'portrait:aiko', hash: 'p1' }]);
     // A locked character's approval is the sheet's, whatever the slot holds
     const locked: ProjectModel = {
       ...model,
@@ -233,13 +225,19 @@ describe('unapprovedTakes', () => {
         ),
       ),
     };
-    expect(unapprovedTakes(locked, store, shots)).toEqual([]);
+    expect(unapprovedTakes(locked, store)).toEqual([]);
   });
 });
 
 describe('persisted decompositions', () => {
   const model = sampleModel();
   const lines = model.scenes.get('arrival')!.lines.map((l) => l.id);
+
+  /** `model` with `shots` as the arrival scene's storyboard. */
+  const boarded = (shots: Shot[]): ProjectModel => ({
+    ...model,
+    production: new Map([['arrival', { shots }]]),
+  });
 
   /** A decomposition the deterministic baseline would never produce — LLM-shaped ids. */
   const llmShots = (): Shot[] => [
@@ -266,7 +264,7 @@ describe('persisted decompositions', () => {
     const guessed = buildPlayable(model, store).scenes['arrival']!.beats;
     expect(guessed.filter((b) => b.type === 'show' && b.image)).toHaveLength(0);
 
-    const play = buildPlayable(model, store, { shots: new Map([['arrival', llmShots()]]) });
+    const play = buildPlayable(boarded(llmShots()), store);
     const shows = play.scenes['arrival']!.beats.filter((b) => b.type === 'show');
     // One shot covers every line, so the image is shown once and never changes.
     expect(shows).toHaveLength(1);
@@ -274,7 +272,7 @@ describe('persisted decompositions', () => {
   });
 
   it('writes the line id on every say and narrate beat', () => {
-    const play = buildPlayable(model, fakeStore(), { shots: new Map([['arrival', llmShots()]]) });
+    const play = buildPlayable(boarded(llmShots()), fakeStore());
     const spoken = play.scenes['arrival']!.beats.flatMap((b) => (b.type === 'show' ? [] : [b]));
     expect(spoken.map((b) => b.line)).toEqual(lines);
   });
@@ -308,7 +306,7 @@ describe('persisted decompositions', () => {
         },
       ],
     };
-    const play = buildPlayable(model, fakeStore(), { shots: new Map([['arrival', [page]]]) });
+    const play = buildPlayable(boarded([page]), fakeStore());
     expect(() => playableSchema.parse(play)).not.toThrow();
     const show = play.scenes['arrival']!.beats[0];
     expect(show).toMatchObject({
@@ -336,7 +334,7 @@ describe('persisted decompositions', () => {
     });
     // A frame's show beat has no panels key at all, so a file with no pages is byte for byte
     // what it was.
-    const frame = buildPlayable(model, fakeStore(), { shots: new Map([['arrival', llmShots()]]) });
+    const frame = buildPlayable(boarded(llmShots()), fakeStore());
     expect('panels' in frame.scenes['arrival']!.beats[0]!).toBe(false);
   });
 
@@ -362,8 +360,8 @@ describe('persisted decompositions', () => {
         },
       ],
     };
-    const shots = new Map([['arrival', [page]]]);
-    const runner = buildPlayable(model, fakeStore(), { shots, lettering: 'runner' });
+    const paged = boarded([page]);
+    const runner = buildPlayable(paged, fakeStore(), { lettering: 'runner' });
     expect(() => playableSchema.parse(runner)).not.toThrow();
     expect(runner.scenes['arrival']!.beats[0]).toMatchObject({
       panels: [
@@ -377,8 +375,8 @@ describe('persisted decompositions', () => {
     });
     // The words are in the picture under model lettering, so no bubble is exported, and a
     // project that says nothing exports none either.
-    for (const opts of [{ shots, lettering: 'model' as const }, { shots }]) {
-      const show = buildPlayable(model, fakeStore(), opts).scenes['arrival']!.beats[0]!;
+    for (const opts of [{ lettering: 'model' as const }, {}]) {
+      const show = buildPlayable(paged, fakeStore(), opts).scenes['arrival']!.beats[0]!;
       expect(show.type === 'show' && 'bubbles' in show.panels![0]!).toBe(false);
     }
   });
@@ -389,8 +387,8 @@ describe('persisted decompositions', () => {
     stale[0]!.coversLines = [...lines, 'arrival:L99'];
     await writeShots(paths, 'arrival', stale);
 
-    const loaded = await loadSceneShots(paths, model);
-    expect([...loaded.keys()]).toEqual(['arrival']);
-    expect(loaded.get('arrival')![0]!.coversLines).toEqual(lines);
+    const loaded = await withSceneShots(paths, model);
+    expect([...loaded.production.keys()]).toEqual(['arrival']);
+    expect(loaded.production.get('arrival')!.shots[0]!.coversLines).toEqual(lines);
   });
 });

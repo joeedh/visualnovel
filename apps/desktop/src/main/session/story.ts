@@ -18,7 +18,7 @@ import {
   parseShots,
   writeShotBubbles,
   readShots,
-  syncSheets,
+  productionOf,
   writeSceneChunk,
   writeShots,
 } from '@vn/store';
@@ -76,7 +76,7 @@ import {
   type SceneSource,
   type ShotPrice,
 } from '@vn/scriptedit/write';
-import type { DefectReport, PagePanel, PanelBubble, Scene, Shot } from '@vn/types';
+import type { DefectReport, PagePanel, PanelBubble, ProductionData, Scene, Shot } from '@vn/types';
 import type {
   BranchEditResult,
   BubbleSave,
@@ -87,7 +87,7 @@ import type {
 } from '../../shared/ipc.js';
 import { storyGraphOf } from '../doctree/storygraph.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
-import { editInputOf, readAllShots, relPath, loadProject } from './core.js';
+import { editInputOf, withShots, relPath, loadProject } from './core.js';
 
 /**
  * The layout verdict the Page editor's header shows: the runner's own `layout` defect over the
@@ -253,12 +253,10 @@ export class StoryPart {
       decide,
     );
     if (!plan.ok) return plan;
-    const shots = await readAllShots(project);
     const price = priceShotChanges(
       {
-        model : project.model,
+        model : await withShots(project),
         config: project.config,
-        shots,
         assets: manifest,
         graph : project.graph,
       },
@@ -512,17 +510,18 @@ export class StoryPart {
     if (!scene) throw new Error(`No scene "${sceneId}".`);
 
     const loaded = await readShots(project.paths, sceneId, new Set(scene.lines.map((l) => l.id)));
-    syncSheets(scene, loaded);
+    const model = {
+      ...project.model,
+      production: new Map(loaded ? [[sceneId, productionOf(loaded)]] : []),
+    };
     const manifest = project.store.manifest();
     const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
-    const shotsById = new Map<string, Shot[] | null>([[sceneId, loaded?.shots ?? []]]);
     // The slot's current task, for the frame a blocked render left and the sentence saying why
     const outcomeOf = (s: Shot): { image?: string; failure?: ShotFailure; undrawable?: string } => {
       const decided = resolveSlot(
         { kind: 'shot', sceneId, shotId: s.id },
         {
-          model : project.model,
-          shots : shotsById,
+          model,
           config: project.config,
           assets: manifest,
           graph : project.graph,
@@ -1075,11 +1074,11 @@ export class StoryPart {
 
   /**
    * The sheet-group rules against a fresh load, shared by the previews and the writes. The
-   * shots file's own `sheets` is read here, since the model's scenes do not carry it.
+   * shots file's own `sheets` is read here, since a loaded project's production map is empty.
    */
   private async sheetsRule(
     sceneId: string,
-    rule: (shots: readonly Shot[], sheets: Scene['sheets']) => SheetsOp<Shot>,
+    rule: (shots: readonly Shot[], sheets: ProductionData['sheets']) => SheetsOp<Shot>,
   ): Promise<{ project: LoadedProject; op: SheetsOp<Shot> }> {
     const project = await loadProject(this.session.dir);
     const scene = project.model.scenes.get(sceneId);

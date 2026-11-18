@@ -6,7 +6,7 @@
  * The work is split in two layers: {@link artNotesOf} decides, and {@link setArtNotes} re-asks
  * before writing rather than trusting that a check ran.
  */
-import type { LocationVariant, Outfit, ProjectModel, Shot } from '@vn/types';
+import type { LocationVariant, Outfit, ProductionData, ProjectModel, Shot } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import {
   applyCharacterEdit,
@@ -19,7 +19,14 @@ import {
   type LocationEdit,
 } from '@vn/model';
 import type { EntityDoc } from '@vn/parse';
-import { entityDoc, loadInputs, readShots, writeShots, type ProjectPaths } from '@vn/store';
+import {
+  entityDoc,
+  loadInputs,
+  productionOf,
+  readShots,
+  writeShots,
+  type ProjectPaths,
+} from '@vn/store';
 import { VnError, writeFileAtomic } from '@vn/util';
 import { parseArtTarget, rungAt, type ArtRung, type ArtTarget } from './artnotes.js';
 import type { Decided } from '@vn/stills';
@@ -143,7 +150,7 @@ async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<
     };
   }
   const { model, docs } = await loadFor(deps, parsed);
-  const shots = new Map<string, readonly Shot[]>();
+  const production = new Map<string, ProductionData>();
   if (parsed.kind === 'shot') {
     const scene = model.scenes.get(parsed.sceneId);
     if (scene) {
@@ -152,10 +159,10 @@ async function locateRung(deps: SetNotesDeps, address: string): Promise<Decided<
         scene.id,
         new Set(scene.lines.map((l) => l.id)),
       ).catch(() => undefined);
-      if (loaded) shots.set(scene.id, loaded.shots);
+      if (loaded) production.set(scene.id, productionOf(loaded));
     }
   }
-  const rung = rungAt(parsed, { model, shots });
+  const rung = rungAt(parsed, { model: { ...model, production } });
   // The refusal is worded for art notes because that field came first, and seeds use the same five
   // rungs; one wording keeps both hosts refusing with the same sentence
   if (!rung)

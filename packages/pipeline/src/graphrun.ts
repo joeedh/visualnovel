@@ -6,6 +6,7 @@
  * is bound to never reaches this file.
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
+import { shotsOf } from '@vn/types';
 import { slotKey } from '@vn/stills';
 import {
   activeOutputs,
@@ -139,7 +140,7 @@ function bindingOf(
 
 function sceneOfShot(model: ProjectModel, shotId: string): string | undefined {
   for (const scene of model.scenes.values()) {
-    if (scene.shots.some((shot) => shot.id === shotId)) {
+    if (shotsOf(model, scene.id).some((shot) => shot.id === shotId)) {
       return scene.id;
     }
   }

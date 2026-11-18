@@ -16,14 +16,14 @@ import {
   composePrompt,
   overrideOf,
 } from '@vn/stills';
-import type { AnyTask, Asset, ProjectModel, PromptChunk, Shot } from '@vn/types';
+import type { AnyTask, Asset, ProjectModel, PromptChunk } from '@vn/types';
+import { shotsOf } from '@vn/types';
 
-/** What the derivation needs beyond the asset: the model, the config, and the storyboards. */
+/** What the derivation needs beyond the asset: the model and the config. */
 export interface DerivePromptContext {
+  /** The model, with the storyboards in its production map; a frame with none derives nothing. */
   model: ProjectModel;
   config: ProjectConfig;
-  /** A scene's persisted shots, by scene id. A frame whose storyboard is gone derives nothing. */
-  shots?: ReadonlyMap<string, readonly Shot[] | null>;
   /** The task that produced the asset — the only place a model sheet's angle is recorded. */
   task?: AnyTask;
 }
@@ -61,7 +61,7 @@ export function deriveChunks(asset: Asset, ctx: DerivePromptContext): PromptChun
     case 'shot_image': {
       if (!binding.sceneId || !binding.shotId) return undefined;
       const scene = ctx.model.scenes.get(binding.sceneId);
-      const shot = ctx.shots?.get(binding.sceneId)?.find((s) => s.id === binding.shotId);
+      const shot = shotsOf(ctx.model, binding.sceneId).find((s) => s.id === binding.shotId);
       if (!scene || !shot) return undefined;
       return buildShotChunks(shot, scene, ctx.model, ctx.config);
     }

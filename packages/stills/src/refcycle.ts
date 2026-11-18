@@ -4,6 +4,7 @@
  */
 import { contract } from '@vn/contracts';
 import type { Asset, AssetBinding, RefBinding } from '@vn/types';
+import { shotsOf } from '@vn/types';
 import { outfitFor } from '@vn/model';
 import { overrideAt, type PromptRung, type RungContext } from './resolve.js';
 import { SHEET_FRONT } from './prompts.js';
@@ -98,7 +99,7 @@ function derivedRefs(b: RefBinding, ctx: RungContext): RefBinding[] {
       return [{ kind: 'portrait', characterId: b.characterId }];
     case 'shot': {
       const scene = ctx.model.scenes.get(b.sceneId);
-      const shot = ctx.shots?.get(b.sceneId)?.find((s) => s.id === b.shotId);
+      const shot = shotsOf(ctx.model, b.sceneId).find((s) => s.id === b.shotId);
       if (!scene || !shot) return [];
       const out: RefBinding[] = [
         { kind: 'plate', locationId: scene.location, variant: shot.location },
@@ -213,8 +214,8 @@ function authoredSlots(ctx: RungContext): RefBinding[] {
   for (const l of ctx.model.locations.values())
     for (const v of l.variants)
       if (v.promptOverride?.refs) out.push({ kind: 'plate', locationId: l.id, variant: v.id });
-  for (const [sceneId, shots] of ctx.shots ?? [])
-    for (const s of shots ?? [])
+  for (const [sceneId, board] of ctx.model.production)
+    for (const s of board.shots)
       if (s.promptOverride?.refs) out.push({ kind: 'shot', sceneId, shotId: s.id });
   return out;
 }

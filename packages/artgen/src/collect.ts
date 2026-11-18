@@ -19,9 +19,9 @@ import {
   slotTaskHash,
   slotsOf,
 } from '@vn/stills';
-import { AssetRoot, AssetStore, readAllShots, workspacePath, type ProjectPaths } from '@vn/store';
+import { AssetRoot, AssetStore, readProduction, workspacePath, type ProjectPaths } from '@vn/store';
 import { latestRecords, loadGraph, type TaskRecord } from '@vn/taskgraph';
-import type { AnyTask, Asset, ProjectModel, PromptOverride, Shot, TaskKind } from '@vn/types';
+import type { AnyTask, Asset, ProjectModel, PromptOverride, TaskKind } from '@vn/types';
 
 export type AssetRootName = 'base' | 'project';
 
@@ -94,29 +94,25 @@ export async function planAssetCollection(opts: {
   /** Hashes this project claims, whose claims go once nothing of this project's uses them. */
   ownClaims?: Iterable<string>;
 }): Promise<AssetCollection> {
-  const { paths, model, config } = opts;
+  const { paths, config } = opts;
   const [base, project, store, graph, read, records] = await Promise.all([
     AssetRoot.open(paths.baseObjects, paths.baseManifest),
     AssetRoot.open(paths.assetsDir, paths.manifest),
     AssetStore.open(paths),
     loadGraph(paths),
-    readAllShots(paths, model, { reportBroken: true }),
+    readProduction(paths, opts.model),
     latestRecords(paths),
   ]);
-  const shots = new Map<string, Shot[]>();
-  const unread = new Set<string>();
-  for (const [sceneId, list] of read) {
-    if (list === null) unread.add(sceneId);
-    else shots.set(sceneId, list);
-  }
+  const model = { ...opts.model, production: read.production };
+  const unread = read.broken;
   const assets = store.manifest();
   const angleOf = angleOfTask(graph);
 
-  const slots = keptSlots(model, shots);
+  const slots = keptSlots(model);
   const keys = new Set(slots.map(slotKey));
   const slotTasks = new Set<string>();
   for (const slot of slots) {
-    const decided = resolveSlot(slot, { model, shots, config, assets, graph });
+    const decided = resolveSlot(slot, { model, config, assets, graph });
     if (decided.ok) slotTasks.add(slotTaskHash(decided.plan));
   }
 
@@ -137,8 +133,8 @@ export async function planAssetCollection(opts: {
       for (const pin of pinsOf(variant.promptOverride)) named.add(pin);
     }
   }
-  for (const list of shots.values()) {
-    for (const shot of list) {
+  for (const board of model.production.values()) {
+    for (const shot of board.shots) {
       if (shot.image) named.add(shot.image);
       for (const pin of pinsOf(shot.promptOverride)) named.add(pin);
     }

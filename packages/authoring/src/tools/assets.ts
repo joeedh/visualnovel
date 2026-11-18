@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { openTakeDeps, repairCurrent, rungsFor, setArtNotes, type NotesMode } from '@vn/artgen';
 import { assetApproved, assetSlotLabel } from '@vn/stills';
 import { loadConfig } from '@vn/config';
-import { AssetStore, readShots } from '@vn/store';
+import { AssetStore, productionOf, readShots } from '@vn/store';
 import { exists } from '@vn/util';
-import { bindsTo, type Asset, type ProjectModel, type Shot } from '@vn/types';
+import { bindsTo, type Asset, type ProductionData, type ProjectModel } from '@vn/types';
 import {
   SAID_WINDOW,
   approvalCard,
@@ -58,21 +58,21 @@ function findAsset(
   return { ok: true, asset: matches[0]! };
 }
 
-/** The storyboards for the scenes named, in the shape `rungsFor` reads them. */
-async function shotsFor(
+/** A copy of `model` with the storyboards of the scenes named in its production map. */
+async function withScenes(
   workspace: Workspace,
   model: ProjectModel,
   sceneIds: readonly string[],
-): Promise<Map<string, readonly Shot[] | null>> {
-  const shots = new Map<string, readonly Shot[] | null>();
+): Promise<ProjectModel> {
+  const production = new Map<string, ProductionData>();
   for (const id of sceneIds) {
     const scene = model.scenes.get(id);
     if (!scene) continue;
     const ids = new Set(scene.lines.map((l) => l.id));
     const loaded = await readShots(workspace.paths, id, ids).catch(() => null);
-    shots.set(id, loaded?.shots ?? null);
+    if (loaded) production.set(id, productionOf(loaded));
   }
-  return shots;
+  return { ...model, production };
 }
 
 /**
@@ -145,8 +145,9 @@ const artNotesTool: Tool<{ hash: string }> = {
     if (!found.ok) return fail(found.error);
     const { model } = await ctx.workspace.load();
     const sceneId = found.asset.satisfies[0]?.sceneId;
-    const shots = await shotsFor(ctx.workspace, model, sceneId ? [sceneId] : []);
-    const rungs = rungsFor(found.asset, { model, shots });
+    const rungs = rungsFor(found.asset, {
+      model: await withScenes(ctx.workspace, model, sceneId ? [sceneId] : []),
+    });
     const label = assetSlotLabel(found.asset);
     if (rungs.length === 0) {
       return ok(`${label} has no art-notes rung — nothing in the project directs how it looks.`);

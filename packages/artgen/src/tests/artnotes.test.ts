@@ -30,10 +30,8 @@ const shot: Shot = {
   artNotes   : 'wider than the last one',
 };
 
-const ctx = {
-  model: model([aiko], [scene('greet', ['aiko'])], [cafe]),
-  shots: new Map<string, readonly Shot[] | null>([['greet', [shot]]]),
-};
+const ctx = { model: model([aiko], [scene('greet', ['aiko'])], [cafe]) };
+ctx.model.production.set('greet', { shots: [shot] });
 
 /** An asset of one kind bound to one thing — the only two fields `rungsFor` reads. */
 function asset(kind: AssetKind, binding: AssetBinding): Asset {

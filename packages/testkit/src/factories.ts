@@ -43,7 +43,7 @@ export function location(id: string): Location {
 
 /** A scene with a cast but no lines — enough to plan shots against; fill `lines` to cover. */
 export function scene(id: string, characters: string[] = [], loc = 'classroom'): Scene {
-  return { id, location: loc, characters, lines: [], choices: [], shots: [] };
+  return { id, location: loc, characters, lines: [], choices: [] };
 }
 
 /** Assemble a model in which every scene is reachable and the first one is the entry. */
@@ -60,5 +60,6 @@ export function model(
     reachable  : new Set(scenes.map((s) => s.id)),
     entry      : scenes[0]?.id,
     diagnostics: [],
+    production : new Map(),
   };
 }

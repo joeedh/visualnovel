@@ -55,7 +55,7 @@ import {
   relPath,
   ACCEPTABLE,
   suspensionsOf,
-  readAllShots,
+  withShots,
   loadProject,
   buildProviders,
 } from './core.js';
@@ -96,23 +96,23 @@ export class AssetPart {
     const asset = manifest.find((a) => a.hash === hash);
     if (!asset) return null;
 
-    const shots = await readAllShots(project);
-    const suspended = suspensionsOf(project, shots).get(hash);
+    const model = await withShots(project);
+    const suspended = suspensionsOf(project, model).get(hash);
     const task = project.graph.get(asset.sourceTask);
-    const ctx = { model: project.model, config: project.config, shots, ...(task ? { task } : {}) };
+    const ctx = { model, config: project.config, ...(task ? { task } : {}) };
     const derived = derivePrompt(asset, ctx);
     // The prompt as sent carries any `Corrections:` clause P7 appended; the planner hashed the base.
     const recorded = asset.prompt === undefined ? undefined : basePromptOf(asset.prompt);
     const view = await this.session.promptPart.promptViewOf(project, hash);
-    const labels = labelContext(project.model, project.graph);
+    const labels = labelContext(model, project.graph);
     const label = labelAssets(manifest, labels).get(hash) ?? hash;
-    const prereqs = assetPrereqs(asset, { ...labels, assets: manifest, shots });
+    const prereqs = assetPrereqs(asset, { ...labels, assets: manifest });
     // Only for the kinds that can be accepted at all: a portrait, a concept and an upload are each
     // refused by name already, and a second sentence beside those reads as a second rule. Their
     // prereqs are still listed, because what a sketch was drawn from is worth showing regardless.
     const unapproved = ACCEPTABLE.has(asset.kind) ? prereqRefusal(label, prereqs) : undefined;
     const from = slotOf(asset, sheetAngleOf(asset, labels));
-    const current = from ? this.session.gatePart.slotTask(project, from, shots) : undefined;
+    const current = from ? this.session.gatePart.slotTask(project, from, model) : undefined;
     // What the slot holds now is the current row, not the identity's output: an old take stays
     // current through a re-key until the new identity lands. A slot only counts while these are
     // the bytes in it, because a pane offering to replace a superseded render would supersede a
@@ -162,7 +162,7 @@ export class AssetPart {
       ...(failure ? { failure } : {}),
       prereqs,
       ...(unapproved ? { unapproved } : {}),
-      rungs       : rungsFor(asset, { model: project.model, shots }),
+      rungs       : rungsFor(asset, { model }),
       projectModel: project.config.models.image,
       ...(project.config.image_params.seed === undefined
         ? {}
@@ -230,10 +230,9 @@ export class AssetPart {
     const manifest = project.store.manifest();
     const asset = manifest.find((a) => a.hash === hash);
     if (!asset) return `No asset "${hash}" in the manifest.`;
-    const labels = labelContext(project.model, project.graph);
+    const labels = labelContext(await withShots(project), project.graph);
     const label = labelAssets(manifest, labels).get(hash) ?? hash;
-    const shots = await readAllShots(project);
-    return acceptRefusal(asset, label, { ...labels, assets: manifest, shots });
+    return acceptRefusal(asset, label, { ...labels, assets: manifest });
   }
 
   /**
@@ -399,7 +398,7 @@ export class AssetPart {
     }
     const from = info.drawnFor ? parseSlot(info.drawnFor) : undefined;
     const slotTask = from
-      ? this.session.gatePart.slotTask(project, from, await readAllShots(project))
+      ? this.session.gatePart.slotTask(project, from, await withShots(project))
       : undefined;
     const task =
       (slotTask ? project.graph.get(slotTask) : undefined) ??
@@ -493,10 +492,8 @@ export class AssetPart {
     const project = await loadProject(this.session.dir);
     const refused = baseRefusal(project.store.base);
     if (refused) return { ok: false, reason: refused };
-    const shots = await readAllShots(project);
     const decided = resolveSlot(binding, {
-      model: project.model,
-      shots,
+      model : await withShots(project),
       config: project.config,
       assets: project.store.manifest(),
       graph : project.graph,

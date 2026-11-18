@@ -10,7 +10,9 @@ import type {
   AssetRef,
   Character,
   Location,
+  ProductionData,
   Scene,
+  Shot,
   TakeEdit,
   TakeStamp,
 } from './entities.js';
@@ -38,6 +40,17 @@ export interface ProjectModel {
   /** Entry scene id: `project.yaml`'s `start:`, or the screenplay's first scene without one. */
   entry?: string;
   diagnostics: Diagnostic[];
+  /**
+   * Each scene's storyboard, by scene id. The builder leaves it empty. A reader that wants every
+   * persisted storyboard fills a copy from `work/shots/` (`withProduction` in `@vn/store`), and
+   * the planner fills a scene's entry the first time the scene clears the gate.
+   */
+  production: Map<string, ProductionData>;
+}
+
+/** Answers a scene's shots from {@link ProjectModel.production}, or none without a storyboard. */
+export function shotsOf(model: Pick<ProjectModel, 'production'>, sceneId: string): Shot[] {
+  return model.production.get(sceneId)?.shots ?? [];
 }
 
 /** Structured logger (implemented by `@vn/util`). */

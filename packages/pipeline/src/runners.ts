@@ -13,6 +13,7 @@ import type {
   TaskKind,
   TaskResult,
 } from '@vn/types';
+import { shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import {
   checkRequestWrite,
@@ -51,7 +52,7 @@ export type Runner<K extends TaskKind = TaskKind> = (
 /** Locate a decomposed shot (and its scene) by the namespaced shot id. */
 function findShot(deps: RunDeps, shotId: string): { shot: Shot; scene: Scene } | undefined {
   for (const scene of deps.model.scenes.values()) {
-    const shot = scene.shots.find((s) => s.id === shotId);
+    const shot = shotsOf(deps.model, scene.id).find((s) => s.id === shotId);
     if (shot) return { shot, scene };
   }
   return undefined;

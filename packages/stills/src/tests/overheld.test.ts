@@ -53,17 +53,18 @@ const shot = (image: string): Shot => ({
   image,
 });
 
-function ctx(assets: readonly Asset[], shots?: ReadonlyMap<string, readonly Shot[] | null>) {
+function ctx(assets: readonly Asset[], shots?: Shot[]) {
+  const m = model(
+    [character('aiko', 'approved', 'portrait-hash')],
+    [scene('arrival', ['aiko'], 'cafe')],
+    [location('cafe')],
+  );
+  if (shots) m.production.set('arrival', { shots });
   return {
-    model: model(
-      [character('aiko', 'approved', 'portrait-hash')],
-      [scene('arrival', ['aiko'], 'cafe')],
-      [location('cafe')],
-    ),
+    model: m,
     assets,
     angleOf   : (task: string | undefined) => (task ? ANGLES[task] : undefined),
     renderedAt: (task: string) => RENDERED[task],
-    ...(shots === undefined ? {} : { shots }),
   };
 }
 
@@ -79,8 +80,7 @@ describe('overHeld', () => {
 
   it('keeps the take the storyboard names for a shot', () => {
     const assets = [asset('frame-1', 'shot_image', [SHOT]), asset('frame-2', 'shot_image', [SHOT])];
-    const shots = new Map([['arrival', [shot('frame-2')]]]);
-    expect(overHeld(ctx(assets, shots))).toEqual([
+    expect(overHeld(ctx(assets, [shot('frame-2')]))).toEqual([
       { slot: 'shot:arrival/arrival__a', keep: 'frame-2', drop: ['frame-1'] },
     ]);
   });

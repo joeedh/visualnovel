@@ -5,7 +5,13 @@
  * what is enumerated and about the reason each node gives for having no hash yet, rather than
  * about hashes, which only the planned half has.
  */
-import { projectConfig, type Asset, type AssetKind, type Shot } from '@vn/types';
+import {
+  projectConfig,
+  type Asset,
+  type AssetKind,
+  type ProductionData,
+  type Shot,
+} from '@vn/types';
 import { makeTask } from '@vn/taskgraph';
 import { character, location, model, scene } from '@vn/testkit';
 import {
@@ -65,7 +71,10 @@ const PORTRAIT: Asset = {
  * Aiko is approved and in the one reachable scene; the café has two variants, only one of which any
  * shot names — both are still enumerated, because the planner plans both.
  */
-function ctx(over: Partial<SlotGraphContext> = {}): SlotGraphContext {
+function ctx(
+  over: Partial<SlotGraphContext> = {},
+  board: ProductionData | null = { shots: [SHOT] },
+): SlotGraphContext {
   const cafe = location('cafe');
   cafe.variants = [
     { id: 'day', description: '' },
@@ -76,11 +85,11 @@ function ctx(over: Partial<SlotGraphContext> = {}): SlotGraphContext {
     [scene('arrival', ['aiko'], 'cafe')],
     [cafe],
   );
+  if (board) m.production.set('arrival', board);
   return {
     model : m,
     assets: [PORTRAIT],
     config,
-    shots: new Map([['arrival', [SHOT]]]),
     ...over,
   };
 }
@@ -101,7 +110,7 @@ describe('buildSlotGraph', () => {
 
   it('has no shot slots for a scene nothing decomposed', () => {
     // Decomposing is an explicit act with a price; a read must never fabricate the answer.
-    const graph = buildSlotGraph(ctx({ shots: new Map() }));
+    const graph = buildSlotGraph(ctx({}, null));
     expect([...graph.nodes.keys()].filter((k) => k.startsWith('shot:'))).toEqual([]);
   });
 
@@ -256,8 +265,7 @@ describe('resolveSlot', () => {
 
     /** The café's day plate has rendered, so a frame's upstream resolves and it states an identity. */
     function staged(over: Partial<SlotGraphContext> = {}): SlotGraphContext {
-      const c = ctx({ shots: new Map([['arrival', members]]), ...over });
-      c.model.scenes.get('arrival')!.sheets = { g1: { seed: 3 } };
+      const c = ctx(over, { shots: members, sheets: { g1: { seed: 3 } } });
       const cafe = c.model.locations.get('cafe')!;
       const plate = makeTask(
         'location_ref',
@@ -275,7 +283,7 @@ describe('resolveSlot', () => {
 
     it('carries the key the planner puts in its params, and a shot in no group carries none', () => {
       const c = staged({ assets: [PORTRAIT, PLATE] });
-      const scene = { ...c.model.scenes.get('arrival')!, shots: members };
+      const scene = c.model.scenes.get('arrival')!;
       const key = sheetKeys(scene, c.model, config, [PORTRAIT, PLATE]).get('g1');
       expect(key).toMatch(/^[0-9a-f]{64}$/);
       expect(extraOf('arrival__a', c)).toEqual({ sheet: key });
@@ -285,7 +293,7 @@ describe('resolveSlot', () => {
 
     it('keys on no references without a manifest, as a plan given none does', () => {
       const { assets: _dropped, ...c } = staged();
-      const scene = { ...c.model.scenes.get('arrival')!, shots: members };
+      const scene = c.model.scenes.get('arrival')!;
       expect(extraOf('arrival__a', c)).toEqual({
         sheet: sheetKeys(scene, c.model, config, []).get('g1'),
       });

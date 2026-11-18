@@ -5,7 +5,7 @@
  * (`heldBy`), but a writer that skipped it, or a crash between two roots' writes, can still leave
  * the duplicates, and this is how they are put right.
  */
-import type { Asset, RefBinding, Shot } from '@vn/types';
+import type { Asset, RefBinding } from '@vn/types';
 import { candidatesFor, sheetAngleOf, type BindingContext } from './refs.js';
 import { slotOf } from './refcycle.js';
 import { slotKey } from './slotaddr.js';
@@ -17,9 +17,8 @@ export interface OverHeld {
   drop: string[];
 }
 
+/** A shot's own `image`, in the model's production map, is the take its slot keeps. */
 export interface OverHeldContext extends BindingContext {
-  /** Each scene's persisted shots; a shot's own `image` is the take its slot keeps. */
-  shots?: ReadonlyMap<string, readonly Shot[] | null>;
   /** The slot's identity's `output` where its task is `done`, which is the take the log says. */
   identityOutput?: (slot: RefBinding) => string | undefined;
   /**
@@ -39,8 +38,8 @@ export function overHeld(ctx: OverHeldContext): OverHeld[] {
   const seen = new Set<string>();
   const out: OverHeld[] = [];
   const named = new Set<string>();
-  for (const shots of ctx.shots?.values() ?? []) {
-    for (const shot of shots ?? []) if (shot.image) named.add(shot.image);
+  for (const board of ctx.model.production.values()) {
+    for (const shot of board.shots) if (shot.image) named.add(shot.image);
   }
   const stamp = (asset: Asset): string => asset.at ?? ctx.renderedAt?.(asset.sourceTask) ?? '';
 

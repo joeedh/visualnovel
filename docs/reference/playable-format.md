@@ -86,11 +86,11 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   derived from the screenplay at model build with stable `${sceneId}:L<n>` ids), and
   `Shot.coversLines` binds shots to exact lines. The exporter walks `scene.lines`,
   emitting a `show` beat whenever the covering shot changes, then a `say`/`narrate`. A
-  model rebuilt from disk carries no shots, so callers pass `loadSceneShots(paths, model)`
-  (the persisted decompositions) into `buildPlayable`. The exporter reconstructs the
-  deterministic shot grouping only when no file exists at all. If it reconstructs over an
-  LLM decomposition, the shot ids it produces match no run, and every `show` comes out
-  image-less.
+  model rebuilt from disk has an empty production map, so callers pass `buildPlayable` the
+  copy `withSceneShots(paths, model)` returns, which holds the persisted decompositions.
+  The exporter reconstructs the deterministic shot grouping only when no file exists at
+  all. If it reconstructs over an LLM decomposition, the shot ids it produces match no
+  run, and every `show` comes out image-less.
 - **A `show` beat names its shot, so a runner can report where the playthrough is.**
   `shot` is the shot's id, written whether or not the frame has an image. A runner that
   knows the shot can publish the playthrough position into a shell's selection, which lets

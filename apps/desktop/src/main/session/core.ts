@@ -37,7 +37,7 @@ import {
   conventionalKind,
   docKind,
   loadInputs,
-  readAllShots as readAllShotsOf,
+  withProduction,
   type DocFile,
   type DocResult,
   type DocWritePlan,
@@ -140,6 +140,7 @@ import {
   DEFAULT_AGENT_EFFORT,
   TEXT_MODELS,
   chatRouteFor,
+  shotsOf,
   type BudgetChoice,
   type Route,
   type TaskKind,
@@ -352,12 +353,11 @@ export const ACCEPTABLE = new Set<AssetKind>([
  */
 export function suspensionsOf(
   project: LoadedProject,
-  shots: ReadonlyMap<string, Shot[] | null>,
+  model: ProjectModel,
 ): Map<string, Suspension> {
   return suspensionMap({
-    ...labelContext(project.model, project.graph),
+    ...labelContext(model, project.graph),
     assets: project.store.manifest(),
-    shots,
   });
 }
 
@@ -366,22 +366,22 @@ export function suspensionsOf(
  * other reading of drift, and the same walk `doctree.ts` makes for the Stale branch — so what the
  * tree files as stale and what the approval queue leaves out cannot disagree.
  */
-export function driftedFrames(model: ProjectModel, shots: Map<string, Shot[] | null>): Set<string> {
+export function driftedFrames(model: ProjectModel): Set<string> {
   const out = new Set<string>();
   for (const scene of model.scenes.values()) {
-    for (const shot of shots.get(scene.id) ?? []) {
+    for (const shot of shotsOf(model, scene.id)) {
       if (shot.image !== undefined && driftOf(scene, shot) === 'drifted') out.add(shot.image);
     }
   }
   return out;
 }
 
-/** Every scene's persisted storyboard, by scene id; `readAllShots` in `@vn/store` for a project. */
-export async function readAllShots(
-  project: LoadedProject,
-  opts: { reportBroken?: boolean } = {},
-): Promise<Map<string, Shot[] | null>> {
-  return readAllShotsOf(project.paths, project.model, opts);
+/**
+ * The project's model with every persisted storyboard in its production map, for a reader that
+ * resolves shot slots. `project.model` keeps the map the builder left, which a run plans from.
+ */
+export async function withShots(project: LoadedProject): Promise<ProjectModel> {
+  return withProduction(project.paths, project.model);
 }
 
 /** An outfit with one field changed, in the shape `wardrobeEntries` re-serializes. */
@@ -667,14 +667,14 @@ export async function loadProject(dir: string, timing?: PhaseTimer): Promise<Loa
   const project = timing
     ? await timing.measure('projectReadMs', () => readProject(dir, timing))
     : await readProject(dir);
-  const { model, config, store, graph } = project;
+  const { config, store, graph } = project;
   // `current` is a cache of the task log, and a slot holding two current rows resolves to
   // nothing, so every surface reading this project would show it as unrendered; the manifest is
   // put right as it is read, and migrated once on a project written before takes were held
-  const shots = timing
-    ? await timing.measure('projectShotsMs', () => readAllShots(project))
-    : await readAllShots(project);
-  const repair = () => repairCurrent({ model, config, store, graph, shots });
+  const shotModel = timing
+    ? await timing.measure('projectShotsMs', () => withShots(project))
+    : await withShots(project);
+  const repair = () => repairCurrent({ model: shotModel, config, store, graph });
   if (timing) await timing.measure('projectRepairMs', repair);
   else await repair();
   return project;

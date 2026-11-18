@@ -285,7 +285,8 @@ export interface Shot {
    */
   panels?: PagePanel[];
   /**
-   * The staging-sheet group this shot is drawn from, one of its scene's {@link Scene.sheets} keys.
+   * The staging-sheet group this shot is drawn from, one of its storyboard's
+   * {@link ProductionData.sheets} keys.
    * Authored, and in the task's params through the sheet's key, so moving a shot between groups
    * re-renders it.
    */
@@ -364,12 +365,6 @@ export interface Scene {
   choices: Choice[];
   /** Linear continuation when there are no explicit choices. */
   next?: string;
-  shots: Shot[];
-  /**
-   * The scene's staging-sheet groups by id, from the shots file. A shot's {@link Shot.sheet} names
-   * one; a group a shot names but this map lacks takes the defaults. Absent until a shot names one.
-   */
-  sheets?: Record<string, SheetGroup>;
 }
 
 /** The most cells one staging sheet carries; a longer group is the author's to split. */
@@ -381,6 +376,16 @@ export interface SheetGroup {
   seed?: number;
   /** Words about the group for the sheet prompt, such as what stays fixed across it. */
   notes?: string;
+}
+
+/** One scene's storyboard, as `work/shots/<sceneId>.json` holds it. */
+export interface ProductionData {
+  shots: Shot[];
+  /**
+   * The staging-sheet groups by id. A shot's {@link Shot.sheet} names one; a group a shot names
+   * but this map lacks takes the defaults. Absent until a shot names one.
+   */
+  sheets?: Record<string, SheetGroup>;
 }
 
 /** The entity, scene or shot an asset serves. */

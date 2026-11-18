@@ -28,7 +28,6 @@ const SCENE: Scene = {
     { id: 'epilogue:L2', kind: 'narration', text: 'Aiko pauses at the door, then smiles.' },
   ],
   choices   : [],
-  shots     : [],
 };
 
 const MODEL: ProjectModel = {
@@ -51,6 +50,7 @@ const MODEL: ProjectModel = {
   reachable  : new Set(['epilogue']),
   entry      : 'epilogue',
   diagnostics: [],
+  production : new Map(),
 };
 
 /** Providers whose only live method is `text.structured`, returning one canned decomposition. */

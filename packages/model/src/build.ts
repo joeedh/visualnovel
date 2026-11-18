@@ -389,7 +389,16 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     }
   }
 
-  return { title: inputs.title, characters, locations, scenes, reachable, entry, diagnostics };
+  return {
+    title: inputs.title,
+    characters,
+    locations,
+    scenes,
+    reachable,
+    entry,
+    diagnostics,
+    production: new Map(),
+  };
 }
 
 /**

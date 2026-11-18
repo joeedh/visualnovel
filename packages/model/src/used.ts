@@ -12,7 +12,8 @@
  *
  * All four are pure over a `ProjectModel` — no disk, no providers, no task graph.
  */
-import type { Character, ProjectModel, Scene, Shot } from '@vn/types';
+import type { Character, ProjectModel, Scene } from '@vn/types';
+import { shotsOf } from '@vn/types';
 
 /** Reachable scenes only — never spend generation on unreachable branches. */
 export function reachableScenes(model: ProjectModel): Scene[] {
@@ -41,14 +42,11 @@ export function allCharacters(model: ProjectModel): Character[] {
  * `outfitText` falls back to the id for the sheet prompt just as it does for the shot's, so a shot
  * can never depend on a sheet nothing planned.
  *
- * `shots` overrides where the shot overrides are read from. The planner leaves it out and gets
- * `Scene.shots`, which it populates itself wave by wave; a caller holding the persisted
- * decompositions passes them instead and gets the whole answer at once.
+ * The shot overrides are read from `model.production`. The planner's model holds the storyboards
+ * it has populated wave by wave; a model filled from every persisted storyboard gets the whole
+ * answer at once.
  */
-export function usedOutfits(
-  model: ProjectModel,
-  shots?: ReadonlyMap<string, readonly Shot[]>,
-): Map<string, Set<string>> {
+export function usedOutfits(model: ProjectModel): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
   const add = (characterId: string, outfit: string | undefined): void => {
     const set = out.get(characterId) ?? new Set<string>();
@@ -67,7 +65,7 @@ export function usedOutfits(
     // The cast, plus anyone a marker names who is not in it — a marker for someone the scene
     // forgot to list is still an outfit something asked for.
     for (const id of new Set([...scene.characters, ...Object.keys(marks)])) add(id, marks[id]);
-    for (const shot of shots?.get(scene.id) ?? scene.shots) {
+    for (const shot of shotsOf(model, scene.id)) {
       for (const subject of shot.subjects) add(subject.characterId, subject.outfit);
     }
   }

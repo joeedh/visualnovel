@@ -11,14 +11,14 @@ import {
   entityFile,
   findScreenplay,
   ProjectPaths,
-  readAllShots,
+  withProduction,
   readSceneChunks,
   writeSceneChunk,
   writeStoryGraph,
 } from '@vn/store';
 import {
   buildPlayable,
-  loadSceneShots,
+  withSceneShots,
   unapprovedSentence,
   unapprovedTakes,
   writePlayable,
@@ -222,16 +222,15 @@ export async function cmdExport(args: Args): Promise<number> {
     ok('Validation (exporting anyway — a runner may hit missing scenes):');
     reportDiagnostics(project.model);
   }
-  const shots = await loadSceneShots(project.paths, project.model);
+  const model = await withSceneShots(project.paths, project.model);
   // A playable shows the take each slot holds, so one holding a take nobody approved is refused
   // here rather than published: `vngen accept` is the route to approval on the command line
-  const refusal = unapprovedSentence(unapprovedTakes(project.model, project.store, shots));
+  const refusal = unapprovedSentence(unapprovedTakes(model, project.store));
   if (refusal !== undefined) {
     ok(`Not exported: ${refusal} (\`vngen accept ${dir} --all\` accepts every take waiting.)`);
     return 1;
   }
-  const playable = buildPlayable(project.model, project.store, {
-    shots,
+  const playable = buildPlayable(model, project.store, {
     portraitOverlay: project.config.portrait_overlay,
     bubbleNames    : project.config.bubble_names,
     lettering      : project.config.lettering,
@@ -304,9 +303,8 @@ export async function cmdStatus(args: Args): Promise<number> {
   // Suspension is derived, so this is a walk over the manifest rather than a stored count. The
   // desktop app's `asset.suspended` lists them; this prints a count and where to look
   const suspended = suspendedAssets({
-    model  : project.model,
+    model  : await withSceneShots(project.paths, project.model),
     assets : project.store.manifest(),
-    shots  : await loadSceneShots(project.paths, project.model),
     angleOf: (task) => {
       const node = task ? project.graph.get(task) : undefined;
       return node && 'angle' in node.inputs ? node.inputs.angle : undefined;
@@ -385,10 +383,9 @@ async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[])
     tables           : await hostPriceTables(),
   });
   const slots = boundSlotsToDraw(report, {
-    model : project.model,
+    model : await withSceneShots(project.paths, project.model),
     config: project.config,
     assets: project.store.manifest(),
-    shots : await loadSceneShots(project.paths, project.model),
     graph : project.graph,
   });
   const cost = priceSlots(report, slots);
@@ -679,11 +676,10 @@ export async function cmdAccept(args: Args): Promise<number> {
   const dir = args.positional[0] ?? '.';
   const project = await loadProject(dir);
   const deps = {
-    model : project.model,
+    model : await withProduction(project.paths, project.model),
     config: project.config,
     store : project.store,
     graph : project.graph,
-    shots : await readAllShots(project.paths, project.model),
   };
   const hash = typeof args.flags['hash'] === 'string' ? args.flags['hash'] : undefined;
   if (hash !== undefined) {

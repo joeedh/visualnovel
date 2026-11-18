@@ -6,6 +6,7 @@ import {
   ProjectPaths,
   checkDocWrite,
   readDocFile,
+  readProduction,
   writeDocFile,
   type DocFile,
   type DocResult,
@@ -48,7 +49,6 @@ import { renameInText } from '../doctree/rename.js';
 import type { WorkspaceSession, NewDocKind } from './core.js';
 import {
   relPath,
-  readAllShots,
   DOC_WRITERS,
   entityDiagnostic,
   walkDirs,
@@ -73,16 +73,17 @@ export class DocsPart {
     const bible = await this.session.workspace().bible();
     await bible.refresh();
 
-    const shots = await readAllShots(project, { reportBroken: true });
+    const read = await readProduction(project.paths, project.model);
+    const model = { ...project.model, production: read.production };
     const manifest = project.store.manifest();
-    const labels = labelContext(project.model, project.graph);
+    const labels = labelContext(model, project.graph);
     const { graphs, bound } = await this.graphIndex();
     return buildDocTree({
-      root  : this.session.dir,
-      model : project.model,
+      root: this.session.dir,
+      model,
       inputs: project.inputs,
       manifest,
-      shots,
+      broken     : read.broken,
       bible      : bible.files(),
       wikiDir    : relPath(this.session.dir, project.paths.wikiDir),
       wikiDirs   : await walkDirs(project.paths.wikiDir),
@@ -96,7 +97,6 @@ export class DocsPart {
       slots: buildSlotGraph({
         ...labels,
         assets: manifest,
-        shots,
         config: project.config,
         graph : project.graph,
       }),

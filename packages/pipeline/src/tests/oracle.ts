@@ -18,12 +18,13 @@ import type {
   Logger,
   PagePanel,
   PanelBox,
+  ProductionData,
   ProjectModel,
   Scene,
   Shot,
   TaskGraph,
 } from '@vn/types';
-import { bindsTo, defectReportSchema } from '@vn/types';
+import { bindsTo, defectReportSchema, shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
 import {
@@ -107,7 +108,7 @@ function sheetKeys(
   assets: readonly Asset[],
 ): Map<string, string> {
   const keys = new Map<string, string>();
-  for (const group of sheetGroups(scene)) {
+  for (const group of sheetGroups(shotsOf(model, scene.id))) {
     const seeds = sheetSeeds(scene, group, model, config, assets);
     if (seeds) keys.set(group, sheetKey(seeds));
   }
@@ -130,8 +131,6 @@ function modelSheetTask(
   );
 }
 
-type Storyboard = Pick<Scene, 'shots' | 'sheets'>;
-
 async function shotsFor(
   scene: Scene,
   model: ProjectModel,
@@ -140,7 +139,7 @@ async function shotsFor(
   paths?: ProjectPaths,
   logger?: Logger,
   readOnly = false,
-): Promise<Storyboard> {
+): Promise<ProductionData> {
   if (paths) {
     const known = new Set(scene.lines.map((l) => l.id));
     const loaded = await readShots(paths, scene.id, known);
@@ -275,7 +274,7 @@ export async function oraclePlanTasks(opts: {
 
   for (const scene of reachableScenes(model)) {
     if (!sceneUnblocked(model, scene.id, opts.assets)) continue;
-    if (scene.shots.length === 0) {
+    if (shotsOf(model, scene.id).length === 0) {
       const storyboard = await shotsFor(
         scene,
         model,
@@ -285,12 +284,12 @@ export async function oraclePlanTasks(opts: {
         logger,
         readOnlyShots,
       );
-      scene.shots = storyboard.shots;
-      if (storyboard.sheets) scene.sheets = storyboard.sheets;
+      model.production.set(scene.id, storyboard);
     }
     const sheets = sheetKeys(scene, model, config, assets);
 
-    for (const shot of scene.shots) {
+    const shots = shotsOf(model, scene.id);
+    for (const shot of shots) {
       const locTaskHash = locationTask(
         model.locations.get(scene.location)!,
         shot.location,
@@ -349,13 +348,10 @@ export async function oraclePlanTasks(opts: {
       refreshShotData(shot, node, scene);
     }
 
-    if (paths && !readOnlyShots) await writeShots(paths, scene.id, scene.shots);
+    if (paths && !readOnlyShots) await writeShots(paths, scene.id, shots);
   }
 
-  const cycle = firstCycle({
-    model,
-    shots: new Map([...model.scenes].map(([id, s]) => [id, s.shots])),
-  });
+  const cycle = firstCycle({ model });
   if (cycle) throw new VnError('REF_CYCLE', cycleRefusal(cycle));
 
   return planned;

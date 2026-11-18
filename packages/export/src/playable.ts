@@ -20,13 +20,14 @@ import type {
   PlayableScene,
   Beat,
   Lettering,
+  ProductionData,
   ProjectModel,
   Scene,
   SceneLine,
   Shot,
 } from '@vn/types';
-import { bindsTo } from '@vn/types';
-import { ProjectPaths, readShots } from '@vn/store';
+import { bindsTo, shotsOf } from '@vn/types';
+import { productionOf, ProjectPaths, readShots } from '@vn/store';
 import { writeFileAtomic } from '@vn/util';
 
 /**
@@ -62,43 +63,39 @@ function panelsOf(shot: Shot, bubbles: boolean): PlayablePanel[] | undefined {
 }
 
 /**
- * Read every scene's persisted decomposition (`work/shots/<sceneId>.json`) for the exporter.
+ * A copy of `model` whose production map holds every scene's persisted decomposition
+ * (`work/shots/<sceneId>.json`), for the exporter.
  *
- * A model rebuilt from disk carries no shots — they exist in memory only while the planner is
- * running — so without this the exporter falls back to reconstructing the deterministic
- * baseline for every scene. For a scene the LLM decomposed that reconstruction names shot
- * ids no run ever produced, and each one resolves to a `show` beat with no image: the art was
- * generated, paid for, and then never displayed.
+ * A model rebuilt from disk carries no storyboards, so without this the exporter falls back to
+ * reconstructing the deterministic baseline for every scene. For a scene the LLM decomposed that
+ * reconstruction names shot ids no run ever produced, and each one resolves to a `show` beat with
+ * no image: the art was generated, paid for, and then never displayed.
  *
  * Stale `coversLines` are dropped the same way the planner drops them, so a screenplay edited
- * under its shots exports what the planner would next persist.
+ * under its shots exports what the planner would next persist. A storyboard that will not parse
+ * throws, rather than exporting its scene from the baseline.
  */
-export async function loadSceneShots(
+export async function withSceneShots(
   paths: ProjectPaths,
   model: ProjectModel,
-): Promise<Map<string, Shot[]>> {
-  const byScene = new Map<string, Shot[]>();
+): Promise<ProjectModel> {
+  const production = new Map<string, ProductionData>();
   for (const scene of model.scenes.values()) {
     const loaded = await readShots(paths, scene.id, new Set(scene.lines.map((l) => l.id)));
-    if (loaded) byScene.set(scene.id, loaded.shots);
+    if (loaded) production.set(scene.id, productionOf(loaded));
   }
-  return byScene;
+  return { ...model, production };
 }
 
 /**
- * The shots that bind lines → images for a scene. Prefers the persisted decomposition, then
- * the scene's own in-memory shots; with neither it reconstructs the deterministic baseline,
- * mirroring `@vn/stills`' `deterministicShots` (which this package must not import): an
- * establishing shot over the scene's unattributed lines, plus one medium shot per character
- * over that character's dialogue lines. The reconstructed ids match the pipeline's
- * `${sceneId}__<raw>` scheme so images from a deterministic run resolve.
+ * The shots that bind lines → images for a scene: its storyboard's shots, or with none a
+ * reconstruction of the deterministic baseline, mirroring `@vn/stills`' `deterministicShots`
+ * (which this package must not import): an establishing shot over the scene's unattributed
+ * lines, plus one medium shot per character over that character's dialogue lines. The
+ * reconstructed ids match the pipeline's `${sceneId}__<raw>` scheme so images from a deterministic
+ * run resolve.
  */
-function coveringShots(
-  scene: Scene,
-  persisted: readonly Shot[] | undefined,
-  bubbles: boolean,
-): CoveringShot[] {
-  const own = persisted?.length ? persisted : scene.shots;
+function coveringShots(scene: Scene, own: readonly Shot[], bubbles: boolean): CoveringShot[] {
   if (own.length > 0) {
     return own.map((s) => {
       const panels = panelsOf(s, bubbles);
@@ -152,10 +149,10 @@ class AssetIndex {
 function sceneBeats(
   scene: Scene,
   assets: AssetIndex,
-  persisted: readonly Shot[] | undefined,
+  own: readonly Shot[],
   bubbles: boolean,
 ): Beat[] {
-  const shots = coveringShots(scene, persisted, bubbles);
+  const shots = coveringShots(scene, own, bubbles);
   const beats: Beat[] = [];
   let currentShotId: string | undefined;
 
@@ -185,8 +182,6 @@ function sceneBeats(
 
 /** Everything the projection needs beyond the model and the store. */
 export interface PlayableOptions {
-  /** Persisted decompositions — {@link loadSceneShots}'s result. */
-  shots?: ReadonlyMap<string, readonly Shot[]>;
   /** `project.yaml`'s `portrait_overlay`; see {@link Playable.portraitOverlay}. */
   portraitOverlay?: boolean;
   /** `project.yaml`'s `bubble_names`; see {@link Playable.bubbleNames}. */
@@ -200,14 +195,14 @@ export interface PlayableOptions {
 
 /**
  * Build the in-memory {@link Playable} from a project model + its asset store. Pure; hand it
- * {@link loadSceneShots}'s result whenever the model came off disk rather than out of a run.
+ * {@link withSceneShots}'s model whenever the model came off disk rather than out of a run.
  */
 export function buildPlayable(
   model: ProjectModel,
   store: AssetStore,
   opts: PlayableOptions = {},
 ): Playable {
-  const { shots, portraitOverlay = false, bubbleNames = false, lettering } = opts;
+  const { portraitOverlay = false, bubbleNames = false, lettering } = opts;
   const bubbles = lettering === 'runner';
   const assets = new AssetIndex(store.manifest());
 
@@ -220,7 +215,7 @@ export function buildPlayable(
   const scenes: Record<string, PlayableScene> = {};
   for (const scene of model.scenes.values()) {
     scenes[scene.id] = {
-      beats  : sceneBeats(scene, assets, shots?.get(scene.id), bubbles),
+      beats  : sceneBeats(scene, assets, shotsOf(model, scene.id), bubbles),
       choices: scene.choices.map((c) => ({ label: c.label, goto: c.goto })),
       ...(scene.next ? { next: scene.next } : {}),
     };

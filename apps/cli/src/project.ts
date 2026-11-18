@@ -3,7 +3,7 @@ import type { LoadedInputs } from '@vn/parse';
 import type { Logger, ProjectModel, Providers } from '@vn/types';
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { errors as modelErrors, modelFromInputs } from '@vn/model';
-import { AssetStore, ProjectPaths, loadInputs, readAllShots } from '@vn/store';
+import { AssetStore, ProjectPaths, loadInputs, withProduction } from '@vn/store';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
 import { readModelCatalog, repairCurrent } from '@vn/pipeline';
 import {
@@ -48,7 +48,7 @@ export async function loadProject(dir: string): Promise<LoadedProject> {
   const model = modelFromInputs(inputs, { title: config.title, start: config.start });
   const store = await AssetStore.open(paths);
   const graph = await loadGraph(paths);
-  await repairCurrent({ model, config, store, graph, shots: await readAllShots(paths, model) });
+  await repairCurrent({ model: await withProduction(paths, model), config, store, graph });
   return { dir, config, paths, model, store, graph, inputs };
 }
 

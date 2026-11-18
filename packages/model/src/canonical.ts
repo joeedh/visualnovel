@@ -6,8 +6,7 @@
 import type { Scene } from '@vn/types';
 
 /**
- * A scene list as a canonical string: every field the model carries except `shots`, which is not
- * serialized. Line ids and the allocator are included deliberately — a writer that moved one has
+ * A scene list as a canonical string: every field of each scene. Line ids and the allocator are included deliberately — a writer that moved one has
  * re-pointed a shot's coverage, which is the damage these checks exist to catch.
  */
 export function canonicalScenes(scenes: Scene[]): string {
