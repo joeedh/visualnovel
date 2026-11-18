@@ -125,6 +125,59 @@ describe('vn/element-types', () => {
       expect.stringContaining("'low' may not import 'shared'"),
     ]);
   });
+
+  it('treats an element naming one file as its own element, inside its folder’s', () => {
+    write(
+      'lintrix.config.json',
+      JSON.stringify({
+        plugins: { vn: PLUGIN },
+        rules: {
+          'vn/element-types': [
+            'error',
+            {
+              elements: {
+                low     : 'packages/low',
+                lowWrite: 'packages/low/src/write.ts',
+                high    : 'packages/high',
+                other   : 'packages/other',
+              },
+              allow   : { low: [], lowWrite: ['low'], high: ['low', 'lowWrite'], other: ['low'] },
+            },
+          ],
+        },
+      }),
+    );
+    write('packages/low/src/index.ts', 'export const low = 1;\n');
+    write('packages/low/src/writer.ts', 'export const writer = 1;\n');
+    write(
+      'packages/low/src/write.ts',
+      "import { low } from './index.js';\nexport const write = low;\n",
+    );
+    write(
+      'packages/low/src/uses.ts',
+      "import { write } from './write.js';\nexport const uses = write;\n",
+    );
+    write(
+      'packages/high/src/index.ts',
+      "import { write } from '../../low/src/write.js';\nexport const high = write;\n",
+    );
+    write(
+      'packages/other/src/index.ts',
+      [
+        "import { writer } from '../../low/src/writer.js';",
+        "import { write } from '../../low/src/write.js';",
+        'export const other = [writer, write];',
+      ].join('\n'),
+    );
+    expect(lintAll().map((p) => [p.file, p.line, p.message])).toEqual([
+      ['packages/low/src/uses.ts', 1, expect.stringContaining("'low' may not import 'lowWrite'")],
+      [
+        'packages/other/src/index.ts',
+        2,
+        expect.stringContaining("'other' may not import 'lowWrite'"),
+      ],
+    ]);
+  });
 });
 
 describe('vn/no-cycle', () => {

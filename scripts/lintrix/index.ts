@@ -347,16 +347,25 @@ function workspaceFor(context: RuleContext): Workspace {
 
 /** `vn/element-types`'s one option object. */
 interface LayerOptions {
-  /** Element name → the folder, relative to the config, whose files belong to it. */
+  /**
+   * Element name → what belongs to it, relative to the config: a folder and every file under it,
+   * or one source file, named with its extension.
+   */
   readonly elements: Record<string, string>;
   /** Element name → the other elements its files may import. */
   readonly allow: Record<string, readonly string[]>;
   readonly tsconfig?: string;
 }
 
-/** Elements as folder keys, longest first, so a nested folder wins over its parent. */
+/** A path that names one source file rather than a folder. */
+const FILE_ELEMENT = /\.[cm]?tsx?$/;
+
+/**
+ * Elements as path keys, longest first, so a file or a nested folder wins over the folder that
+ * holds it. A folder's key ends in `/`; a file's is the file's own path.
+ */
 interface Layers {
-  readonly folders: readonly (readonly [string, string])[];
+  readonly paths: readonly (readonly [string, string])[];
   readonly allow: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
@@ -381,18 +390,21 @@ function layersOf(raw: unknown): Layers {
     }
     allow.set(from, new Set(list));
   }
-  const folders = Object.entries(options.elements)
-    .map(([name, folder]) => [key(folder).replace(/\/+$/, '') + '/', name] as const)
+  const paths = Object.entries(options.elements)
+    .map(([name, where]) => {
+      const trimmed = key(where).replace(/\/+$/, '');
+      return [FILE_ELEMENT.test(trimmed) ? trimmed : `${trimmed}/`, name] as const;
+    })
     .sort((a, b) => b[0].length - a[0].length);
-  const layers = { folders, allow };
+  const layers = { paths, allow };
   layersMemo.set(raw, layers);
   return layers;
 }
 
-/** The element `file` belongs to, or undefined when no element's folder holds it. */
+/** The element `file` belongs to, or undefined when no element names it or a folder holding it. */
 function elementOf(layers: Layers, ws: Workspace, file: string): string | undefined {
   const rel = key(ws.relative(file));
-  return layers.folders.find(([folder]) => rel.startsWith(folder))?.[1];
+  return layers.paths.find(([at]) => (at.endsWith('/') ? rel.startsWith(at) : rel === at))?.[1];
 }
 
 /**
