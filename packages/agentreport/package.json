@@ -10,6 +10,7 @@
     "@vn/authoring": "workspace:*",
     "@vn/commands": "workspace:*",
     "@vn/config": "workspace:*",
+    "@vn/contracts": "workspace:*",
     "@vn/providers": "workspace:*",
     "@vn/store": "workspace:*",
     "@vn/types": "workspace:*",

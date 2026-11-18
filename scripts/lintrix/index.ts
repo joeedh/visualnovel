@@ -23,6 +23,7 @@ interface Dep {
 }
 
 const VALUE = 0; // ImportKind.Value in lintrix's generated views
+const CONST = 2; // VariableKind.Const, likewise
 
 /** The contents of a string literal or substitution-free template, or undefined. */
 function stringValue(node: Node | null): string | undefined {
@@ -576,9 +577,162 @@ const noCycle: Rule = {
   },
 };
 
+// ─── vn/contract-decl and vn/contract-pins ──────────────────────────────────
+
+/** `<area>.<name>`; the area list itself is `ContractArea`'s, which TypeScript checks. */
+const CONTRACT_ID = /^([a-z]+)\.([a-z][A-Za-z0-9]*)$/;
+
+/** The longest a contract's `rule` or `prevents` may be; anything longer belongs in `detail`. */
+const MAX_CONTRACT_FIELD = 280;
+
+/** The const a contract id is declared under: `gate.perUnit` ↔ `gatePerUnit`. */
+function contractConstName(id: string): string | undefined {
+  const m = CONTRACT_ID.exec(id);
+  if (!m) return undefined;
+  const [, area, name] = m as unknown as [string, string, string];
+  return area + name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** The path of the file `context` lints, relative to its config, with forward slashes. */
+function relativeFile(context: RuleContext): string {
+  const file = path.resolve(context.filename);
+  return path.relative(configRoot(file), file).replace(/\\/g, '/');
+}
+
+/** True for a source file under `packages/<name>/src/` or `apps/<name>/src/` that is not a test. */
+function declarable(rel: string): boolean {
+  if (!/^(packages|apps)\/[^/]+\/src\//.test(rel)) return false;
+  return !/\.test\.[cm]?tsx?$/.test(rel) && !/(^|\/)(tests|__fixtures__)\//.test(rel);
+}
+
+/** True when `call` calls a bare identifier called `name`. */
+function calls(call: Node, name: string): boolean {
+  return (
+    call.is(NodeKind.CallExpression) &&
+    call.callee.is(NodeKind.Identifier) &&
+    call.callee.text === name
+  );
+}
+
+/** The value node of the object literal property `key`, or undefined. */
+function propertyOf(object: Node, key: string): Node | undefined {
+  if (!object.is(NodeKind.ObjectExpression)) return undefined;
+  for (const prop of object.properties) {
+    if (!prop.is(NodeKind.Property) || prop.isComputed) continue;
+    const name = prop.key.is(NodeKind.Identifier) ? prop.key.text : stringValue(prop.key);
+    if (name === key) return prop.value;
+  }
+  return undefined;
+}
+
+/**
+ * Checks each `contract({...})` call: it sits in a package's or app's source, outside its tests;
+ * it is the initializer of an exported `const` named after its id; its id, `rule` and `prevents`
+ * are string literals; and `rule` and `prevents` fit {@link MAX_CONTRACT_FIELD}.
+ */
+const contractDecl: Rule = {
+  name    : 'contract-decl',
+  messages: {
+    misplaced:
+      'A contract is declared only in packages/*/src/ or apps/*/src/, outside tests, so the ' +
+      'index generator and the listing test can find it.',
+    notExported    : 'Declare a contract as `export const <name> = contract({...})`.',
+    idNotLiteral   : "A contract's `id` must be a string literal of the form `<area>.<name>`.",
+    misnamed       : "Contract '{{id}}' must be declared as `{{expected}}`, not `{{actual}}`.",
+    fieldNotLiteral:
+      "A contract's `{{field}}` must be a string literal, so the index carries it verbatim.",
+    tooLong:
+      "A contract's `{{field}}` is {{length}} characters; the limit is {{limit}}. Move the rest into `detail`.",
+  },
+  create(context) {
+    const rel = relativeFile(context);
+    return {
+      Program(program) {
+        for (const call of program.descendants(NodeKind.CallExpression)) {
+          if (!calls(call, 'contract')) continue;
+          if (!declarable(rel)) {
+            context.report({ node: call, messageId: 'misplaced' });
+            continue;
+          }
+          const declarator = call.parent;
+          const declaration = declarator?.parent;
+          if (
+            !declarator?.is(NodeKind.VariableDeclarator) ||
+            !declarator.id.is(NodeKind.Identifier) ||
+            !declaration?.is(NodeKind.VariableDeclaration) ||
+            declaration.kind !== CONST ||
+            !declaration.parent?.is(NodeKind.ExportNamedDeclaration)
+          ) {
+            context.report({ node: call, messageId: 'notExported' });
+            continue;
+          }
+          const spec = call.arguments[0];
+          const id = spec ? stringValue(propertyOf(spec, 'id') ?? null) : undefined;
+          const expected = id === undefined ? undefined : contractConstName(id);
+          if (!spec || id === undefined || expected === undefined) {
+            context.report({ node: call, messageId: 'idNotLiteral' });
+            continue;
+          }
+          const actual = declarator.id.text;
+          if (actual !== expected) {
+            context.report({ node: call, messageId: 'misnamed', data: { id, expected, actual } });
+          }
+          for (const field of ['rule', 'prevents']) {
+            const value = stringValue(propertyOf(spec, field) ?? null);
+            if (value === undefined) {
+              context.report({ node: call, messageId: 'fieldNotLiteral', data: { field } });
+            } else if (value.length > MAX_CONTRACT_FIELD) {
+              context.report({
+                node     : call,
+                messageId: 'tooLong',
+                data: { field, length: String(value.length), limit: String(MAX_CONTRACT_FIELD) },
+              });
+            }
+          }
+        }
+      },
+    };
+  },
+};
+
+/**
+ * Requires `pins(x)`'s argument to be an identifier imported under its own name, so the coverage
+ * test can map `pins(gatePerUnit)` to `gate.perUnit` by the naming rule alone.
+ */
+const contractPins: Rule = {
+  name    : 'contract-pins',
+  messages: {
+    notImported:
+      '`pins` takes the contract itself, imported under its own name (no `as`), so the coverage ' +
+      'test can read its id off the identifier.',
+  },
+  create(context) {
+    return {
+      Program(program) {
+        const imported = new Map<string, string>();
+        for (const spec of program.descendants(NodeKind.ImportSpecifier)) {
+          imported.set(spec.local.text, spec.imported.text);
+        }
+        for (const call of program.descendants(NodeKind.CallExpression)) {
+          if (!calls(call, 'pins')) continue;
+          const [arg, ...rest] = call.arguments;
+          const ok =
+            arg !== undefined &&
+            rest.length === 0 &&
+            arg.is(NodeKind.Identifier) &&
+            imported.get(arg.text) === arg.text;
+          if (!ok) context.report({ node: call, messageId: 'notImported' });
+        }
+      },
+    };
+  },
+};
+
 export default {
   rules: {
     'element-types': elementTypes,
     'no-cycle'     : noCycle,
+    'contract-decl': contractDecl,
+    'contract-pins': contractPins,
   },
 };

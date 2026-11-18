@@ -11,6 +11,7 @@ import { dirname, resolve } from 'node:path';
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const PACKAGES = [
+  'contracts',
   'types',
   'util',
   'config',
@@ -43,6 +44,7 @@ export const EXTERNAL = ['electron', '@google/genai', '@anthropic-ai/sdk', 'esbu
  */
 const SUBPATHS = [
   'scriptedit/write',
+  'contracts/query',
   'gengraph/state',
   'gengraph/plugin',
   'artgen/slotaddr',

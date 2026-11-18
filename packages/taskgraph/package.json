@@ -11,6 +11,7 @@
   "dependencies": {
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",
-    "@vn/store": "workspace:*"
+    "@vn/store": "workspace:*",
+    "@vn/contracts": "workspace:*"
   }
 }

@@ -2,6 +2,8 @@
   "extends"        : "./tsconfig.base.json",
   "compilerOptions": {
     "paths": {
+      "@vn/contracts"         : ["./packages/contracts/src/index.ts"],
+      "@vn/contracts/query"   : ["./packages/contracts/src/query.ts"],
       "@vn/types"             : ["./packages/types/src/index.ts"],
       "@vn/util"              : ["./packages/util/src/index.ts"],
       "@vn/util/conflict"     : ["./packages/util/src/conflict.ts"],

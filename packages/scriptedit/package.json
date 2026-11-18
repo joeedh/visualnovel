@@ -12,6 +12,7 @@
     "@vn/util": "workspace:*",
     "@vn/parse": "workspace:*",
     "@vn/model": "workspace:*",
-    "@vn/store": "workspace:*"
+    "@vn/store": "workspace:*",
+    "@vn/contracts": "workspace:*"
   }
 }

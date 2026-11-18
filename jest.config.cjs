@@ -8,6 +8,7 @@
  * ts-node just to read the config. Behavior is identical.
  */
 const PACKAGES = [
+  'contracts',
   'types',
   'util',
   'config',

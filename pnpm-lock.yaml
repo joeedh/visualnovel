@@ -149,6 +149,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@vn/debug2d':
         specifier: workspace:*
         version: link:../../packages/debug2d
@@ -222,6 +225,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/providers':
         specifier: workspace:*
         version: link:../providers
@@ -276,6 +282,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/gengraph':
         specifier: workspace:*
         version: link:../gengraph
@@ -321,6 +330,9 @@ importers:
 
   packages/commands:
     dependencies:
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/git':
         specifier: workspace:*
         version: link:../git
@@ -339,6 +351,8 @@ importers:
       yaml:
         specifier: ^2.6.1
         version: 2.9.1
+
+  packages/contracts: {}
 
   packages/debug2d: {}
 
@@ -482,6 +496,9 @@ importers:
 
   packages/scriptedit:
     dependencies:
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/model':
         specifier: workspace:*
         version: link:../model
@@ -512,6 +529,9 @@ importers:
 
   packages/taskgraph:
     dependencies:
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/store':
         specifier: workspace:*
         version: link:../store

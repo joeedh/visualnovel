@@ -35,6 +35,8 @@
     "prose:style": "node scripts/prose-style.mjs",
     "gen:command-table": "node scripts/gen-command-table.mjs",
     "gen:uxmodel": "node scripts/gen-ux-model.mjs",
+    "gen:contracts": "node scripts/gen-contracts.mjs",
+    "contracts": "node scripts/contracts.mjs",
     "format": "prettier --cache --write .",
     "format:check": "prettier --cache --check .",
     "markdown-toc": "node scripts/markdown-toc.mjs",

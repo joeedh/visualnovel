@@ -6,6 +6,7 @@
  * plan/execute mode. A `Command` is the app's own vocabulary, reachable from the palette, the
  * menu bar, the DSL and CDP, and recorded on a stack with provenance.
  */
+import type { Contract } from '@vn/contracts';
 import type { Git } from '@vn/git';
 import type { PropSpecMap, PropValue, PropsOf } from './props.js';
 
@@ -147,6 +148,11 @@ export interface Command<M extends PropSpecMap = PropSpecMap, Host = any> {
   affects?: readonly string[];
   /** True if the command always needs explicit user confirmation, regardless of caller. */
   confirm?: boolean;
+  /**
+   * Contracts this command is the natural place to state. Each must also be listed in its
+   * package's `contracts.ts`; the index generator adds `command:<id>` to its subjects.
+   */
+  contracts?: readonly Contract[];
   /**
    * Answers the sentence to confirm before this invocation runs, or `undefined` when it needs no
    * confirmation. It suits a command that asks only in some states, such as a delete in a project

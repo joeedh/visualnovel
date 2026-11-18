@@ -210,3 +210,92 @@ describe('vn/no-cycle', () => {
     ]);
   });
 });
+
+/** Rewrites the config so only the two contract rules run. */
+function contractRules(): void {
+  write(
+    'lintrix.config.json',
+    JSON.stringify({
+      plugins: { vn: PLUGIN },
+      rules  : { 'vn/contract-decl': 'error', 'vn/contract-pins': 'error' },
+    }),
+  );
+}
+
+describe('vn/contract-decl', () => {
+  it('accepts an exported const named from its literal id, with short literal fields', () => {
+    contractRules();
+    write(
+      'packages/low/src/rule.ts',
+      [
+        "import { contract } from '@vn/contracts';",
+        'export const gatePerUnit = contract({',
+        "  id: 'gate.perUnit',",
+        "  rule: 'A unit waits for its gate.',",
+        "  prevents: 'Paying for a cast that may change.',",
+        "  subjects: ['module:packages/low/src/rule.ts'],",
+        '});',
+      ].join('\n'),
+    );
+    expect(lintAll()).toEqual([]);
+  });
+
+  it('refuses a misnamed, unexported, computed or overlong declaration', () => {
+    contractRules();
+    const long = 'x'.repeat(281);
+    write(
+      'packages/low/src/bad.ts',
+      [
+        "import { contract } from '@vn/contracts';",
+        "export const perUnit = contract({ id: 'gate.perUnit', rule: 'r', prevents: 'p', subjects: [] });",
+        "const hidden = contract({ id: 'gate.hidden', rule: 'r', prevents: 'p', subjects: [] });",
+        "const area = 'gate';",
+        "export const gateMade = contract({ id: `${area}.made`, rule: 'r', prevents: 'p', subjects: [] });",
+        `export const gateLong = contract({ id: 'gate.long', rule: '${long}', prevents: 'p' + 'q', subjects: [] });`,
+        'export const used = [hidden];',
+      ].join('\n'),
+    );
+    expect(lintAll().map((p) => [p.line, p.message])).toEqual([
+      [2, expect.stringContaining('must be declared as `gatePerUnit`, not `perUnit`')],
+      [3, expect.stringContaining('export const')],
+      [5, expect.stringContaining('`id` must be a string literal')],
+      [6, expect.stringContaining('`rule` is 281 characters')],
+      [6, expect.stringContaining('`prevents` must be a string literal')],
+    ]);
+  });
+
+  it('refuses a declaration outside a package or app source, and in a test', () => {
+    contractRules();
+    const decl = [
+      "import { contract } from '@vn/contracts';",
+      "export const gateX = contract({ id: 'gate.x', rule: 'r', prevents: 'p', subjects: [] });",
+    ].join('\n');
+    write('scripts/x.ts', decl);
+    write('packages/low/src/tests/x.test.ts', decl);
+    write('packages/low/src/tests/helper.ts', decl);
+    expect(lintAll().map((p) => p.file)).toEqual([
+      'packages/low/src/tests/helper.ts',
+      'packages/low/src/tests/x.test.ts',
+      'scripts/x.ts',
+    ]);
+  });
+});
+
+describe('vn/contract-pins', () => {
+  it('takes an identifier imported under its own name, and nothing else', () => {
+    contractRules();
+    write(
+      'packages/low/src/tests/pinned.test.ts',
+      [
+        "import { pins } from '@vn/contracts';",
+        "import { gatePerUnit, gateOther as other } from '../rule.js';",
+        'const local = gatePerUnit;',
+        'describe(pins(gatePerUnit), () => {});',
+        'describe(pins(other), () => {});',
+        'describe(pins(local), () => {});',
+        'describe(pins(gatePerUnit, gatePerUnit), () => {});',
+      ].join('\n'),
+    );
+    expect(lintAll().map((p) => p.line)).toEqual([5, 6, 7]);
+  });
+});

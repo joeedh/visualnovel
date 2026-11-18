@@ -13,7 +13,9 @@
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
       }
-    ]
+    ],
+    "vn/contract-decl"    : "error",
+    "vn/contract-pins"    : "error"
   },
   "overrides": [
     {
@@ -24,6 +26,7 @@
           "error",
           {
             "elements": {
+              "contracts"         : "packages/contracts",
               "types"             : "packages/types",
               "util"              : "packages/util",
               "config"            : "packages/config",
@@ -54,15 +57,16 @@
               "pathux"            : "apps/desktop/dist/pathux-types"
             },
             "allow": {
-              "types"             : [],
-              "util"              : ["types"],
-              "config"            : ["types", "util"],
-              "parse"             : ["types", "util"],
-              "model"             : ["types", "util", "parse"],
-              "store"             : ["types", "util", "parse"],
-              "export"            : ["types", "util", "parse", "model", "store"],
-              "scriptedit"        : ["types", "util", "parse", "model", "store"],
-              "bible"             : ["types", "util", "parse", "store"],
+              "contracts"         : [],
+              "types"             : ["contracts"],
+              "util"              : ["types", "contracts"],
+              "config"            : ["types", "util", "contracts"],
+              "parse"             : ["types", "util", "contracts"],
+              "model"             : ["types", "util", "parse", "contracts"],
+              "store"             : ["types", "util", "parse", "contracts"],
+              "export"            : ["types", "util", "parse", "model", "store", "contracts"],
+              "scriptedit"        : ["types", "util", "parse", "model", "store", "contracts"],
+              "bible"             : ["types", "util", "parse", "store", "contracts"],
               "artgen": [
                 "types",
                 "util",
@@ -72,17 +76,19 @@
                 "store",
                 "taskgraph",
                 "providers",
-                "artgen-adopt"
+                "artgen-adopt",
+                "contracts"
               ],
               "artgen-adopt": [
                 "types",
                 "store",
                 "taskgraph",
                 "taskgraph-write",
-                "taskgraph-maintain"
+                "taskgraph-maintain",
+                "contracts"
               ],
-              "git"               : ["util"],
-              "commands"          : ["types", "util", "git"],
+              "git"               : ["util", "contracts"],
+              "commands"          : ["types", "util", "git", "contracts"],
               "agentreport": [
                 "types",
                 "util",
@@ -92,13 +98,14 @@
                 "store",
                 "commands",
                 "providers",
-                "authoring"
+                "authoring",
+                "contracts"
               ],
-              "debug2d"           : [],
-              "taskgraph"         : ["types", "util", "store"],
-              "taskgraph-write"   : ["types", "util", "store"],
-              "taskgraph-maintain": ["types", "util", "store", "taskgraph"],
-              "providers"         : ["types", "util", "config"],
+              "debug2d"           : ["contracts"],
+              "taskgraph"         : ["types", "util", "store", "contracts"],
+              "taskgraph-write"   : ["types", "util", "store", "contracts"],
+              "taskgraph-maintain": ["types", "util", "store", "taskgraph", "contracts"],
+              "providers"         : ["types", "util", "config", "contracts"],
               "pipeline": [
                 "types",
                 "util",
@@ -108,7 +115,8 @@
                 "taskgraph",
                 "providers",
                 "artgen",
-                "gengraph"
+                "gengraph",
+                "contracts"
               ],
               "gengraph": [
                 "types",
@@ -119,7 +127,8 @@
                 "taskgraph",
                 "taskgraph-maintain",
                 "artgen",
-                "pathux"
+                "pathux",
+                "contracts"
               ],
               "scheduler": [
                 "types",
@@ -128,7 +137,8 @@
                 "store",
                 "taskgraph",
                 "taskgraph-write",
-                "pipeline"
+                "pipeline",
+                "contracts"
               ],
               "testkit": [
                 "types",
@@ -144,7 +154,8 @@
                 "providers",
                 "gengraph",
                 "pipeline",
-                "scheduler"
+                "scheduler",
+                "contracts"
               ],
               "authoring": [
                 "types",
@@ -158,7 +169,8 @@
                 "artgen",
                 "gengraph",
                 "providers",
-                "git"
+                "git",
+                "contracts"
               ],
               "authoring-app": [
                 "types",
@@ -168,7 +180,8 @@
                 "artgen",
                 "providers",
                 "git",
-                "authoring"
+                "authoring",
+                "contracts"
               ],
               "cli": [
                 "types",
@@ -181,7 +194,8 @@
                 "taskgraph",
                 "providers",
                 "pipeline",
-                "scheduler"
+                "scheduler",
+                "contracts"
               ],
               "desktop": [
                 "types",
@@ -205,7 +219,8 @@
                 "scheduler",
                 "authoring",
                 "debug2d",
-                "pathux"
+                "pathux",
+                "contracts"
               ]
             }
           }

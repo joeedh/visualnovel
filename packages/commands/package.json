@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@vn/git": "workspace:*",
-    "@vn/util": "workspace:*"
+    "@vn/util": "workspace:*",
+    "@vn/contracts": "workspace:*"
   }
 }
