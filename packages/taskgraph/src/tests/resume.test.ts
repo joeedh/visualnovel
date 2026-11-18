@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ImageParams } from '@vn/types';
 import { ProjectPaths } from '@vn/store';
-import { loadGraph, logTask, makeTask, TaskGraph } from '../index.js';
+import { loadGraph, makeTask, TaskGraph } from '../index.js';
+import { logTask } from '../write.js';
 
 const params: ImageParams = { modelId: 'm' };
 

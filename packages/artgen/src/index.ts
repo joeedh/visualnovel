@@ -32,7 +32,6 @@ export * from './drift.js';
 export * from './base.js';
 export * from './subject.js';
 export * from './concept.js';
-export * from './adopt.js';
 export * from './adoptslot.js';
 export * from './upload.js';
 export * from './promote.js';

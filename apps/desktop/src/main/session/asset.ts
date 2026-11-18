@@ -3,7 +3,7 @@ import { basename, isAbsolute, join } from 'node:path';
 import { entityFile, isBaseKind } from '@vn/store';
 import { activeOutputs, type GraphJournalRecord } from '@vn/gengraph';
 import { appendGraphJournal, graphJournalFile, invalidateGenGraph } from '@vn/gengraph/state';
-import { logTask } from '@vn/taskgraph';
+import { logRequeue } from '@vn/taskgraph/maintain';
 import { sha256 } from '@vn/util';
 import { approvedPortraitOf, basePromptOf, baseRefusal, slotOfTask } from '@vn/pipeline';
 import {
@@ -467,14 +467,7 @@ export class AssetPart {
 
   /** Puts one task back to `pending`, invalidates the graph bound to it, and reports the writes. */
   private async requeue(project: LoadedProject, task: AnyTask): Promise<string[]> {
-    await logTask(project.paths, {
-      ...task,
-      status     : 'pending',
-      output     : undefined,
-      error      : undefined,
-      checkpoint : undefined,
-      interrupted: undefined,
-    });
+    await logRequeue(project.paths, task);
     const written = [relPath(this.session.dir, project.paths.tasksLog)];
     const invalidated = await this.invalidateBound(project, task);
     if (invalidated !== undefined) written.push(invalidated);

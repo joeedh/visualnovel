@@ -8,7 +8,8 @@ import { join } from 'node:path';
 
 import { makeProject, TestProject } from '@vn/testkit';
 import { addClaim, AssetStore, loadInputs, readClaims, removeClaim } from '@vn/store';
-import { latestRecords, logTombstone } from '@vn/taskgraph';
+import { latestRecords } from '@vn/taskgraph';
+import { logTombstone } from '@vn/taskgraph/maintain';
 import { exists } from '@vn/util';
 
 import { GenImageFile, Graph, registerGenNodes } from '../index.js';

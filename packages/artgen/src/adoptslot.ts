@@ -14,6 +14,7 @@
  * a picture becomes a slot's take in one place whether an author brought it or a graph drew it.
  */
 import type {
+  AnyTask,
   Asset,
   AssetBinding,
   AssetRef,
@@ -23,6 +24,8 @@ import type {
   Shot,
   TakeVia,
   TaskGraph,
+  TaskInputs,
+  TaskKind,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { modelFromInputs } from '@vn/model';
@@ -38,7 +41,7 @@ import { loadGraph } from '@vn/taskgraph';
 import { isPlaceholderImage } from '@vn/providers';
 import { VnError } from '@vn/util';
 import { proseHash } from './drift.js';
-import { adopt } from './adopt.js';
+import { adopt, adoptionOf, type AdoptContext } from './adopt.js';
 import { baseRefusal } from './base.js';
 import { slotLabel } from './slotaddr.js';
 import { type Decided, type ResolvedSlot, heldBy, resolveSlot, slotTaskHash } from './slotgraph.js';
@@ -438,6 +441,56 @@ export async function holdPortrait(
     at === undefined ? {} : { at },
   );
   return {};
+}
+
+/** A repin that keeps the bytes it moved a reference under. */
+export interface RepinRequest {
+  /** The task that drew the picture, as the log holds it. */
+  node: AnyTask;
+  /** The pinned reference being moved, by hash. */
+  from: string;
+  /** What the reference's slot holds now. */
+  to: AssetRef;
+  /** The picture whose bytes stay the task's output. */
+  output: Asset;
+}
+
+/**
+ * Decides recording `output` as the output of `node`'s task with the pin `from` swapped for `to`
+ * in place, and hands back the write that records it. A repin touches only the authored tail of
+ * `refs`, so the swapped inputs are the ones the planner will compute; if the derived half moved
+ * too, the adopted node is an orphan and the picture re-renders.
+ */
+export function repinAdoption(
+  paths: ProjectPaths,
+  req: RepinRequest,
+  ctx: AdoptContext,
+): Decided<{ note: string; write: () => Promise<void> }> {
+  const { node } = req;
+  if (!('refs' in node.inputs)) {
+    return {
+      ok    : false,
+      code  : 'NO_REFS',
+      reason: `Task ${node.hash.slice(0, 8)} takes no references, so there is no pin to move.`,
+    };
+  }
+  const inputs = {
+    ...node.inputs,
+    refs: node.inputs.refs.map((r) => (r.hash === req.from ? req.to : r)),
+  } as TaskInputs[TaskKind];
+  const adoption = { kind: node.kind, inputs, output: req.output };
+  const decided = adoptionOf(adoption, ctx);
+  if (!decided.ok) return decided;
+  return {
+    ok  : true,
+    plan: {
+      note : decided.note,
+      write: async () => {
+        const done = await adopt(paths, adoption, ctx);
+        if (!done.ok) throw new VnError(done.code, done.reason);
+      },
+    },
+  };
 }
 
 /** A picture an interactive graph run terminated on, as the executor hands it back. */

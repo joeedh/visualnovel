@@ -19,7 +19,7 @@ import {
   removeClaim,
   workspacePath,
 } from '@vn/store';
-import { logTombstone } from '@vn/taskgraph';
+import { logTombstone } from '@vn/taskgraph/maintain';
 import type { AnyTask, Asset, Diagnostic, ProjectModel } from '@vn/types';
 import { exists, readText } from '@vn/util';
 

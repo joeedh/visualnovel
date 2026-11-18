@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./write": "./src/write.ts",
+    "./maintain": "./src/maintain.ts"
   },
   "dependencies": {
     "@vn/types": "workspace:*",

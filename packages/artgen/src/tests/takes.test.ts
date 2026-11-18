@@ -5,7 +5,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import type { Asset, ProjectModel } from '@vn/types';
 import { AssetStore, type ProjectPaths } from '@vn/store';
-import { logTask } from '@vn/taskgraph';
+import { logTask } from '@vn/taskgraph/write';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { migrateCurrent, openTakeDeps, repairCurrent, resolveBinding, slotOf } from '../index.js';
 

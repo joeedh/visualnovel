@@ -10,7 +10,8 @@
  * may import both, so this is the only package that can ask the question.
  */
 import { projectConfig, type Asset, type ProjectModel, type Scene, type Shot } from '@vn/types';
-import { TaskGraph, loadGraph, logTask } from '@vn/taskgraph';
+import { TaskGraph, loadGraph } from '@vn/taskgraph';
+import { logTask } from '@vn/taskgraph/write';
 import { createMockProviders } from '@vn/providers';
 import { buildSlotGraph, planAssetCollection, type SlotGraph } from '@vn/artgen';
 import { readAllShots, readShots, writeShots } from '@vn/store';

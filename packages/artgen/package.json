@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./slotaddr": "./src/slotaddr.ts",
-    "./layout": "./src/layout.ts"
+    "./layout": "./src/layout.ts",
+    "./adopt": "./src/adopt.ts"
   },
   "dependencies": {
     "@vn/types": "workspace:*",

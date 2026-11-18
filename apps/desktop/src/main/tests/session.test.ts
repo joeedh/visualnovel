@@ -25,7 +25,7 @@ import {
   type ToolContext,
 } from '@vn/authoring';
 import { openGit } from '@vn/git';
-import { logTask } from '@vn/taskgraph';
+import { logTask } from '@vn/taskgraph/write';
 import { ProjectPaths, readShots, writeShots } from '@vn/store';
 import type { Shot, ShotsFile } from '@vn/types';
 import { nativeFile, readNative } from '../notify/threads.js';

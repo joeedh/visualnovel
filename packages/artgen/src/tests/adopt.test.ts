@@ -9,7 +9,7 @@
 import { makeProject, SCRIPTS } from '@vn/testkit';
 import { loadGraph, makeTask } from '@vn/taskgraph';
 import type { Asset, Task } from '@vn/types';
-import { adopt, adoptionOf } from '../index.js';
+import { adopt, adoptionOf } from '../adopt.js';
 
 /** A run to the gate, and the first portrait it produced with the node that produced it. */
 async function rendered(): Promise<{

@@ -2,8 +2,6 @@ import { applyCharacterEdit, applyLocationEdit, docToMarkdown } from '@vn/model'
 import { entityDoc, readShots, writeShots } from '@vn/store';
 import { fileCache } from '../workspace/filecache.js';
 import {
-  adopt,
-  adoptionOf,
   composePrompt,
   condensePrompt,
   coverage,
@@ -16,14 +14,14 @@ import {
   refDrift,
   renderPrompt,
   resolveBinding,
+  repinAdoption,
   rungOf,
   slotKey,
   slotLabel,
   slotOf,
   type PromptRung,
 } from '@vn/artgen';
-import type { PromptChunk, PromptOverride, TaskInputs } from '@vn/types';
-import { type TaskKind } from '@vn/types';
+import type { PromptChunk, PromptOverride } from '@vn/types';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import { deriveChunks } from '../assets/assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from '../agent/promptedit.js';
@@ -383,28 +381,18 @@ export class PromptPart {
         reason: `${hash.slice(0, 8)} has no task on record to re-approve against, so it can only be repinned with regenerate=true.`,
       };
     }
-    const inputs = {
-      ...node.inputs,
-      refs: node.inputs.refs.map((r) =>
-        r.hash === pinned.pin ? { hash: to, ext: target.ext } : r,
-      ),
-    } as TaskInputs[TaskKind];
-    const req = { kind: node.kind, inputs, output: asset };
-    const ctx = {
-      has : (h: string) => project.store.has(h),
-      node: (h: string) => project.graph.get(h),
-    };
-    const decided = adoptionOf(req, ctx);
+    const decided = repinAdoption(
+      project.paths,
+      { node, from: pinned.pin, to: { hash: to, ext: target.ext }, output: asset },
+      { has: (h) => project.store.has(h), node: (h) => project.graph.get(h) },
+    );
     if (!decided.ok) return { ok: false, reason: decided.reason };
     return {
       ok: true,
       project,
       edit,
       note: `Repin to ${to.slice(0, 8)} and keep these bytes — the newly-keyed task is recorded done with ${hash.slice(0, 8)}, so nothing re-renders.`,
-      adoption: async () => {
-        const done = await adopt(project.paths, req, ctx);
-        if (!done.ok) throw new Error(done.reason);
-      },
+      adoption: decided.plan.write,
     };
   }
 

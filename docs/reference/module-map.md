@@ -174,32 +174,32 @@ it ([`history-pane.md`](history-pane.md)).
 
 ### @vn/artgen — art rules: prompts, slot graph, approvals (`packages/artgen`)
 
-| module                                     | purpose                                                            |
-| ------------------------------------------ | ------------------------------------------------------------------ |
-| `gate.ts`                                  | P3 approval gate (`gateStatus`, `isApproved`, `sceneUnblocked`)    |
-| `chunks.ts`                                | `PromptChunk` composition + fingerprint                            |
-| `prompts.ts`                               | per-slot-kind prompt builders (portrait/location/model-sheet/shot) |
-| `resolve.ts`                               | rung/override resolution                                           |
-| `refs.ts`                                  | reference binding resolution                                       |
-| `upstream.ts`                              | upstream attachment walk                                           |
-| `slotaddr.ts`                              | slot key parse/format                                              |
-| `slotgraph.ts`                             | slot graph construction (`buildSlotGraph`)                         |
-| `suspend.ts`                               | suspension walk (drifted upstream ⇒ suspended downstream)          |
-| `refcycle.ts`                              | reference cycle detection                                          |
-| `prereq.ts`                                | prerequisite refusals                                              |
-| `adopt.ts` / `adoptslot.ts` / `promote.ts` | adoption and concept promotion                                     |
-| `concept.ts`                               | concept image generation                                           |
-| `describe.ts`                              | asset description                                                  |
-| `storyboard.ts`                            | shot decomposition (`deterministicShots`, `decomposeScene`)        |
-| `coverage.ts`                              | prompt-coverage check                                              |
-| `condense.ts`                              | prompt condensing                                                  |
-| `setnotes.ts`                              | art notes / seed setters                                           |
-| `artnotes.ts`                              | art-target rung queries                                            |
-| `subject.ts`                               | concept subject parse/match                                        |
-| `base.ts`                                  | base-asset refusals                                                |
-| `upload.ts`                                | reference image upload                                             |
-| `drift.ts`                                 | prose-hash drift marker                                            |
-| `index.ts`                                 | barrel                                                             |
+| module                                     | purpose                                                                          |
+| ------------------------------------------ | -------------------------------------------------------------------------------- |
+| `gate.ts`                                  | P3 approval gate (`gateStatus`, `isApproved`, `sceneUnblocked`)                  |
+| `chunks.ts`                                | `PromptChunk` composition + fingerprint                                          |
+| `prompts.ts`                               | per-slot-kind prompt builders (portrait/location/model-sheet/shot)               |
+| `resolve.ts`                               | rung/override resolution                                                         |
+| `refs.ts`                                  | reference binding resolution                                                     |
+| `upstream.ts`                              | upstream attachment walk                                                         |
+| `slotaddr.ts`                              | slot key parse/format                                                            |
+| `slotgraph.ts`                             | slot graph construction (`buildSlotGraph`)                                       |
+| `suspend.ts`                               | suspension walk (drifted upstream ⇒ suspended downstream)                        |
+| `refcycle.ts`                              | reference cycle detection                                                        |
+| `prereq.ts`                                | prerequisite refusals                                                            |
+| `adopt.ts` / `adoptslot.ts` / `promote.ts` | adoption and concept promotion; `adopt.ts` is `@vn/artgen/adopt`, off the barrel |
+| `concept.ts`                               | concept image generation                                                         |
+| `describe.ts`                              | asset description                                                                |
+| `storyboard.ts`                            | shot decomposition (`deterministicShots`, `decomposeScene`)                      |
+| `coverage.ts`                              | prompt-coverage check                                                            |
+| `condense.ts`                              | prompt condensing                                                                |
+| `setnotes.ts`                              | art notes / seed setters                                                         |
+| `artnotes.ts`                              | art-target rung queries                                                          |
+| `subject.ts`                               | concept subject parse/match                                                      |
+| `base.ts`                                  | base-asset refusals                                                              |
+| `upload.ts`                                | reference image upload                                                           |
+| `drift.ts`                                 | prose-hash drift marker                                                          |
+| `index.ts`                                 | barrel                                                                           |
 
 ### @vn/gengraph — generation graphs (`packages/gengraph`)
 
@@ -226,8 +226,11 @@ See [`gen-graphs.md`](gen-graphs.md) for what ships.
 
 ### @vn/taskgraph — content-addressed task graph (`packages/taskgraph`)
 
-`graph.ts` (the graph and deduplication), `hash.ts` (task hashes), `log.ts` (the
-append-only status log in `state/tasks.jsonl`), `index.ts`.
+`graph.ts` (the graph and deduplication), `hash.ts` (task hashes), `log.ts` (reading the
+append-only status log in `state/tasks.jsonl`), `index.ts`. The log's writers are two
+subpath entries the barrel does not re-export: `write.ts` (`@vn/taskgraph/write`,
+`logTask`, any status) and `maintain.ts` (`@vn/taskgraph/maintain`: tombstones, restores
+and `pending` requeues).
 
 ### @vn/providers — model backends (`packages/providers`)
 

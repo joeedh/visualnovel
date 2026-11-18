@@ -50,7 +50,7 @@ These implement the system design in
       writer wins per hash) rebuilds the graph, so runs are crash-safe and resumable.
     - A tombstone takes a task out of the replayed graph. It is a full copy of the task's
       last record with `status: 'pending'`, no `output`, no `error`, and `removed: true`,
-      written by `logTombstone` (`packages/taskgraph/src/log.ts`).
+      written by `logTombstone` (`packages/taskgraph/src/maintain.ts`).
         - `loadGraph` leaves a hash out when its last record is a tombstone, so
           `vngen status` and the Task Graph pane stop counting it. A later task record for
           the same hash supersedes the tombstone, and the planner plans the task again.

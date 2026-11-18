@@ -4,16 +4,9 @@ import { join } from 'node:path';
 import type { AnyTask, ImageParams } from '@vn/types';
 import { readJsonl } from '@vn/util';
 import { ProjectPaths } from '@vn/store';
-import {
-  latestRecords,
-  loadGraph,
-  logTask,
-  logTombstone,
-  makeTask,
-  restoreDone,
-  TaskGraph,
-  tombstoneOf,
-} from '../index.js';
+import { latestRecords, loadGraph, makeTask, TaskGraph, tombstoneOf } from '../index.js';
+import { logTombstone, restoreDone } from '../maintain.js';
+import { logTask } from '../write.js';
 
 const params: ImageParams = { modelId: 'm' };
 

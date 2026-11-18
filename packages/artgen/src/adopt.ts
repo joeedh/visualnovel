@@ -15,7 +15,8 @@
  * same safety property.
  */
 import type { Asset, Task, TaskAttempt, TaskInputs, TaskKind } from '@vn/types';
-import { logTask, makeTask } from '@vn/taskgraph';
+import { makeTask } from '@vn/taskgraph';
+import { logTask } from '@vn/taskgraph/write';
 import type { ProjectPaths } from '@vn/store';
 
 /** Bytes, and the task identity they are being claimed as the output of. */

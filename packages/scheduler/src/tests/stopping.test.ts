@@ -1,6 +1,7 @@
 import type { DefectReport, Providers, Task } from '@vn/types';
 import { createMockProviders, StubImageBackend } from '@vn/providers';
-import { loadGraph, logTask, makeTask } from '@vn/taskgraph';
+import { loadGraph, makeTask } from '@vn/taskgraph';
+import { logTask } from '@vn/taskgraph/write';
 import { makeProject, SCRIPTS, type TestProject } from '@vn/testkit';
 import { rm } from 'node:fs/promises';
 import { GenDerivedPrompt, GenImage, GenOutput, Graph, registerGenRuntimes } from '@vn/gengraph';

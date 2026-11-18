@@ -23,7 +23,8 @@ import {
 } from '@vn/gengraph/state';
 import { AssetRoot, ProjectPaths } from '@vn/store';
 import { latestRecords, tombstoneOf, type TaskRecord } from '@vn/taskgraph';
-import { appendJsonl, exists, moveFile, readText, writeFileAtomic } from '@vn/util';
+import { logRestored, logTombstone } from '@vn/taskgraph/maintain';
+import { exists, moveFile, readText, writeFileAtomic } from '@vn/util';
 import { BUSY_PASS, BUSY_RUN } from '../../shared/ipc.js';
 import { COLLECTED_DIR } from '../workspace/workspace.js';
 import type { WorkspaceSession } from './core.js';
@@ -287,7 +288,7 @@ export class CollectPart {
     const latest = await latestRecords(this.paths);
     for (const replaced of plan.tombstones) {
       if (sameRecord(latest.get(replaced.hash), tombstoneOf(replaced))) continue;
-      await appendJsonl(this.paths.tasksLog, tombstoneOf(replaced));
+      await logTombstone(this.paths, replaced);
       written.push('vngen/state/tasks.jsonl');
     }
     const project = await AssetRoot.open(this.paths.assetsDir, this.paths.manifest);
@@ -325,7 +326,7 @@ export class CollectPart {
     const at = new Date().toISOString();
     for (const replaced of plan.tombstones) {
       if (!sameRecord(latest.get(replaced.hash), tombstoneOf(replaced))) continue;
-      await appendJsonl(this.paths.tasksLog, { ...replaced, restored: at });
+      await logRestored(this.paths, replaced, at);
       written.push('vngen/state/tasks.jsonl');
     }
     return [...new Set(written)];

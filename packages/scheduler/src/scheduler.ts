@@ -5,7 +5,8 @@ import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } f
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { readAllShots, type ProjectPaths } from '@vn/store';
-import { TaskGraph, logTask } from '@vn/taskgraph';
+import { TaskGraph } from '@vn/taskgraph';
+import { logTask } from '@vn/taskgraph/write';
 import { hashParts, pool, writeFileAtomic } from '@vn/util';
 import {
   baseRefusal,
