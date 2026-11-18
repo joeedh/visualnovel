@@ -1,12 +1,33 @@
 /**
- * How a node is addressed once a graph holds groups. A node's id is unique only within its
- * own graph, and every graph's ids start at zero, so a node inside an instance can share an
- * id with a root node. Its key is the chain of ids from the root: a root node's own id, and
- * `<owner key>/<id>` for a node inside an instance. Root keys are the ids they always were,
- * so a journal written before groups existed still matches its nodes.
+ * How a node is addressed once a graph holds groups: by its key, the chain of ids from the root,
+ * which is a root node's own id and `<owner key>/<id>` for a node inside an instance.
  */
+import { contract } from '@vn/contracts';
 import { GroupNode } from 'pathux-graph';
 import type { Graph, GraphId, Node, NodeSocketBase } from 'pathux-graph';
+
+export const graphsGroupNodeKey = contract({
+  id      : 'graphs.groupNodeKey',
+  rule: "A node in a generation graph is addressed by its key, the chain of ids from the root (`3/7` for node 7 inside instance 3), never by its id alone. The hashes, the journal, the executor's targets, the cost walk and every `gengraph.*` command's `node` prop use it.",
+  prevents:
+    "A node inside a group instance sharing its id with a root node, since every graph's ids start at zero, so the two would share a hash, a journal record or a command target.",
+  subjects: [
+    'module:packages/gengraph/src/nodekey.ts',
+    'function:packages/gengraph/src/nodekey.ts#nodeKey',
+    'function:packages/gengraph/src/nodekey.ts#resolveNodeKey',
+    'command:gengraph.setProp',
+  ],
+  see: [
+    'docs/reference/gen-graphs.md#groups',
+    'docs/plans/archive/group-nodes-in-the-gen-graph-editor.md',
+  ],
+  detail:
+    "A root node's key is its id, so keys in a graph with no groups are unchanged and a journal " +
+    'written before groups existed still matches its nodes. Every `node` prop on a `gengraph.*` ' +
+    "command resolves through `resolveNodeKey`, so the pane writes an instance's override as " +
+    "`gengraph.setProp` on `<instance>/<id>`, and the agent's whole-graph rewrite keeps an instance " +
+    'under `group: <ref>`.',
+});
 
 /** The key the hashes, the journal and the executor address this node by. */
 export function nodeKey(node: Node): GraphId {

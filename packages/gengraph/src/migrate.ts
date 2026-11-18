@@ -1,15 +1,9 @@
 /**
- * Rewrites the keys in a graph file whose node types have since renamed a socket or a property.
- * path.ux reconciles a loaded node against its definition by key, so a file written before a
- * rename loads with the old key kept as an orphaned socket, the link into it pointing at nothing
- * an author can see, and the renamed key sitting at its default. Rewriting the keys before the
- * file is deserialized is what keeps the wiring and the values that were authored against the
- * old names, and it puts the node back on the hash a freshly created one would have.
- *
- * A rename is declared beside the type it belongs to, as a `NodeMigration` on its `GenNodeSpec`,
- * and `registerGenNode` checks the declaration against the class. Renaming a socket or a prop is
- * therefore two edits: bump the type's `typeVersion`, and add the step that lands on it.
+ * Rewrites the keys in a graph file whose node types have since renamed a socket or a property,
+ * before the file is deserialized. A rename is declared beside the type it belongs to, as a
+ * `NodeMigration` on its `GenNodeSpec`.
  */
+import { contract } from '@vn/contracts';
 import { Graph, GroupDef } from 'pathux-graph';
 import { genNodeSpecs, type NodeMigration } from './registry.js';
 import { migrateJSON } from 'nstructjs';
@@ -32,6 +26,27 @@ export interface GraphMigration {
   /** One sentence per node type rewritten, for a host that wants to say the file has moved on. */
   notes: string[];
 }
+
+export const graphsSocketRenameMigrates = contract({
+  id      : 'graphs.socketRenameMigrates',
+  rule: "Renaming a node type's socket or prop needs a migration in the same commit: bump the type's `typeVersion` and add a `NodeMigration` step that lands on it. `migrateGraphJSON` replays the renames over a file's JSON before `readGraphFile` deserializes it.",
+  prevents:
+    'A file written before the rename loading with the old key as an orphaned socket, its link reaching nothing visible and the renamed key at its default, so the wiring is lost silently and the changed hash redraws the slot.',
+  subjects: [
+    'module:packages/gengraph/src/migrate.ts',
+    'function:packages/gengraph/src/migrate.ts#migrateGraphJSON',
+    'function:packages/gengraph/src/migrate.ts#migrateGroupJSON',
+    'function:packages/gengraph/src/registry.ts#registerGenNode',
+  ],
+  see     : ['docs/reference/gen-graphs.md#node-types'],
+  detail:
+    'path.ux reconciles a loaded node against its definition by key. The replay moves sockets, ' +
+    "props, links, a group's forwarded rows, and the `{name}` tokens a template embeds, which puts " +
+    'the node back on the hash a freshly created one would have. `registerGenNode` refuses a ' +
+    'migration whose targets name nothing on the class or whose last step stops short of the ' +
+    'declared `typeVersion`. A file keeps its old keys until something writes it back, so a ' +
+    'migration stays in place rather than being deleted a release later.',
+});
 
 /** Migrates a graph file's JSON values. A file that is not a record is passed through. */
 export function migrateGraphJSON(json: unknown): GraphMigration {

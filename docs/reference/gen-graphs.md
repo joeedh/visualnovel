@@ -157,8 +157,8 @@ models.
   the node that a refine pass falls back to when nothing is wired to a refine input.
 - `migrations` lists every rename the type has been through. `registerGenNode` refuses a
   migration whose targets name nothing on the class or whose last step stops short of the
-  declared `typeVersion`. The contract is in
-  [`pipeline-contracts.md`](pipeline-contracts.md), under renaming a socket or prop.
+  declared `typeVersion`. The contract is `graphs.socketRenameMigrates`, declared in
+  [`migrate.ts`](../../packages/gengraph/src/migrate.ts).
 
 Three socket types are declared beside the nodes, because path.ux ships float and vec3,
 and both describe geometry. `TextSocket` carries a string. `ImageSocket` carries a

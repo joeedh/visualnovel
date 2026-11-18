@@ -585,40 +585,6 @@ package.
     - Reference: [`gen-graphs.md`](gen-graphs.md#identity-the-journal-and-drift). Plan:
       [`../plans/node-based-asset-generation.md`](../plans/node-based-asset-generation.md)
       (Stage 2; the plan overall is in progress).
-- A node inside a group is identified by its key, not by its id alone.
-    - Every graph's id counter starts at zero, so a node inside a group instance normally
-      shares its id with a root node. `nodeKey` (`@vn/gengraph`'s `nodekey.ts`) names a
-      node by its id chain from the root — `3/7` for node 7 inside instance 3 — and the
-      hashes, the journal, the executor's target set and the cost walk are all keyed by
-      it. A root node's key is its id, so keys in a graph with no groups are unchanged.
-    - Every `node` prop on a `gengraph.*` command resolves through `resolveNodeKey`. The
-      pane therefore writes an instance's override as `gengraph.setProp` on
-      `<instance>/<id>`, and the agent's whole-graph rewrite keeps an instance under
-      `group: <ref>`.
-    - An edit inside an instance overrides a value. `decideGenEdit` refuses a structural
-      edit there with the sentence `structuralEditsRefused` gives, because a structural
-      edit belongs to the group's definition. Every `gengraph.*` editing command reaches
-      that definition with its `group` prop and writes it as
-      `vngen/work/graphs/lib/<ref>.json`. The renderer only reads that file.
-    - See [`gen-graphs.md`](gen-graphs.md#groups) for the reference and
-      [`../plans/archive/group-nodes-in-the-gen-graph-editor.md`](../plans/archive/group-nodes-in-the-gen-graph-editor.md)
-      for the plan.
-- **Renaming a node type's socket or prop requires a migration in the same commit.**
-    - path.ux reconciles a loaded node against its definition by key. A file written
-      before a rename loads with the old key kept as an orphaned socket, the link into
-      that socket reaches nothing an author can see, and the renamed key sits at its
-      default. The authored wiring is lost silently, and the hash changes, so the next run
-      redraws the slot.
-    - `migrateGraphJSON` (`@vn/gengraph/migrate`) replays the renames over the JSON before
-      `readGraphFile` deserializes it, moving sockets, props, links, a group's forwarded
-      rows, and the `{name}` tokens a template embeds.
-    - A rename is declared as a `NodeMigration` on the type's `GenNodeSpec`.
-      `registerGenNode` refuses a migration whose targets name nothing on the class or
-      whose last step stops short of the declared `typeVersion`.
-    - A rename takes two edits: bump `typeVersion`, and add the step that lands on it.
-    - The file on disk keeps the old keys until something writes it back, which means the
-      migration has to stay in place rather than being deleted a release later.
-    - Reference: [`gen-graphs.md`](gen-graphs.md#node-types).
 
 ## Generation and review
 

@@ -4,12 +4,11 @@
  * the decision's `apply` only once it means to write. The desktop commands and the authoring
  * agent's graph tool both go through here, so a refusal reads the same in both.
  *
- * A node is named by its key, so an edit reaches a node inside a group instance. Only a value
- * edit is allowed there: the instance's subgraph refuses structural edits with path.ux's own
- * sentence, and those belong to the definition, whose subgraph is a plain graph this decides
- * against like any other. The boundary and forwarded-row edits apply only to a definition's
- * subgraph, which is how they find the definition they edit.
+ * A node is named by its key, so an edit reaches a node inside a group instance. A definition's
+ * subgraph is a plain graph this decides against like any other. The boundary and forwarded-row
+ * edits apply only to a definition's subgraph, which is how they find the definition they edit.
  */
+import { contract } from '@vn/contracts';
 import { parseSlot } from '@vn/stills/slotaddr';
 import {
   GroupInputNode,
@@ -131,6 +130,26 @@ const refuse = (reason: string, details?: string[]): GenEditResult => ({
   ok: false,
   reason,
   ...(details === undefined ? {} : { details }),
+});
+
+export const graphsInstanceEditsOverride = contract({
+  id      : 'graphs.instanceEditsOverride',
+  rule: "An edit inside a group instance can only override a value; `decideGenEdit` refuses a structural edit there with the sentence `structuralEditsRefused` gives. Structural edits go to the group's definition, written as `vngen/work/graphs/lib/<ref>.json`.",
+  prevents:
+    "One instance's wiring silently diverging from the definition every other instance shares, so editing the definition no longer describes what that instance runs.",
+  subjects: [
+    'module:packages/gengraph/src/edit.ts',
+    'function:packages/gengraph/src/edit.ts#decideGenEdit',
+    'command:gengraph.setProp',
+    'file:vngen/work/graphs/lib',
+  ],
+  see: [
+    'docs/reference/gen-graphs.md#groups',
+    'docs/plans/archive/group-nodes-in-the-gen-graph-editor.md',
+  ],
+  detail:
+    'Every `gengraph.*` editing command reaches a definition through its `group` prop. The renderer ' +
+    'only reads the definition file; it never writes it.',
 });
 
 /**

@@ -8,6 +8,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pins } from '@vn/contracts';
 
 import {
   GenDerivedPrompt,
@@ -21,6 +22,8 @@ import {
   applyGraphDSL,
   decideGenEdit,
   graphToDSL,
+  graphsGroupNodeKey,
+  graphsInstanceEditsOverride,
   isNodeKey,
   nodeKey,
   registerGenNodes,
@@ -107,7 +110,7 @@ function apply(graph: Graph, edit: GenEdit): GenApplied {
   return decided.apply();
 }
 
-describe('node keys', () => {
+describe(pins(graphsGroupNodeKey), () => {
   it('keys a root node by its id and an inner node by its chain', () => {
     const { graph, prompt, group, inner } = chain();
     const key = `${group.id}/${inner.id}`;
@@ -127,9 +130,7 @@ describe('node keys', () => {
     expect(resolveNodeKey(graph, `${prompt.id}/0`)).toBeUndefined();
     expect(resolveNodeKey(graph, '99/0')).toBeUndefined();
   });
-});
 
-describe('hashing a graph with groups', () => {
   it('keys an inner node by its chain, so a colliding root id keeps its own hash', () => {
     const { graph, prompt, group, inner } = chain();
     const hashes = graphHashes(graph);
@@ -140,7 +141,9 @@ describe('hashing a graph with groups', () => {
     expect(hashes.get(`${group.id}/${inner.id}`)).not.toBe(hashes.get(prompt.id));
     expect(hashes.has(group.id)).toBe(false);
   });
+});
 
+describe('hashing a graph with groups', () => {
   it('hashes two instances of one definition apart once one carries an override', () => {
     const graph = new Graph();
     const { def, inner } = inkWashDef();
@@ -360,28 +363,30 @@ describe('editing a graph with groups', () => {
     ).toBe("'no spaces' is not a group name; use letters, digits and dashes");
   });
 
-  it("refuses a structural edit inside an instance with path.ux's sentence", () => {
-    const { graph, group, inner } = chain();
-    const key = `${group.id}/${inner.id}`;
-    const sentence =
-      "a group instance takes value edits only; structural edits belong to the group's definition";
+  describe(pins(graphsInstanceEditsOverride), () => {
+    it("refuses a structural edit inside an instance with path.ux's sentence", () => {
+      const { graph, group, inner } = chain();
+      const key = `${group.id}/${inner.id}`;
+      const sentence =
+        "a group instance takes value edits only; structural edits belong to the group's definition";
 
-    expect(reason(decideGenEdit(graph, { op: 'removeNode', node: key }))).toBe(sentence);
-    expect(reason(decideGenEdit(graph, { op: 'duplicateNode', node: key }))).toBe(sentence);
-    expect(
-      reason(decideGenEdit(graph, { op: 'moveNodes', moves: [{ node: key, x: 0, y: 0 }] })),
-    ).toBe(sentence);
-  });
+      expect(reason(decideGenEdit(graph, { op: 'removeNode', node: key }))).toBe(sentence);
+      expect(reason(decideGenEdit(graph, { op: 'duplicateNode', node: key }))).toBe(sentence);
+      expect(
+        reason(decideGenEdit(graph, { op: 'moveNodes', moves: [{ node: key, x: 0, y: 0 }] })),
+      ).toBe(sentence);
+    });
 
-  it('writes a value edit inside an instance as an override', () => {
-    const { graph, group, inner } = chain();
-    const key = `${group.id}/${inner.id}`;
+    it('writes a value edit inside an instance as an override', () => {
+      const { graph, group, inner } = chain();
+      const key = `${group.id}/${inner.id}`;
 
-    apply(graph, { op: 'setProp', node: key, key: 'template', value: '{varA}, in charcoal' });
+      apply(graph, { op: 'setProp', node: key, key: 'template', value: '{varA}, in charcoal' });
 
-    expect(innerOf(group, inner).props.template!.getValue()).toBe('{varA}, in charcoal');
-    expect(innerOf(group, inner).props.template!.wasSet).toBe(true);
-    expect(inner.props.template!.getValue()).toBe('{varA}, in ink wash');
+      expect(innerOf(group, inner).props.template!.getValue()).toBe('{varA}, in charcoal');
+      expect(innerOf(group, inner).props.template!.wasSet).toBe(true);
+      expect(inner.props.template!.getValue()).toBe('{varA}, in ink wash');
+    });
   });
 
   it('keeps the ref and the definition when an instance is duplicated', () => {

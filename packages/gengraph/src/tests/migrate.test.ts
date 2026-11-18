@@ -1,8 +1,10 @@
+import { pins } from '@vn/contracts';
 import {
   GenImage,
   GenTemplate,
   Graph,
   RETIRED_TYPES,
+  graphsSocketRenameMigrates,
   migrateGraphJSON,
   migrateGroupJSON,
   readGraphFile,
@@ -43,7 +45,7 @@ const nodes = (json: unknown): Record<string, unknown>[] =>
 
 const keys = (list: unknown): string[] => (list as { name: string }[]).map((socket) => socket.name);
 
-describe('replaying a rename over a graph file', () => {
+describe(pins(graphsSocketRenameMigrates), () => {
   it('moves the sockets and props every declared step names', () => {
     const [first] = nodes(file());
 
@@ -286,7 +288,7 @@ describe('the retired OpenRouter plugin node', () => {
   });
 });
 
-describe('a rename that does not match the class it was declared for', () => {
+describe(pins(graphsSocketRenameMigrates), () => {
   const withSteps =
     (steps: (typeof TEST_RENAMES)[number][]): (() => void) =>
     (): void =>
