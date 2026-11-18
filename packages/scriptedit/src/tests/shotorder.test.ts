@@ -1,8 +1,9 @@
+import { pins } from '@vn/contracts';
 import { splitScenes } from '@vn/model';
 import { parseFountain } from '@vn/parse';
 import type { Scene, Shot } from '@vn/types';
 import type { LineOp, ScriptState } from '../lineops.js';
-import { moveShot } from '../shotorder.js';
+import { moveShot, scriptShotOrderFromProse } from '../shotorder.js';
 
 /** Six lines in one scene: three contiguous pairs, so a shot can sit over each. */
 const SCRIPT = `INT. CLASSROOM - EVENING
@@ -74,7 +75,7 @@ const coveredTexts = (scene: Scene, s: Shot): string[] => {
 
 const ids = (n: number[]): string[] => n.map((i) => `arrival:L${i}`);
 
-describe('moveShot', () => {
+describe(pins(scriptShotOrderFromProse), () => {
   it('moves a shot down, taking its own lines and nothing else', () => {
     const op = move(SHOTS, 'arrival__establishing', 'arrival__beat1');
     expect(order(op)).toEqual(ids([3, 4, 1, 2, 5, 6]));
@@ -125,7 +126,7 @@ describe('moveShot — the prose each shot covers', () => {
   });
 });
 
-describe('moveShot — an interleaved shot', () => {
+describe(pins(scriptShotOrderFromProse), () => {
   // The establishing shot takes the narration while a medium shot takes the dialogue in between.
   // This is the deterministic decomposer's normal output, and such a shot has no single position
   const interleaved = [shot('arrival__establishing', ['L1', 'L4']), shot('arrival__beat1', ['L2'])];

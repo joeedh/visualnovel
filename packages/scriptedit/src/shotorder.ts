@@ -1,31 +1,36 @@
 /**
- * Reordering shots inside a scene — which, in this app, means moving the lines they cover.
- *
- * A shot has no stored position. The exporter walks a scene's lines in order and emits a `show`
- * beat whenever the covering shot changes, so a shot's position is where its covered lines sit,
- * and the storyboard order is a reading of the prose order rather than a second ordering beside it.
- * Reordering shots is therefore a prose edit, and {@link moveShot} hands back the same
- * {@link LineOp} the nine `lineops` decisions do — one write path, one undo entry, one set of
- * proofs.
+ * Reordering shots inside a scene by moving the lines they cover. {@link moveShot} hands back the
+ * same {@link LineOp} the `lineops` decisions do, so a move takes their write path and undo entry.
  *
  * This module lives here rather than in `lineops.ts` because it has to read the storyboard, and
  * that module is pure over the scene set on purpose. It is the sibling of `shotfallout.ts`: that
  * one asks what a prose edit does to the shots, this one asks what a shot move does to the prose.
- *
- * Two things a caller has to understand:
- *
- * - Only a contiguous shot can move. Coverage is a set and interleaving is the normal case (the
- *   deterministic decomposer gives the establishing shot every narration line while each medium
- *   shot takes one character's dialogue). A shot with holes is on screen in more than one place, so
- *   it has no single position to move from, and every way of inventing one silently decides
- *   something about the shots it interleaves with. {@link planShotMove} refuses instead and names
- *   those shots.
- * - A move costs nothing. Ids do not change, so no shot's coverage changes; each shot's covered
- *   lines keep their relative order, so no `proseHash` moves. Nothing drifts, nothing re-renders,
- *   and the only difference is the order of `show` beats, which is the act the author asked for.
  */
+import { contract } from '@vn/contracts';
 import type { Scene, Shot } from '@vn/types';
 import { nextIdOf, type LineOp, type ScriptState } from './lineops.js';
+
+export const scriptShotOrderFromProse = contract({
+  id      : 'script.shotOrderFromProse',
+  rule: 'A shot has no position field: its place is where its covered lines sit. Moving a shot moves the block of lines it covers, through the scene write path, and only a contiguous shot can move; one with another shot drawing inside its lines is refused by name.',
+  prevents:
+    'A second ordering kept beside the prose that can disagree with it, and a move that silently interleaves shots or re-renders art.',
+  subjects: [
+    'module:packages/scriptedit/src/shotorder.ts',
+    'function:packages/scriptedit/src/shotorder.ts#moveShot',
+    'function:packages/scriptedit/src/shotorder.ts#planShotMove',
+    'command:story.moveShot',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#shot-ordering-in-scenes'],
+  detail:
+    "The exporter's `sceneBeats` emits a `show` beat whenever the covering shot changes down " +
+    '`scene.lines`, so nothing needs renumbering. Coverage is a set and interleaving is normal (the ' +
+    'deterministic decomposer gives the establishing shot every narration line while each medium ' +
+    "shot takes one character's dialogue); a shot with holes is on screen in more than one place, " +
+    'so it has no single position to move from. A move changes no hash: ids stay the same, coverage ' +
+    "stays the same, and every shot's covered lines keep their relative order, so `proseHash`, which " +
+    'walks `scene.lines` in order, does not drift and nothing re-renders.',
+});
 
 /** As much of a shot as a reorder reads. Both `Shot` and the app's `CoverageShot` satisfy it. */
 export interface PositionedShot {

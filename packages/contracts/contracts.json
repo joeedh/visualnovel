@@ -51,6 +51,19 @@
       "declared": "packages/model/src/build.ts"
     },
     {
+      "id"      : "script.headingRestagesShots",
+      "rule": "Editing a scene's heading through `setHeading` moves no line id and no coverage, restages every shot in the scene onto the new heading's variant, and counts those shots as `restaged`, never as `drifted`, in the price shown before the edit runs.",
+      "prevents": "A shot whose stored `Shot.location` names a variant the new location does not declare, which the planner skips silently and permanently, and an edit that re-renders art being reported as harmless drift.",
+      "subjects": [
+        "module:packages/scriptedit/src/shotfallout.ts",
+        "function:packages/scriptedit/src/shotfallout.ts#shotFallout",
+        "function:packages/scriptedit/src/lineops.ts#setHeading",
+        "command:story.setHeading"
+      ],
+      "detail": "The heading is not a `SceneLine` but `location` + `locationVariant` + `headingPrefix`, which `headingOf` reassembles and `parseHeading` reads back. Restaging goes through the `relocated` channel on `LineOp`: `Shot.location` is a variant id persisted in `work/shots/<sceneId>.json`, and the planner's `locationTask(…, shot.location, …)` skips a shot whose variant the location does not declare. Why a heading edit re-renders is `identity.headingRekeysShots`. The prose still describes the old place; the op's message says so and names the agent. `story.setHeading` is not `confirm: true`, because a confirm command is never checked, and the check is what raises the warning.",
+      "declared": "packages/scriptedit/src/shotfallout.ts"
+    },
+    {
       "id"      : "script.lineIdsAllocated",
       "rule": "Line ids are allocated and stored, and a read never writes: a new line takes its id from its scene's allocator, never from its position, and loading a project allocates ids in memory only.",
       "prevents": "Re-pointing every shot below an inserted line at a different line, which re-renders that art at cost and reports nothing.",
@@ -80,6 +93,22 @@
       "see"     : ["docs/plans/archive/INDEX.md#outfits-at-scene-and-shot-level"],
       "detail": "A `ShotSubject` with no `outfit` inherits, which is why `deterministicShots` and the decomposer emit shots without one. `ResolvedOutfit.origin` names the level that answered, so a surface can say which rather than \"inherited\". `outfitText` falls back to the outfit id when nothing describes the outfit, so a wardrobe can be named before it is described and an undescribed project keeps its prompts. An outfit edit re-renders, unlike other scene edits: the outfit is in `buildShotPrompt`, so a change re-keys exactly the shots it reaches. The sheet fan-out follows from the same function: `usedOutfits` is the character's default plus every scene marker and shot override over reachable scenes, which is `outfitFor`'s range, so a character no reachable scene casts plans no sheets and a shot cannot depend on a sheet nothing planned. A subject out of its default takes that outfit's front sheet as a reference (a frame needs the clothes, not a turnaround), which reaches the planner a wave later, the way a shot waits on its plate.",
       "declared": "packages/model/src/outfits.ts"
+    },
+    {
+      "id"      : "script.sceneEditAllOrNothing",
+      "rule": "A scene edit that spans several chunk files is computed and proved in full before any file is written, and an existing chunk keeps its front-matter block byte for byte; only the body is rewritten.",
+      "prevents": "A splice refused on the third file leaving the first two already changed, and a re-serialized YAML block silently dropping the comments the author wrote in it.",
+      "subjects": [
+        "module:packages/scriptedit/src/markers.ts",
+        "function:packages/scriptedit/src/markers.ts#planMarkerEdit",
+        "function:packages/scriptedit/src/markers.ts#applyMarkerPlan",
+        "function:packages/scriptedit/src/apply.ts#proveScenes",
+        "function:packages/scriptedit/src/apply.ts#planSceneEdit",
+        "function:packages/scriptedit/src/sources.ts#chunkText"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#scene-chunk-files"],
+      "detail": "Deciding is split from writing for both write paths: `planMarkerEdit` and `planSceneEdit` touch nothing, so a command's `check` and its `run` ask the same function, and the apply step writes a plan that already proved itself. The front-matter block is spliced back from `splitFrontMatter`'s prefix rather than re-serialized.",
+      "declared": "packages/scriptedit/src/markers.ts"
     },
     {
       "id"      : "script.sceneOneFile",
@@ -112,6 +141,39 @@
       "see"     : ["docs/plans/archive/INDEX.md#lossless-scene-serialization"],
       "detail": "It is the scene counterpart of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and a property test over the `@vn/testkit` scripts and hand-built scenes pins it. `Scene.body` was removed because flattened prose cannot be split back into its parts: `NAME:` and an action paragraph containing a colon are the same string. The model keeps what Fountain says, including the heading's prefix, its time-of-day variant and `transition`/`lyric`/`centered` lines; `section`, `page_break` and dual dialogue are dropped deliberately. Blank lines are structural: a `[[…]]` marker line is not blank, so a cue always gets a blank line above it, nothing but a `[[line:]]` mark goes between a cue and its first dialogue line, and anything that could be read as another element is written in its forced form (`!`, `@`, `>`, `~`). `needsForcedAction` tests every alternative reading the parser has. Byte-exactness is not a goal: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle files the author wrote, because their formatting is the author's.",
       "declared": "packages/model/src/serialize.ts"
+    },
+    {
+      "id"      : "script.sceneSourcesOneLoad",
+      "rule": "`loadInputs` alone decides which files hold scenes, reading only `scenes/<id>.md`, and every scene writer patches the sources `sourcesOf` derives from the same `LoadedInputs` the model was built from, never from a second look at `scenes/`.",
+      "prevents": "A model built from one file while an edit is written to another, or a writer patching whatever is on disk by the time it writes rather than the bytes the model was read from.",
+      "subjects": [
+        "module:packages/scriptedit/src/sources.ts",
+        "function:packages/scriptedit/src/sources.ts#sourcesOf",
+        "function:packages/store/src/worktree.ts#loadInputs",
+        "function:packages/store/src/worktree.ts#findScreenplay",
+        "file:scenes"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#scene-chunk-files",
+        "docs/plans/archive/INDEX.md#fountain-import-export",
+        "docs/reference/fountain.md#where-the-fountain-lives-project-specific"
+      ],
+      "detail": "Nothing reads the older `screenplay/*.fountain` form, so a model can no longer be built from one file while edits are written to another. A project holding a screenplay and no `scenes/` gets a `legacy_screenplay` error naming `vngen import`; a screenplay left beside chunks gets a `stray_screenplay` warning to delete or rename it. `loadInputs` (`packages/store/src/worktree.ts`) also decides which file is the leftover, through `findScreenplay`, which the importer calls too, so the file the reader complains about is the file the importer converts. What a chunk may contain is `script.sceneOneFile`.",
+      "declared": "packages/scriptedit/src/sources.ts"
+    },
+    {
+      "id"      : "script.shotOrderFromProse",
+      "rule": "A shot has no position field: its place is where its covered lines sit. Moving a shot moves the block of lines it covers, through the scene write path, and only a contiguous shot can move; one with another shot drawing inside its lines is refused by name.",
+      "prevents": "A second ordering kept beside the prose that can disagree with it, and a move that silently interleaves shots or re-renders art.",
+      "subjects": [
+        "module:packages/scriptedit/src/shotorder.ts",
+        "function:packages/scriptedit/src/shotorder.ts#moveShot",
+        "function:packages/scriptedit/src/shotorder.ts#planShotMove",
+        "command:story.moveShot"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#shot-ordering-in-scenes"],
+      "detail": "The exporter's `sceneBeats` emits a `show` beat whenever the covering shot changes down `scene.lines`, so nothing needs renumbering. Coverage is a set and interleaving is normal (the deterministic decomposer gives the establishing shot every narration line while each medium shot takes one character's dialogue); a shot with holes is on screen in more than one place, so it has no single position to move from. A move changes no hash: ids stay the same, coverage stays the same, and every shot's covered lines keep their relative order, so `proseHash`, which walks `scene.lines` in order, does not drift and nothing re-renders.",
+      "declared": "packages/scriptedit/src/shotorder.ts"
     },
     {
       "id"      : "storage.manifestQueue",
@@ -148,8 +210,10 @@
   "bySubject": {
     "command:asset.adopt"                                          : ["log.doneWriters"],
     "command:story.assignLineIds"                                  : ["script.lineIdsAllocated"],
+    "command:story.moveShot"                                       : ["script.shotOrderFromProse"],
+    "command:story.setHeading": ["script.headingRestagesShots"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
-    "file:scenes"                                                  : ["script.sceneOneFile"],
+    "file:scenes": ["script.sceneOneFile", "script.sceneSourcesOneLoad"],
     "file:state/tasks.jsonl"                                       : ["log.doneWriters"],
     "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "function:packages/artgen/src/adoptslot.ts#adoptSlot"          : ["log.doneWriters"],
@@ -168,8 +232,20 @@
     ],
     "function:packages/model/src/serialize.ts#sceneToFountain"     : ["script.sceneRoundTrip"],
     "function:packages/model/src/used.ts#usedOutfits"              : ["script.outfitInherited"],
-    "function:packages/scriptedit/src/apply.ts#proveScenes"        : ["script.sceneRoundTrip"],
+    "function:packages/scriptedit/src/apply.ts#planSceneEdit": ["script.sceneEditAllOrNothing"],
+    "function:packages/scriptedit/src/apply.ts#proveScenes": [
+      "script.sceneEditAllOrNothing",
+      "script.sceneRoundTrip"
+    ],
     "function:packages/scriptedit/src/lineops.ts#nextIdOf"         : ["script.lineIdsAllocated"],
+    "function:packages/scriptedit/src/lineops.ts#setHeading": ["script.headingRestagesShots"],
+    "function:packages/scriptedit/src/markers.ts#applyMarkerPlan": ["script.sceneEditAllOrNothing"],
+    "function:packages/scriptedit/src/markers.ts#planMarkerEdit": ["script.sceneEditAllOrNothing"],
+    "function:packages/scriptedit/src/shotfallout.ts#shotFallout": ["script.headingRestagesShots"],
+    "function:packages/scriptedit/src/shotorder.ts#moveShot"       : ["script.shotOrderFromProse"],
+    "function:packages/scriptedit/src/shotorder.ts#planShotMove"   : ["script.shotOrderFromProse"],
+    "function:packages/scriptedit/src/sources.ts#chunkText": ["script.sceneEditAllOrNothing"],
+    "function:packages/scriptedit/src/sources.ts#sourcesOf"        : ["script.sceneSourcesOneLoad"],
     "function:packages/stills/src/storyboard.ts#deterministicShots": ["script.outfitInherited"],
     "function:packages/store/src/assetstore.ts#AssetRoot"          : ["storage.manifestQueue"],
     "function:packages/store/src/assetstore.ts#AssetStore"         : ["storage.twoRoots"],
@@ -181,12 +257,18 @@
     "function:packages/store/src/entities.ts#entityFile"           : ["script.entityByTag"],
     "function:packages/store/src/entities.ts#entityIdentity"       : ["script.entityByTag"],
     "function:packages/store/src/scenes.ts#readSceneChunks"        : ["script.sceneOneFile"],
+    "function:packages/store/src/worktree.ts#findScreenplay"       : ["script.sceneSourcesOneLoad"],
+    "function:packages/store/src/worktree.ts#loadInputs"           : ["script.sceneSourcesOneLoad"],
     "module:packages/artgen/src/adopt.ts"                          : ["log.doneWriters"],
     "module:packages/model/src/build.ts"                           : ["script.entityIdMatchesFile"],
     "module:packages/model/src/entities.ts"                        : ["script.sceneOneFile"],
     "module:packages/model/src/outfits.ts"                         : ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts"                       : ["script.sceneRoundTrip"],
     "module:packages/scriptedit/src/lineops.ts"                    : ["script.lineIdsAllocated"],
+    "module:packages/scriptedit/src/markers.ts": ["script.sceneEditAllOrNothing"],
+    "module:packages/scriptedit/src/shotfallout.ts": ["script.headingRestagesShots"],
+    "module:packages/scriptedit/src/shotorder.ts"                  : ["script.shotOrderFromProse"],
+    "module:packages/scriptedit/src/sources.ts"                    : ["script.sceneSourcesOneLoad"],
     "module:packages/store/src/assetstore.ts": ["storage.manifestQueue", "storage.twoRoots"],
     "module:packages/store/src/entities.ts"                        : ["script.entityByTag"],
     "module:packages/taskgraph/src/maintain.ts"                    : ["log.doneWriters"],

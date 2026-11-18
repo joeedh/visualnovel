@@ -21,12 +21,34 @@
  * - No prose edit invalidates art, so drift is reported instead. No line's text reaches a shot's
  *   task inputs, which is why editing is affordable at all, and also why a rendered frame goes on
  *   illustrating text the author replaced until they ask for a new one. `drifted` is that count.
- *   A scene's heading is the exception and the reason `restaged` is priced separately: a location
- *   is in a shot's task inputs, so moving a scene re-renders it.
+ *   A heading edit is priced separately, as `restaged`.
  */
+import { contract } from '@vn/contracts';
 import type { Shot } from '@vn/types';
 import { panelLines } from './coverage.js';
 import { sceneIdOf, type AppliedLineOp } from './lineops.js';
+
+export const scriptHeadingRestagesShots = contract({
+  id      : 'script.headingRestagesShots',
+  rule: "Editing a scene's heading through `setHeading` moves no line id and no coverage, restages every shot in the scene onto the new heading's variant, and counts those shots as `restaged`, never as `drifted`, in the price shown before the edit runs.",
+  prevents:
+    'A shot whose stored `Shot.location` names a variant the new location does not declare, which the planner skips silently and permanently, and an edit that re-renders art being reported as harmless drift.',
+  subjects: [
+    'module:packages/scriptedit/src/shotfallout.ts',
+    'function:packages/scriptedit/src/shotfallout.ts#shotFallout',
+    'function:packages/scriptedit/src/lineops.ts#setHeading',
+    'command:story.setHeading',
+  ],
+  detail:
+    'The heading is not a `SceneLine` but `location` + `locationVariant` + `headingPrefix`, which ' +
+    '`headingOf` reassembles and `parseHeading` reads back. Restaging goes through the `relocated` ' +
+    'channel on `LineOp`: `Shot.location` is a variant id persisted in `work/shots/<sceneId>.json`, ' +
+    "and the planner's `locationTask(…, shot.location, …)` skips a shot whose variant the location " +
+    'does not declare. Why a heading edit re-renders is `identity.headingRekeysShots`. The prose ' +
+    "still describes the old place; the op's message says so and names the agent. `story.setHeading` " +
+    'is not `confirm: true`, because a confirm command is never checked, and the check is what ' +
+    'raises the warning.',
+});
 
 /** The persisted shots of every scene an edit touches, keyed by scene id. */
 export type ShotsByScene = ReadonlyMap<string, readonly Shot[]>;

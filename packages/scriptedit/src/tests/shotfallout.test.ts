@@ -1,3 +1,4 @@
+import { pins } from '@vn/contracts';
 import { splitScenes } from '@vn/model';
 import { parseFountain } from '@vn/parse';
 import type { Shot } from '@vn/types';
@@ -14,7 +15,12 @@ import {
   type LineOp,
   type ScriptState,
 } from '../lineops.js';
-import { scenesTouchedBy, shotFallout, type ShotsByScene } from '../shotfallout.js';
+import {
+  scenesTouchedBy,
+  scriptHeadingRestagesShots,
+  shotFallout,
+  type ShotsByScene,
+} from '../shotfallout.js';
 
 /**
  * Four lines in `arrival`, two in the `rooftop` it continues to, and two in an `attic` nothing
@@ -307,7 +313,7 @@ describe('an edit with no coverage consequence', () => {
   });
 });
 
-describe('a scene that changed place', () => {
+describe(pins(scriptHeadingRestagesShots), () => {
   const moved = () =>
     applied(setHeading(state(), { scene: 'arrival', heading: 'EXT. PIER - DAWN' }));
 

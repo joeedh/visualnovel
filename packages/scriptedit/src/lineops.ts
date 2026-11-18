@@ -484,21 +484,9 @@ export function setSynopsis(state: ScriptState, args: { scene: string; text: str
 }
 
 /**
- * Move a scene somewhere else by rewriting its heading. The heading is not a line — it is
- * `location` + `locationVariant` + `headingPrefix`, which `headingOf` reassembles — so no line id
- * changes and no coverage moves. What changes is what the art depicts, and this is the one prose
- * edit that is expensive:
- *
- * - Every rendered shot in the scene will be drawn again. Unlike retyping a line, the location is
- *   in a shot's task inputs twice over — its name is in the prompt and its plate's hash leads the
- *   refs — so the next run re-renders the scene rather than letting it drift. That is the warning
- *   the caller shows before running this.
- * - The prose is not touched, so it still describes the old place. Nothing here can fix that; the
- *   message says so and names the agent, which can.
- *
- * Every shot is restaged to the new variant (`relocated`) because a shot's variant was picked at
- * the old location and the new one may not declare it, and a shot whose plate is never planned is
- * skipped by the planner without a word.
+ * Move a scene somewhere else by rewriting its heading, which sets `location`, `locationVariant`
+ * and `headingPrefix` and restages every shot onto the new variant through `relocated`. The
+ * message says the prose still describes the old place and names the agent, which can fix it.
  */
 export function setHeading(state: ScriptState, args: { scene: string; heading: string }): LineOp {
   const scene = state.scenes.get(args.scene);

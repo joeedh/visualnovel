@@ -148,8 +148,8 @@ The older one-contended-file form (`screenplay/*.fountain`) is not read. A proje
 one and no `scenes/` gets an error naming `vngen import`, and one left beside chunks gets
 a warning to delete or rename it `.fountain.imported`. For what a body may contain, see
 [`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific).
-For why the reader alone decides, see
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md#scenes-shots-and-lines).
+For why the reader alone decides, see the `script.sceneSourcesOneLoad` contract in
+[`sources.ts`](../../packages/scriptedit/src/sources.ts).
 
 ## The sample project
 

@@ -1,7 +1,8 @@
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyMarkerPlan, planMarkerEdit } from '../markers.js';
+import { pins } from '@vn/contracts';
+import { applyMarkerPlan, planMarkerEdit, scriptSceneEditAllOrNothing } from '../markers.js';
 import type { SceneSource } from '../sources.js';
 
 const script = (id: string, body: string) => `INT. ROOM - DAY\n\n[[scene: ${id}]]\n${body}`;
@@ -41,11 +42,9 @@ describe('planMarkerEdit', () => {
     });
     expect(planMarkerEdit([], [{ sceneId: 'arrival', outfits: {} }])).toMatchObject({ ok: false });
   });
+});
 
-  /**
-   * Planning is separate from applying so that an edit set is all-or-nothing. A set spanning two
-   * files and refused on the second must not have written the first.
-   */
+describe(pins(scriptSceneEditAllOrNothing), () => {
   it('refuses the whole set when one edit in it cannot be made', () => {
     const plan = planMarkerEdit(SOURCES, [
       { sceneId: 'arrival', outfits: { aiko: 'track' } },
@@ -53,9 +52,7 @@ describe('planMarkerEdit', () => {
     ]);
     expect(plan).toMatchObject({ ok: false });
   });
-});
 
-describe('applyMarkerPlan', () => {
   it('writes the front-matter back byte-exactly and reports the files', async () => {
     const dir = await fs.mkdtemp(join(tmpdir(), 'vn-markers-'));
     try {

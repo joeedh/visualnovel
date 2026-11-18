@@ -1,16 +1,40 @@
 /**
- * The authored files a scene edit patches, and the state it is decided against.
- *
- * One contract governs this module, and every prose writer rests on it: a source list is derived
- * from the same `loadInputs` result the model was built from, never from a second look at
- * `scenes/`. So a writer patches exactly the bytes the model was read from rather than whatever is
- * on disk by the time it writes. Both write paths — prose edits (`apply.ts`) and marker edits
- * (`markers.ts`) — take their targets from this one function for that reason.
+ * The authored files a scene edit patches, and the state it is decided against. Both write
+ * paths, prose edits (`apply.ts`) and marker edits (`markers.ts`), take their targets from
+ * {@link sourcesOf}.
  */
+import { contract } from '@vn/contracts';
 import { sceneFromDoc } from '@vn/model';
 import { splitFrontMatter, type LoadedInputs } from '@vn/parse';
 import type { Scene } from '@vn/types';
 import type { ScriptState } from './lineops.js';
+
+export const scriptSceneSourcesOneLoad = contract({
+  id      : 'script.sceneSourcesOneLoad',
+  rule: '`loadInputs` alone decides which files hold scenes, reading only `scenes/<id>.md`, and every scene writer patches the sources `sourcesOf` derives from the same `LoadedInputs` the model was built from, never from a second look at `scenes/`.',
+  prevents:
+    'A model built from one file while an edit is written to another, or a writer patching whatever is on disk by the time it writes rather than the bytes the model was read from.',
+  subjects: [
+    'module:packages/scriptedit/src/sources.ts',
+    'function:packages/scriptedit/src/sources.ts#sourcesOf',
+    'function:packages/store/src/worktree.ts#loadInputs',
+    'function:packages/store/src/worktree.ts#findScreenplay',
+    'file:scenes',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#scene-chunk-files',
+    'docs/plans/archive/INDEX.md#fountain-import-export',
+    'docs/reference/fountain.md#where-the-fountain-lives-project-specific',
+  ],
+  detail:
+    'Nothing reads the older `screenplay/*.fountain` form, so a model can no longer be built from ' +
+    'one file while edits are written to another. A project holding a screenplay and no ' +
+    '`scenes/` gets a `legacy_screenplay` error naming `vngen import`; a screenplay left beside ' +
+    'chunks gets a `stray_screenplay` warning to delete or rename it. `loadInputs` ' +
+    '(`packages/store/src/worktree.ts`) also decides which file is the leftover, through ' +
+    '`findScreenplay`, which the importer calls too, so the file the reader complains about is the ' +
+    'file the importer converts. What a chunk may contain is `script.sceneOneFile`.',
+});
 
 /**
  * One authored file holding scene prose, as the prose writers need it: `prefix + script` is the

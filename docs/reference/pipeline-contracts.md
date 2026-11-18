@@ -361,37 +361,6 @@ package.
 
 ## Scenes, shots, and lines
 
-- **Each scene occupies one file, and the reader alone decides which files hold scenes.**
-    - Authored scenes are `scenes/<id>.md`. The front matter is `scene: <id>` and nothing
-      else, and the schema is closed, so a key the body owns (such as `next` or
-      `location`) is an error. The body is a complete one-scene Fountain screenplay
-      including its own heading.
-    - The id comes from the filename and front-matter together, and the body cannot
-      override it, so editing a file's prose does not rename it.
-    - A directory has no document order, so `start:` in `project.yaml` names the entry
-      scene rather than whichever file sorts first.
-    - Nothing reads the older `screenplay/*.fountain` form. The old both-present error
-      prevented a model built from one file while edits were written to the other, and
-      that failure cannot happen once nothing builds scenes from the screenplay. A project
-      holding a screenplay and no `scenes/` gets an error naming `vngen import`. A
-      screenplay left beside chunks gets a warning to delete or rename it.
-    - `loadInputs` (`packages/store/src/worktree.ts`) is the single place that decides,
-      and that includes deciding which file is the leftover. It exports `findScreenplay`,
-      which the importer calls too, so the file the reader complains about is the file the
-      importer converts. Every writer takes its target list from the same `LoadedInputs`
-      the model was built from, so no writer works from a different list.
-    - Two further rules follow, and each one came from a failure:
-        - a patch spanning several chunks is computed in full before anything is written
-          (a splice refused on the third file must leave the first two exactly as they
-          were), and
-        - front-matter is spliced byte-exactly via `splitFrontMatter` rather than
-          re-serialized, because re-serializing YAML silently drops the author's comments.
-    - The plans are
-      [`../plans/archive/INDEX.md#scene-chunk-files`](../plans/archive/INDEX.md#scene-chunk-files)
-      and
-      [`../plans/archive/INDEX.md#fountain-import-export`](../plans/archive/INDEX.md#fountain-import-export).
-      The format itself is in
-      [`fountain.md`](fountain.md#where-the-fountain-lives-project-specific).
 - Shot decompositions are persisted rather than re-derived.
     - P5 is an LLM step, so re-running it would produce different shot ids (and therefore
       different task hashes) and regenerate art for no reason.
@@ -459,22 +428,6 @@ package.
       verdict. The boxes stamped are the matching reviewer's.
     - Dry runs read the file but never write it, so a real run never reuses a mock
       decomposition.
-- Reordering a shot means editing the prose, because a shot's order comes from the
-  position of its lines.
-    - `Shot` has no position field, because `sceneBeats` emits a `show` whenever the
-      covering shot changes down `scene.lines`. Nothing needs renumbering, and no second
-      ordering has to be kept in step with the prose.
-    - `story.moveShot` therefore moves the block of lines the shot covers, and it writes
-      through the same `@vn/scriptedit` path every other line edit takes.
-    - A shot has a single position only if it is contiguous. If other shots draw inside
-      the lines a shot covers, that shot is refused by name rather than interleaved
-      silently.
-    - The move changes no hash: ids stay the same, coverage stays the same, and every
-      shot's covered lines keep their relative order. `proseHash` walks `scene.lines` in
-      order, and that order is preserved within each shot, so no hash drifts and nothing
-      re-renders.
-    - Plan:
-      [`../plans/archive/INDEX.md#shot-ordering-in-scenes`](../plans/archive/INDEX.md#shot-ordering-in-scenes).
 - **Art direction is authored and appended, and the re-render covers exactly what that
   direction reaches.**
     - `artNotes` is an optional free-text field at five rungs — `Character`, `Location`,

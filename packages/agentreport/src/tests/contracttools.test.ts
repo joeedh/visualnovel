@@ -55,6 +55,6 @@ describe('query_contracts over the committed index', () => {
       .get('query_contracts')!
       .run({ subject: 'module:packages/scriptedit/src/lineops.ts' }, ctx);
     expect(res.ok).toBe(true);
-    expect(res.output).toMatch(/^script\.lineIdsAllocated: Line ids are allocated and stored/);
+    expect(res.output).toMatch(/^script\.lineIdsAllocated: Line ids are allocated and stored/m);
   });
 });

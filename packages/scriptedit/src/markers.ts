@@ -1,16 +1,34 @@
 /**
  * The marker write path: `[[choice:]]`, `[[next:]]` and `[[outfit:]]` edits, planned across every
- * file they touch and then applied.
- *
- * Writing is split from deciding, as it is for a prose edit: a set of edits spanning three chunks
- * and refused on the third must leave the first two exactly as they were, so every patch is
- * computed before any is written. `applySceneMarkerEdit` does the line rewrite; this module only
- * fans out over the sources and enforces all-or-nothing.
+ * file they touch and then applied. `applySceneMarkerEdit` does the line rewrite; this module fans
+ * out over the sources.
  */
+import { contract } from '@vn/contracts';
 import { applySceneMarkerEdit, type SceneMarkerEdit } from '@vn/model';
 import { writeFileAtomic } from '@vn/util';
 import { conflictedRefusal } from './conflicted.js';
 import type { SceneSource } from './sources.js';
+
+export const scriptSceneEditAllOrNothing = contract({
+  id      : 'script.sceneEditAllOrNothing',
+  rule: 'A scene edit that spans several chunk files is computed and proved in full before any file is written, and an existing chunk keeps its front-matter block byte for byte; only the body is rewritten.',
+  prevents:
+    'A splice refused on the third file leaving the first two already changed, and a re-serialized YAML block silently dropping the comments the author wrote in it.',
+  subjects: [
+    'module:packages/scriptedit/src/markers.ts',
+    'function:packages/scriptedit/src/markers.ts#planMarkerEdit',
+    'function:packages/scriptedit/src/markers.ts#applyMarkerPlan',
+    'function:packages/scriptedit/src/apply.ts#proveScenes',
+    'function:packages/scriptedit/src/apply.ts#planSceneEdit',
+    'function:packages/scriptedit/src/sources.ts#chunkText',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#scene-chunk-files'],
+  detail:
+    'Deciding is split from writing for both write paths: `planMarkerEdit` and `planSceneEdit` ' +
+    "touch nothing, so a command's `check` and its `run` ask the same function, and the apply " +
+    'step writes a plan that already proved itself. The front-matter block is spliced back from ' +
+    "`splitFrontMatter`'s prefix rather than re-serialized.",
+});
 
 /** One file's patched bytes, waiting to be written. */
 export interface MarkerPatch {
