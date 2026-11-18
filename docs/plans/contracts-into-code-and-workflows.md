@@ -697,7 +697,75 @@ The plan as written before it landed:
 
 ### Stage 4: production data off `Scene`
 
-The workflows note's step 1.
+**Landed 2026-11-18 on the `production` branch, as `ebcf380f` to `f5329400` and the commit
+that adds this note.** As built:
+
+- **The production map came first and the folders second**, the reverse of the plan's
+  order. The `types-script` element cannot be green while `Scene` still names `Shot`, so
+  the commit that moves the folders has to follow the one that empties `Scene`.
+- **`ProjectModel.production` is a `Map<string, ProductionData>`**, like the model's other
+  keyed collections. `ProductionData` is `{ shots, sheets? }`, the shape
+  `work/shots/<sceneId>.json` holds, and `shotsOf(model, sceneId)` answers a scene's
+  shots, or none. `ProjectModel` is never serialized or sent over IPC, so no file or IPC
+  format changed: the shots files, `story.play.json`, the manifest and `SceneCoverage` are
+  as they were.
+- **A loader never writes into a model the planner plans from.** The builder leaves the
+  map empty, and the planner fills a scene's entry the first time the scene clears the
+  gate, as it used to fill `scene.shots`, so wave-by-wave behaviour and `firstCycle`'s
+  reach are unchanged. A reader that wants every storyboard takes a copy:
+    - `withProduction(paths, model)` in `@vn/store` returns `{ ...model, production }`.
+    - `readProduction` returns the map and a `broken` set of scenes whose file will not
+      parse. The collector, `validate.ts` and the document tree read `broken`, which
+      replaces the `null` entries `readAllShots({ reportBroken })` used to return.
+    - The exporter keeps a strict reader, `withSceneShots`, which throws on a bad file.
+- **What replaced `readAllShots` and `syncSheets`.** Both are gone. `syncSheets` copied
+  each file's `sheets` onto the shared model's scenes as a side effect of reading. The
+  scheduler, the CLI and the desktop `loadProject` now hand `repairCurrent` a
+  `withProduction` copy and leave the model the run plans from untouched. A few readers
+  build a one-scene model of their own and write into it: `adoptslot.ts`, the desktop's
+  `planSheet`, `coverageFromProject` and `locateRung`. Each of those models is local to
+  the call.
+- **`ctx.shots` is gone from every context**: `SlotGraphContext`, `SlotResolveContext`,
+  `PrereqContext`, `OverHeldContext`, `TakeDeps`, `ArtNotesContext` and the desktop's
+  `DocTreeInput` and `DerivePromptContext`. `usedOutfits`, `unapprovedTakes`, `keptSlots`
+  and `buildPlayable` lose their shots argument, and `sheetGroups` and `sheetMembers` take
+  a scene's shots rather than the scene.
+- **No hash moved.** `prompthash.test.ts` passes unchanged against its baseline. The
+  oracle passes with its fixtures staging the same storyboards in the production map, and
+  `oracle.ts` was edited the way `planner.ts` was. No control's offer changed:
+  `pnpm gen:uxmodel` regenerated `ux-model.json` byte for byte.
+- **The types folders.** `entities.ts` is split into `assets.ts` (top level),
+  `script/characters.ts`, `script/locations.ts`, `script/scenes.ts`, `production/shots.ts`
+  and `production/storyboard.ts`. `schemas.ts` stays whole at the top level, because it
+  mixes config, both layers and private helpers. The barrel exports the same names. Two
+  lintrix elements, `types-script` and `types-production`, enforce the direction. Like
+  every element rule they check one import statement at a time, so a script file importing
+  a top-level file that names a production type would not be caught.
+- **Three contracts.** `storage.storyboardKept` in `@vn/store`'s `shots.ts`, and
+  `prompts.clauseList` and `prompts.refOnClause` in `@vn/types`' `prompt.ts`; `@vn/types`
+  gained `contracts.ts` and a dependency on `@vn/contracts`. The index holds 30, and
+  `contracts.json` is 63 KB.
+    - The reference bullet called a ref with no binding "an upload". `prompt.addRef`
+      attaches a concept by bare hash the same way, so the declaration says such a ref
+      names an asset by hash.
+    - The refusals for that contract (an unknown clause, the same pin twice) are in the
+      desktop's `applyPromptEdit`, not in `@vn/stills`; the one refusal in `@vn/stills` is
+      the cycle check, already `prompts.refsAcyclic`.
+    - The storyboard bullet also held the `shot_form`, page, bubble and panel-box rules,
+      which are not about persistence. They stay on the page under a bullet of their own.
+- **For stage 5.** The production map holds an entry for every scene with a file,
+  reachable or not, because `readProduction` walks `model.scenes`, as `readAllShots` did.
+  The readers that should see only live scenes (`buildSlotGraph`, `usedOutfits`) walk
+  `reachableScenes` and look each one up with `shotsOf`, so moving them to
+  `narrative.live` is a change of iterator. The document tree and the collector iterate
+  the map and are meant to see unreachable storyboards too.
+- **For stage 6.** The planner's map is partial by design, and the one a reader gets from
+  `withProduction` is full; the solver has to say which it reads, and the oracle compares
+  wave by wave against the partial one. `shotsOf` returns the live array, and the planner
+  stamps `image` and `proseHash` onto those shots in place before `writeShots`, so a
+  solver that copies the storyboards must write the stamped copy back.
+
+The plan as written before it landed: The workflows note's step 1.
 
 - Move `Scene.shots` and `Scene.sheets` into `ProjectModel.production`, a map keyed by
   scene id, matching `work/shots/<sceneId>.json`.
@@ -840,12 +908,12 @@ enforced.
 | 303  | A terminal task records why, is retried once                    | 8      | Executor declarations on `requeueFailed` and `requeueAbandoned`                                                     |
 | 391  | An entity is found by its tag                                   | 3      | `@vn/store` declaration (`entities.ts` is there) and test; the id-matches-file half in `@vn/model`, as built        |
 | 422  | Each scene occupies one file                                    | 3      | `@vn/model` (`sceneFromDoc`) and two in `@vn/scriptedit` (one load, all-or-nothing edits), as built                 |
-| 453  | Shot decompositions are persisted                               | 4      | `@vn/store` declaration; the production map                                                                         |
+| 453  | Shot decompositions are persisted                               | 4      | `@vn/store` declaration; the production map. Page and bubble rules stay on the page, as built                       |
 | 520  | Reordering a shot means editing the prose                       | 3      | `@vn/scriptedit` declaration and test                                                                               |
 | 536  | A character inherits what it wears                              | 3      | `@vn/model` declaration and test                                                                                    |
 | 562  | Art direction is authored and appended                          | 3      | The builders' half in `@vn/stills`, the rungs' half in `@vn/artgen`, as built                                       |
 | 600  | A prompt is a list of clauses                                   | 4      | Type in `@vn/types` (`PromptChunk`), declared once stage 4 has reorganised `src/`                                   |
-| 632  | A reference attaches to a clause                                | 4      | Type in `@vn/types` (`ChunkRef`) and the refusal in `@vn/stills`                                                    |
+| 632  | A reference attaches to a clause                                | 4      | Type in `@vn/types` (`ChunkRef`); its refusals are in the desktop's `applyPromptEdit`, as built                     |
 | 643  | Suspension is derived transitively                              | 6d     | Solver rule                                                                                                         |
 | 655  | The reference graph is acyclic at write time                    | 3      | Refused at the write (`refCycle`), declared in `@vn/stills`                                                         |
 | 661  | Prose edits never invalidate art, so drift is reported          | 6d     | Stills drift rule reporting through `SlotState.drift`                                                               |
