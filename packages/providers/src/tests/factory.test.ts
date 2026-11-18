@@ -7,7 +7,14 @@ import type { ResolvedKeys } from '@vn/config';
 import { ConfigError, ProviderError } from '@vn/util';
 import type { ImageBackend, ImageInput } from '../backend.js';
 import { requestKey } from '../cache.js';
-import { createImageBackend, createProviders, projectModels, resolveRoutes } from '../factory.js';
+import { pins } from '@vn/contracts';
+import {
+  createImageBackend,
+  createProviders,
+  projectModels,
+  providersModelIdRoutes,
+  resolveRoutes,
+} from '../factory.js';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
 
@@ -51,7 +58,7 @@ function router(keys: Partial<ResolvedKeys>) {
 
 const keys = { gemini: 'g-key', openrouter: 'or-key' };
 
-describe('createImageBackend', () => {
+describe(pins(providersModelIdRoutes), () => {
   it('names the project’s model and routes each call by the model on its params', async () => {
     const { backend, seen, built } = router(keys);
 
@@ -163,7 +170,7 @@ describe('createImageBackend', () => {
   });
 });
 
-describe('resolveRoutes', () => {
+describe(pins(providersModelIdRoutes), () => {
   const mixed = projectConfig.parse({
     title : 'T',
     models: {

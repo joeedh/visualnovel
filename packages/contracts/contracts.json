@@ -230,6 +230,22 @@
       "declared": "packages/stills/src/prompts.ts"
     },
     {
+      "id"      : "providers.modelIdRoutes",
+      "rule": "A model id alone picks its backend: it names a native vendor, gains a transport from the keys that resolve (the vendor's, else OpenRouter's, else none), and a model no key carries is refused by name before anything is paid for. The scheduler never imports a concrete provider.",
+      "prevents": "Swapping a model in `project.yaml` needing code changes, a graph node naming another model drawing with the project's instead, or a run paying for pictures it then cannot review for want of a key.",
+      "subjects": [
+        "module:packages/providers/src/factory.ts",
+        "function:packages/providers/src/factory.ts#createImageBackend",
+        "function:packages/providers/src/factory.ts#resolveRoutes",
+        "function:packages/providers/src/factory.ts#createProviders",
+        "function:packages/providers/src/mock.ts#createMockProviders",
+        "package:packages/scheduler"
+      ],
+      "see"     : ["docs/plans/openrouter-as-a-fallback-transport.md", "docs/guides/testkit.md"],
+      "detail": "`chatVendorFor` and `imageVendorOf` in `@vn/types` name the vendor (`<vendor>/<model>` is OpenRouter's, `claude-…` is Anthropic's, anything else is Gemini's), and `chatRouteFor` / `imageRouteFor` add the transport, falling back to OpenRouter under the id's OpenRouter spelling (`openRouterIdFor`). Every table above the seam stays keyed by the native spelling (`nativeIdFor`). The image seam routes each call by the `modelId` on its params and hands every result back under the id the caller sent. The refusal is the `ConfigError` `missingRouteError` raises, naming both keys; `resolveRoutes` raises the same refusal ahead of a run. An open conversation keeps the transport it started on, because the two APIs do not share a message format. The scheduler's side is enforced by `vn/element-types`: `lintrix.config.json` does not list `providers` among what `@vn/scheduler` may import, and it reaches providers only through the `Providers` interface. Tests inject `RecordedChatBackend` and `StubImageBackend` through `createMockProviders`, so every contract runs without network access.",
+      "declared": "packages/providers/src/factory.ts"
+    },
+    {
       "id"      : "providers.textFallback",
       "rule": "The text steps (P1 location enrichment, P5 shot decomposition) call the LLM with structured-output enforcement and fall back to a deterministic baseline when the step fails, so a whole run completes with mock providers and no API calls.",
       "prevents": "A run that stops at the first text step a mock, missing or failing model cannot answer, which would make the pipeline impossible to run end to end without paid calls.",
@@ -485,7 +501,13 @@
     "function:packages/pipeline/src/graphrun.ts#runBoundGraph"       : ["identity.stagingSheet"],
     "function:packages/pipeline/src/p1.ts#deterministicBreakdown"    : ["providers.textFallback"],
     "function:packages/pipeline/src/p1.ts#enrichLocation"            : ["providers.textFallback"],
-    "function:packages/providers/src/mock.ts#createMockProviders"    : ["providers.textFallback"],
+    "function:packages/providers/src/factory.ts#createImageBackend"  : ["providers.modelIdRoutes"],
+    "function:packages/providers/src/factory.ts#createProviders"     : ["providers.modelIdRoutes"],
+    "function:packages/providers/src/factory.ts#resolveRoutes"       : ["providers.modelIdRoutes"],
+    "function:packages/providers/src/mock.ts#createMockProviders": [
+      "providers.modelIdRoutes",
+      "providers.textFallback"
+    ],
     "function:packages/scriptedit/src/apply.ts#planSceneEdit": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/apply.ts#proveScenes": [
       "script.sceneEditAllOrNothing",
@@ -561,6 +583,7 @@
     "module:packages/model/src/outfits.ts"                           : ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts"                         : ["script.sceneRoundTrip"],
     "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
+    "module:packages/providers/src/factory.ts"                       : ["providers.modelIdRoutes"],
     "module:packages/scriptedit/src/lineops.ts"                      : ["script.lineIdsAllocated"],
     "module:packages/scriptedit/src/markers.ts": ["script.sceneEditAllOrNothing"],
     "module:packages/scriptedit/src/shotfallout.ts": ["script.headingRestagesShots"],
@@ -574,6 +597,7 @@
     "module:packages/store/src/entities.ts"                          : ["script.entityByTag"],
     "module:packages/taskgraph/src/maintain.ts"                      : ["log.doneWriters"],
     "module:packages/taskgraph/src/write.ts"                         : ["log.doneWriters"],
+    "package:packages/scheduler"                                     : ["providers.modelIdRoutes"],
     "slot:shot"                                                      : ["identity.stagingSheet"],
     "task:shot_image": [
       "identity.headingRekeysShots",

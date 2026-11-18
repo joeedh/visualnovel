@@ -21,7 +21,6 @@ package.
 - [Scheduling](#scheduling)
 - [Scenes, shots, and lines](#scenes-shots-and-lines)
 - [Generation and review](#generation-and-review)
-- [Seams](#seams)
 
 <!-- tocstop -->
 
@@ -535,27 +534,3 @@ package.
       so an unchanged prompt means the critique repeated verbatim and the next attempt
       would issue the identical request. Spending the rest of the cap on that repeats the
       same request rather than refining it.
-
-## Seams
-
-- **Provider seams.**
-    - The scheduler imports `Task`, `deps`, and `status`, and never imports a concrete
-      provider.
-    - Changing model ids in `project.yaml` swaps backends, and nothing else needs to
-      change. A model id names its native vendor (`chatVendorFor`, `imageVendorOf` in
-      `@vn/types`: a `<vendor>/<model>` id is OpenRouter's, `claude-…` is Anthropic's,
-      anything else is Gemini's) and gains a transport from the keys that resolve
-      (`chatRouteFor`, `imageRouteFor`): the native vendor's key when it resolves, else
-      OpenRouter under the id's OpenRouter spelling (`openRouterIdFor`), else no route.
-      Every table above the seam stays keyed by the native spelling (`nativeIdFor`). The
-      image seam `createImageBackend` builds is a router that routes the `modelId` on each
-      call's params, so a graph node naming another model draws with that model rather
-      than the project's, and hands every result back under the id the caller sent. A
-      model no key carries is refused with the `ConfigError` `missingRouteError` raises,
-      naming both keys, before anything is paid for; `resolveRoutes` is the same refusal
-      ahead of a run. An open conversation keeps the transport it started on, because the
-      two APIs do not share a message format. Plan:
-      [`../plans/openrouter-as-a-fallback-transport.md`](../plans/openrouter-as-a-fallback-transport.md).
-    - Tests inject `RecordedChatBackend`/`StubImageBackend` (see `@vn/providers` `mock.ts`
-      / `createMockProviders`) to exercise the contracts without network access. See
-      [`../guides/testkit.md`](../guides/testkit.md).

@@ -17,6 +17,7 @@ import {
   type ResolvedKeys,
 } from '@vn/config';
 import { ProviderError, type ConfigError } from '@vn/util';
+import { contract } from '@vn/contracts';
 import type { ChatBackend, ImageBackend, RefLoader } from './backend.js';
 import { createAnthropicChat } from './backends/anthropic.js';
 import { createGeminiChat, createGeminiImage } from './backends/gemini.js';
@@ -185,16 +186,39 @@ function imageBackendBuilder(catalog: readonly CatalogEntry[]): ImageBackendBuil
   };
 }
 
+export const providersModelIdRoutes = contract({
+  id      : 'providers.modelIdRoutes',
+  rule: "A model id alone picks its backend: it names a native vendor, gains a transport from the keys that resolve (the vendor's, else OpenRouter's, else none), and a model no key carries is refused by name before anything is paid for. The scheduler never imports a concrete provider.",
+  prevents:
+    "Swapping a model in `project.yaml` needing code changes, a graph node naming another model drawing with the project's instead, or a run paying for pictures it then cannot review for want of a key.",
+  subjects: [
+    'module:packages/providers/src/factory.ts',
+    'function:packages/providers/src/factory.ts#createImageBackend',
+    'function:packages/providers/src/factory.ts#resolveRoutes',
+    'function:packages/providers/src/factory.ts#createProviders',
+    'function:packages/providers/src/mock.ts#createMockProviders',
+    'package:packages/scheduler',
+  ],
+  see     : ['docs/plans/openrouter-as-a-fallback-transport.md', 'docs/guides/testkit.md'],
+  detail:
+    '`chatVendorFor` and `imageVendorOf` in `@vn/types` name the vendor (`<vendor>/<model>` is ' +
+    "OpenRouter's, `claude-…` is Anthropic's, anything else is Gemini's), and `chatRouteFor` / " +
+    "`imageRouteFor` add the transport, falling back to OpenRouter under the id's OpenRouter " +
+    'spelling (`openRouterIdFor`). Every table above the seam stays keyed by the native spelling ' +
+    '(`nativeIdFor`). The image seam routes each call by the `modelId` on its params and hands every ' +
+    'result back under the id the caller sent. The refusal is the `ConfigError` `missingRouteError` ' +
+    'raises, naming both keys; `resolveRoutes` raises the same refusal ahead of a run. An open ' +
+    'conversation keeps the transport it started on, because the two APIs do not share a message ' +
+    "format. The scheduler's side is enforced by `vn/element-types`: `lintrix.config.json` does not " +
+    'list `providers` among what `@vn/scheduler` may import, and it reaches providers only through ' +
+    'the `Providers` interface. Tests inject `RecordedChatBackend` and `StubImageBackend` through ' +
+    '`createMockProviders`, so every contract runs without network access.',
+});
+
 /**
- * The byte-level image seam. Its `modelId` is the project's `models.image`, and each call is
- * routed by the `modelId` on its params, so a graph node naming another model draws with that
- * model rather than the project's. A backend is built once per model and kept for the life of the
- * router. A model no resolved key can carry is refused with the `ConfigError` a pre-run check
- * would have raised, so a host's key-setup handling sees the fault it already knows.
- *
- * A result comes back under the id the caller sent, whatever spelling the wire carried: the
- * manifest holds the author's spelling, and the dedupe key already does. The route's transport
- * is written beside it.
+ * The byte-level image seam. Its `modelId` is the project's `models.image`. A backend is built
+ * once per model and kept for the life of the router, and the route's transport is written beside
+ * each result.
  *
  * Exported because a generation graph attaches references it read out of its own blob store,
  * which have no `AssetRef` to resolve, so it calls the backend rather than the `ImageProvider`
