@@ -6,7 +6,8 @@
  * returning the stored text. Falling back to freshly rendered chunks would move the task hash and
  * re-render the asset, which is what holding exists to prevent.
  */
-import type { PromptChunk, PromptOverride } from '@vn/types';
+import { pins } from '@vn/contracts';
+import { promptsClauseList, type PromptChunk, type PromptOverride } from '@vn/types';
 import { sha256 } from '@vn/util';
 import { chunkFingerprint, composePrompt, effectiveChunks, renderPrompt } from '../index.js';
 
@@ -27,7 +28,7 @@ const BASE = chunks(
 
 const compose = (o?: PromptOverride) => composePrompt(BASE, o).text;
 
-describe('per-chunk operations', () => {
+describe(pins(promptsClauseList), () => {
   it('renders the derived list when nothing is overridden', () => {
     expect(compose()).toBe('Art style: watercolor. A cat. No text.');
     expect(compose({ mode: 'chunks' })).toBe(renderPrompt(BASE));

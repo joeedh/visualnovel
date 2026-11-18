@@ -7,6 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@vn/contracts": "workspace:*",
     "zod": "^3.24.1"
   }
 }

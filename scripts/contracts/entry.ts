@@ -25,6 +25,7 @@ import { CONTRACTS as scriptedit } from '../../packages/scriptedit/src/contracts
 import { CONTRACTS as stills } from '../../packages/stills/src/contracts.js';
 import { CONTRACTS as store } from '../../packages/store/src/contracts.js';
 import { CONTRACTS as taskgraph } from '../../packages/taskgraph/src/contracts.js';
+import { CONTRACTS as types } from '../../packages/types/src/contracts.js';
 import { buildIndex, type Declared, type Facts } from './build.js';
 
 /** Every `contracts.ts`, with the array it exports. */
@@ -38,6 +39,7 @@ export const DECLARED: readonly Declared[] = [
   { file: 'packages/stills/src/contracts.ts', contracts: stills },
   { file: 'packages/store/src/contracts.ts', contracts: store },
   { file: 'packages/taskgraph/src/contracts.ts', contracts: taskgraph },
+  { file: 'packages/types/src/contracts.ts', contracts: types },
 ];
 
 /** Every task kind, spelled out so the type checker fails here when `TaskKind` changes. */

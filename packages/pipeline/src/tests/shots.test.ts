@@ -3,6 +3,8 @@
  * the contracts under test are about what survives a process boundary — a hand-built model
  * would prove nothing.
  */
+import { pins } from '@vn/contracts';
+import { storageStoryboardKept } from '@vn/store';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import type { ShotsFile } from '@vn/types';
 
@@ -32,7 +34,7 @@ async function shotHashes(p: TestProject): Promise<string[]> {
     .sort();
 }
 
-describe('persisted shot decompositions', () => {
+describe(pins(storageStoryboardKept), () => {
   it('writes the decomposition, then refreshes shotData from what the run produced', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
     try {

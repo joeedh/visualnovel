@@ -334,22 +334,9 @@ package.
 
 ## Scenes, shots, and lines
 
-- Shot decompositions are persisted rather than re-derived.
-    - P5 is an LLM step, so re-running it would produce different shot ids (and therefore
-      different task hashes) and regenerate art for no reason.
-    - The planner writes each scene's decomposition to `work/shots/<sceneId>.json` and
-      reads that file whenever it exists, calling `decomposeScene` only when no file
-      exists. A file created by a hand-placed shot is read the same way, so placing the
-      first shot for a scene by hand stops the planner from decomposing that scene.
-    - (`decomposeScene` and its gauntlet are defined in `@vn/stills`' `storyboard.ts`,
-      which holds generative policy shared with the agent's `propose_storyboard`.
-      `propose_storyboard` cannot import the pipeline. `@vn/pipeline`'s `p5.ts` re-exports
-      them.)
-    - Every caller hands `decomposeScene` the project's `art_style`, `storyboard_notes`
-      and `shot_form` (`storyboardStyle(config)`), which `decompSystem` places between the
-      role and the answer format. A project that states none of them gets the prompt every
-      earlier decomposition was made with. Because a decomposition is persisted, changing
-      any of the three re-keys nothing; it reaches the next scene storyboarded.
+- **A storyboard is single frames or manga pages, and a page's panels carry their own cast
+  and lines.** That a storyboard is decomposed once and kept is `storage.storyboardKept`
+  (`pnpm contracts storage.storyboardKept`).
     - `shot_form` (`frames`, the default, or `pages`) decides whether a new storyboard is
       single frames or manga pages of panels. Under `pages` the system prompt tells the
       model to make every shot a page and gains the page vocabulary (the template names
@@ -361,18 +348,6 @@ package.
       it for one scene, which the agent passes only when the author explicitly asks for
       the other form. The desktop app writes the field through `project.setShotForm`, a
       dropdown on the Project pane.
-    - The file is human-editable. A malformed file throws instead of being silently
-      re-decomposed over.
-    - Authored fields sit at the top level. Fields a run produced sit under `shotData`,
-      which each pass rewrites wholesale. `tasks.jsonl` and `manifest.json` remain the
-      authority, so the pipeline does not treat work as done when a shots file is restored
-      from an old commit. `shotData` carries no `status`: whether a frame is drawn, held
-      or approved is read from the manifest row (`current`, `accepted`) and the task log,
-      and a file that still says `status` from before that change is parsed and never
-      rewritten with it. The timeline colours a strip by `failure.status` alone.
-    - Line ids the scene no longer contains are dropped with a warning. `buildShotPrompt`
-      ignores `coversLines` on a frame, so coverage edits to a frame do not trigger a
-      rehash. A page under `lettering: model` is the exception, below.
     - A shot with `panels` is a page: one image of several panels, each with an outline in
       page fractions, its own framing, camera and cast, and the lines it letters. A
       panel's subjects must be in the shot's `subjects`, or `readShots` refuses the file
@@ -399,51 +374,6 @@ package.
       only when none of them match, because a reviewer's measurement can be off while none
       invents a match for a wrong page; a page no reviewer measured gets no layout
       verdict. The boxes stamped are the matching reviewer's.
-    - Dry runs read the file but never write it, so a real run never reuses a mock
-      decomposition.
-- **A prompt is a list of clauses.** An override edits that list rather than the prompt
-  string.
-    - Every builder in `@vn/stills` assembles a `PromptChunk[]`. Each clause is keyed,
-      categorised, and carries an origin (a builder, or the document and field the
-      sentence came from) that lets a surface offer a `⇱` to it. `renderPrompt` collapses
-      that list with the same `.filter(Boolean).join(' ')` the flat builders used.
-    - **Composes byte-identical prompts**: a project authoring no override composes the
-      string character-for-character as it did before, so the feature leaves every
-      existing task hash unchanged (packages/pipeline/src/tests/prompthash.test.ts pins
-      the whole sorted list against a literal written before any of it).
-    - An override is authored input, stored at the single rung that names the whole
-      picture: `Character` for a portrait, the outfit entry for a sheet, the location
-      variant for a plate, the `Shot` for a frame. It is never stored at a rung that only
-      contributes a clause, so there is exactly one place to look.
-    - Setting `mode` alone does not override the prompt: every mode falls back to the
-      derived chunks when the shape it names is empty. Each writer calls
-      `promptOverrideIsEmpty` to clear the key, so a sheet that was once edited does not
-      keep an inert `prompt_override:`.
-    - `TaskInputs.*.prompt` stays a flat string. `taskHash` hashes the whole inputs object
-      with no allow-list, so a new key there would re-key every task in every project.
-      `composePrompt` composes the prompt text, and a chunk reaches a hash only through
-      that text.
-    - Editing an override behaves like an art note rather than a scene edit. The edit is
-      meant to cost money, and it re-keys precisely the tasks that rung reaches.
-    - An agent-condensed prompt records the chunk list it condensed. When those chunks
-      move, the prompt is held: `composePrompt` in `agent` mode returns the stored text
-      unconditionally and never falls back to freshly rendered chunks, because falling
-      back would re-render the asset the moment an unrelated note changed. The staleness
-      is derived on read and reported on the pane, never stored and never silently
-      resolved.
-    - Plan:
-      [`../plans/archive/INDEX.md#chunked-prompts`](../plans/archive/INDEX.md#chunked-prompts).
-- **A reference attaches to a clause, pins a hash, and separately records its origin.**
-    - A `ChunkRef` on a `PromptChunk` is evidence for that clause, so muting the clause
-      also drops the reference.
-    - A **linked** ref also carries a `RefBinding` naming the logical slot it was taken
-      from (`plate:cafe/night`, `sheet:aiko/gala/front`, …). The ref and its binding stay
-      separate on purpose: `refs` is inside the task hash, so pinning stops an upstream
-      approval from silently re-rendering everything that points at it.
-    - Authored refs are appended after the derived ones in `TaskInputs.refs`, because
-      `canonicalJson` maps arrays positionally and any other order would re-key tasks that
-      author none.
-    - A ref with no binding is an upload. An upload pins itself and cannot drift.
 - **Suspension is derived transitively and is never stored.**
     - When a slot moves, everything pinned to its old hash is suspended, along with
       everything downstream of that. The downstream walk carries a `visited` guard, so a

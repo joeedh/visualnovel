@@ -24,6 +24,7 @@ import {
   shotsFileSchema,
 } from '@vn/types';
 import { exists, readText, ValidationError, writeFileAtomic } from '@vn/util';
+import { contract } from '@vn/contracts';
 import type { ProjectPaths } from './paths.js';
 
 /** A scene's persisted shots, plus whatever the screenplay no longer supports. */
@@ -291,6 +292,35 @@ function serialize(sceneId: string, shots: readonly Shot[], marks: FileMarks): s
   return JSON.stringify(file, null, 2) + '\n';
 }
 
+export const storageStoryboardKept = contract({
+  id      : 'storage.storyboardKept',
+  rule: "A scene is decomposed once: the planner reads `work/shots/<sceneId>.json` whenever it exists and decomposes only when it does not. A malformed file throws, a dry run writes none, and a reader fills a copy of the model's `production` map rather than the planner's.",
+  prevents:
+    'Re-running P5, an LLM step, on every pass: new shot ids, hence new task hashes, re-render art already paid for. A malformed file silently re-decomposed over would discard the hand edits in it.',
+  subjects: [
+    'module:packages/store/src/shots.ts',
+    'function:packages/store/src/shots.ts#readShots',
+    'function:packages/store/src/shots.ts#writeShots',
+    'function:packages/store/src/shots.ts#readProduction',
+    'function:packages/store/src/shots.ts#withProduction',
+    'function:packages/types/src/production/storyboard.ts#ProductionData',
+    'function:packages/pipeline/src/planner.ts#planTasks',
+    'file:vngen/work/shots',
+  ],
+  detail:
+    'A file created by a hand-placed shot is read the same way, so placing the first shot by hand ' +
+    'ends decomposition for that scene. Because the result is kept, changing `art_style`, ' +
+    '`storyboard_notes` or `shot_form` re-keys nothing and reaches the next scene storyboarded. ' +
+    'Authored fields sit at the top level of the file and what a run produced under `shotData`, ' +
+    'which each pass rewrites wholesale; `tasks.jsonl` and `manifest.json` stay the authority, so a ' +
+    'file restored from an old commit does not mark work done, and `shotData` carries no `status`. ' +
+    'Line ids the scene no longer has are dropped with a warning. The model builder leaves ' +
+    "`ProjectModel.production` empty and the planner fills its own model's entry for a scene the " +
+    'first time that scene clears the gate, so a model a run plans from holds only the storyboards ' +
+    'the run has reached. `readProduction` and `withProduction` write nothing into the model they ' +
+    'are given; `withProduction` returns a copy, and `readProduction` reports a file that will not ' +
+    'parse in `broken` rather than throwing. The exporter reads strictly, through `withSceneShots`.',
+});
 /** One loaded storyboard as the model's production map holds it. */
 export function productionOf(loaded: LoadedShots): ProductionData {
   return { shots: loaded.shots, ...(loaded.sheets ? { sheets: loaded.sheets } : {}) };

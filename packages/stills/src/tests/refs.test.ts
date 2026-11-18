@@ -2,9 +2,23 @@
  * A binding → what fills that slot today (`docs/plans/archive/INDEX.md#chunked-prompts` §11). The pin is what
  * the model is fed; what a binding resolves to is only ever the comparison shown beside it.
  */
-import type { Asset, AssetKind, ChunkRef } from '@vn/types';
+import { pins } from '@vn/contracts';
+import {
+  projectConfig,
+  promptsRefOnClause,
+  type Asset,
+  type AssetKind,
+  type ChunkRef,
+  type PromptChunk,
+} from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
-import { refDrift, resolveBinding, type BindingContext } from '../index.js';
+import {
+  authoredRefs,
+  modelSheetInputs,
+  refDrift,
+  resolveBinding,
+  type BindingContext,
+} from '../index.js';
 
 function asset(
   hash: string,
@@ -124,5 +138,50 @@ describe('refDrift', () => {
   it('makes no claim when the slot cannot be resolved at all', () => {
     const from = { kind: 'plate', locationId: 'cafe', variant: 'dawn' } as const;
     expect(refDrift(ref({ pin: 'plate-night-old', from }), ctx())).toBe(false);
+  });
+});
+
+describe(pins(promptsRefOnClause), () => {
+  const clauses: PromptChunk[] = ['style', 'subject', 'tail'].map((key) => ({
+    key,
+    category: 'description',
+    text    : `The ${key}.`,
+    origin  : { kind: 'builder' },
+  }));
+  const refs: Record<string, ChunkRef[]> = {
+    subject: [{ pin: 's1', ext: 'png' }],
+    style: [
+      { pin: 'a1', ext: 'png' },
+      { pin: 'a2', ext: 'png' },
+    ],
+  };
+  const hashes = (mute?: string[]): string[] =>
+    authoredRefs(clauses, { mode: 'chunks', refs, ...(mute ? { mute } : {}) }).map((r) => r.hash);
+
+  it('sends each clause’s references in clause order, and none for a muted clause', () => {
+    expect(hashes()).toEqual(['a1', 'a2', 's1']);
+    expect(hashes(['style'])).toEqual(['s1']);
+  });
+
+  it('puts the authored references after the derived ones in a task’s refs', () => {
+    const config = projectConfig.parse({ title: 'Test', art_style: 'ink', models: {} });
+    const aiko = character('aiko', 'approved', 'portrait-hash');
+    aiko.outfits = [
+      {
+        id            : aiko.defaultOutfit,
+        characterId   : 'aiko',
+        description   : 'school uniform',
+        promptOverride: { mode: 'chunks', refs: { style: [{ pin: 'pin-a', ext: 'png' }] } },
+      },
+    ];
+    const inputs = modelSheetInputs(
+      aiko,
+      aiko.defaultOutfit,
+      'front',
+      { hash: 'portrait-hash', ext: 'png' },
+      config,
+      { modelId: 'm' },
+    );
+    expect(inputs.refs.map((r) => r.hash)).toEqual(['portrait-hash', 'pin-a']);
   });
 });
