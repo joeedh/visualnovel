@@ -159,9 +159,11 @@ for: the content-addressed task graph and asset store, task tombstones, the unus
 collector and recovering a missing picture, the P3 approval gate, sheet planning,
 incremental planning, the slot graph, explicit decomposition, failure records, outfit
 inheritance, art direction (including the agent's own art-revision tools), concept images,
-adoption, prose drift reporting, generation-graph drift, line ids, the scene round-trip,
-entity discovery, the P7 refine loop, and provider seams. Story-bible access is the one
-core idea documented on its own, in
+adoption, prose drift reporting, generation-graph drift, the scene round-trip, entity
+discovery, the P7 refine loop, and provider seams. The invariants are moving into code as
+`contract({...})` declarations, starting with allocated line ids and the writers of `done`
+records; `pnpm contracts <query>` lists the ones that have moved, by file, command, tool
+or text. Story-bible access is the one core idea documented on its own, in
 [`docs/reference/story-bible.md`](docs/reference/story-bible.md), because it has no
 pipeline-contract failure mode of its own — only the query-only access rule. Generation
 graphs — `@vn/gengraph`, the `gengraph.*` commands, the run journal, groups, the Gen Graph

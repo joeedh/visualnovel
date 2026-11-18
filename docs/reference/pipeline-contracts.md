@@ -6,8 +6,14 @@ because most of them were written down after that failure happened.
 
 These implement the system design in
 [`../history/vn-generator-report.md`](../history/vn-generator-report.md).
-[`../../CLAUDE.md`](../../CLAUDE.md) describes the package layering, and
-[`packages.md`](packages.md) describes it package by package.
+
+The invariants are moving into code, each as a `contract({...})` declaration beside the
+code that enforces it, and are deleted from this page as they move
+([`../plans/contracts-into-code-and-workflows.md`](../plans/contracts-into-code-and-workflows.md)).
+`pnpm contracts <query>` lists the ones already moved, and
+`packages/contracts/contracts.json` holds them all. [`../../CLAUDE.md`](../../CLAUDE.md)
+describes the package layering, and [`packages.md`](packages.md) describes it package by
+package.
 
 <!-- toc -->
 
@@ -90,28 +96,6 @@ These implement the system design in
       location's plate.
     - A test covers this by checking that a project holding a concept plans exactly the
       tasks it planned before.
-- **A `done` record is written outside the scheduler by three callers and no other.**
-    - `adoptSlot` logs a slot's own task `done` with the handed-in bytes as its output, so
-      the next run adopts those bytes instead of rendering over them. `fileGraphDraw` does
-      the same for the picture an interactive graph run (`gengraph.run`) ended on, with
-      `via: 'graph'`, through the same writes. `holdPortrait` does it for an older
-      portrait draft the gate approves, with `via: 'restore'`, when the portrait task is
-      logged with other bytes; without that record `repairCurrent` would hand the slot
-      back to the logged output on the next load. All three live in
-      `packages/artgen/src/adoptslot.ts` and share one filing routine, so there is one
-      place a picture becomes a slot's take without the scheduler.
-    - The identity is derived in the same call from the project as it stands, never from a
-      passed hash. That bound makes this safe, because the identity can only mark done the
-      one node whose output this image now is.
-    - Adoption is refused in three cases: a `portrait:` slot (the P3 gate owns it, and
-      restores through `holdPortrait` instead), mock-marked bytes (mock art never becomes
-      real output), and superseding a render that already holds the slot, which requires
-      an explicit `replace` rather than a silent overwrite.
-    - `promoteConcept` is one caller of adoption. Every other writer of a terminal record
-      in the system ran that record itself.
-    - Plans:
-      [`../plans/archive/INDEX.md#adopting-an-uploaded-asset`](../plans/archive/INDEX.md#adopting-an-uploaded-asset),
-      [`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images).
 - **The collector removes what nothing uses, and decides liveness per row.**
     - `collectProject` (`packages/gengraph/src/collect.ts`, over `planAssetCollection` in
       `@vn/artgen`) decides everything before anything is written; `applyCollection`
@@ -810,25 +794,6 @@ These implement the system design in
     - Surfaces display the cost rather than asking for confirmation: `story.setHeading` is
       deliberately not `confirm: true`, because a confirm command is never checked, and
       the check is what raises the warning.
-- **Line ids are allocated and stored, and a read never writes.**
-    - `Shot.coversLines` binds art to `${sceneId}:L<n>`, so an id derived from position
-      re-points every shot below an inserted line. That re-pointing spends money and
-      reports nothing.
-    - `splitScenes` therefore prefers a `[[line: L4]]` note (a Fountain note leading the
-      element it names) and allocates only for unmarked elements. Allocation starts from
-      the scene's `[[nextline: 12]]` mark, raised past every id in use. A stale allocator
-      is a bug, and it never justifies reusing an id.
-    - Duplicate and dangling marks are `error` diagnostics.
-    - Allocation happens in memory. Loading a project never allocates.
-    - The `story.assignLineIds` command persists the ids (undoable,
-      `apps/desktop/src/main/commands/story/story.ts` over `assignLineIds` in
-      `packages/model/src/lineids.ts`). It patches surgically, adding only whole marker
-      lines and re-parsing its own output, and it discards the patch unless the re-parse
-      reproduces the same scenes line for line. A note inserted above a `CHARACTER` cue
-      would turn that cue into action, and the lines below it would no longer parse as
-      dialogue.
-    - Plan:
-      [`../plans/archive/INDEX.md#allocated-line-ids`](../plans/archive/INDEX.md#allocated-line-ids).
 - Writing a scene to text and parsing it back returns the same scene:
   `parse(write(scene)) ≡ scene`.
     - `sceneToFountain` (`packages/model/src/serialize.ts`) writes from `Scene.lines`. It

@@ -6,11 +6,13 @@
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
+import { pins } from '@vn/contracts';
 import type { AnyTask } from '@vn/types';
 import { readJsonl } from '@vn/util';
 import { ProjectPaths } from '@vn/store';
 import { makeTask } from '../index.js';
 import { logRequeue, logRestored } from '../maintain.js';
+import { logDoneWriters } from '../write.js';
 
 const REPO = resolve(__dirname, '../../../..');
 
@@ -51,7 +53,48 @@ const done = (): AnyTask => ({
   interrupted: true,
 });
 
-describe('the task log writers', () => {
+/** The lintrix allow entries, by element. */
+async function allowLists(): Promise<Record<string, string[]>> {
+  const config = JSON.parse(await readFile(join(REPO, 'lintrix.config.json'), 'utf8')) as {
+    overrides: { rules?: Record<string, unknown> }[];
+  };
+  for (const o of config.overrides) {
+    const rule = o.rules?.['vn/element-types'];
+    if (Array.isArray(rule)) return (rule[1] as { allow: Record<string, string[]> }).allow;
+  }
+  throw new Error('lintrix.config.json has no vn/element-types options');
+}
+
+describe(pins(logDoneWriters), () => {
+  it('lets only the scheduler and adoption import the writer that can write `done`', async () => {
+    const allow = await allowLists();
+    const importers = Object.keys(allow).filter((element) =>
+      allow[element]!.includes('taskgraph-write'),
+    );
+    // `taskgraph` itself is listed only for its `contracts.ts`, which reads the declaration
+    expect(importers.sort()).toEqual(['artgen-adopt', 'scheduler', 'taskgraph']);
+    expect(Object.keys(allow).filter((e) => allow[e]!.includes('artgen-adopt'))).toEqual([
+      'artgen',
+    ]);
+
+    const files = [
+      ...(await sources(join(REPO, 'packages'))),
+      ...(await sources(join(REPO, 'apps'))),
+    ].map((f) => relative(REPO, f).replace(/\\/g, '/'));
+    const writers: string[] = [];
+    for (const file of files.filter((f) => !f.includes('/tests/'))) {
+      if (/from '@vn\/taskgraph\/write'/.test(await readFile(join(REPO, file), 'utf8'))) {
+        writers.push(file);
+      }
+    }
+    expect(
+      writers.filter(
+        (f) => !f.startsWith('packages/scheduler/src/') && f !== 'packages/artgen/src/adopt.ts',
+      ),
+    ).toEqual([]);
+    expect(writers).toContain('packages/artgen/src/adopt.ts');
+  });
+
   it('leaves no file but the two writer entries appending to tasksLog directly', async () => {
     const allowed = new Set([
       'packages/taskgraph/src/write.ts',

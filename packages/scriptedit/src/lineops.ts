@@ -22,6 +22,7 @@
  *   changed come back in `retyped` so a command can report which rendered shots drifted; spending
  *   money to fix one stays the author's decision.
  */
+import { contract } from '@vn/contracts';
 import { headingPrefixOf, parseHeading, slug } from '@vn/model';
 import type { Scene, SceneLine } from '@vn/types';
 
@@ -90,6 +91,34 @@ export function sceneIdOf(lineId: string): string {
 
 /** The local half — what a `[[line:]]` mark carries, and what survives a scene rename. */
 const localOf = (lineId: string): string => lineId.slice(lineId.lastIndexOf(':') + 1);
+
+export const scriptLineIdsAllocated = contract({
+  id      : 'script.lineIdsAllocated',
+  rule: "Line ids are allocated and stored, and a read never writes: a new line takes its id from its scene's allocator, never from its position, and loading a project allocates ids in memory only.",
+  prevents:
+    'Re-pointing every shot below an inserted line at a different line, which re-renders that art at cost and reports nothing.',
+  subjects: [
+    'module:packages/scriptedit/src/lineops.ts',
+    'function:packages/scriptedit/src/lineops.ts#nextIdOf',
+    'function:packages/model/src/scenes.ts#splitScenes',
+    'function:packages/model/src/lineids.ts#assignLineIds',
+    'command:story.assignLineIds',
+    'tool:edit_scene',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#allocated-line-ids'],
+  detail:
+    '`Shot.coversLines` binds art to `<sceneId>:L<n>`, so an id derived from position would ' +
+    're-point every shot below an inserted line. `splitScenes` prefers a `[[line: L4]]` note (a ' +
+    'Fountain note leading the element it names) and allocates only for unmarked elements, ' +
+    "starting from the scene's `[[nextline: 12]]` mark raised past every id in use; a stale " +
+    'allocator is a bug and never justifies reusing an id. Duplicate and dangling marks are ' +
+    '`error` diagnostics. Allocation happens in memory, and loading a project never allocates. ' +
+    'The `story.assignLineIds` command (undoable, over `assignLineIds` in ' +
+    '`packages/model/src/lineids.ts`) persists the ids: it adds only whole marker lines, ' +
+    're-parses its own output, and discards the patch unless the re-parse reproduces the same ' +
+    'scenes line for line, because a note inserted above a `CHARACTER` cue would turn that cue ' +
+    'into action and the lines below it would no longer parse as dialogue.',
+});
 
 /**
  * The scene's next line id: its `nextLineId`, never below one past the highest id in use.

@@ -3,9 +3,46 @@
  * included. It is a subpath entry rather than part of the barrel, and `vn/element-types` lets only
  * the scheduler and adoption (`@vn/artgen/adopt`) import it.
  */
+import { contract } from '@vn/contracts';
 import type { AnyTask } from '@vn/types';
 import { appendJsonl } from '@vn/util';
 import type { ProjectPaths } from '@vn/store';
+
+export const logDoneWriters = contract({
+  id      : 'log.doneWriters',
+  rule: 'Outside the scheduler, a `done` record is written only by adoption (`@vn/artgen/adopt`). The maintenance writers re-write a record the log already held, verbatim, or write `pending`.',
+  prevents:
+    "Marking a task done with bytes no run produced for its current inputs, so the next run skips it and the slot's picture no longer matches the project.",
+  subjects: [
+    'module:packages/taskgraph/src/write.ts',
+    'module:packages/taskgraph/src/maintain.ts',
+    'module:packages/artgen/src/adopt.ts',
+    'function:packages/artgen/src/adoptslot.ts#adoptSlot',
+    'function:packages/artgen/src/adoptslot.ts#fileGraphDraw',
+    'function:packages/artgen/src/adoptslot.ts#holdPortrait',
+    'function:packages/artgen/src/adoptslot.ts#repinAdoption',
+    'command:asset.adopt',
+    'file:state/tasks.jsonl',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#adopting-an-uploaded-asset',
+    'docs/plans/archive/INDEX.md#on-demand-concept-images',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-1-tooling-and-guards',
+  ],
+  detail:
+    '`vn/element-types` lets only the scheduler and `@vn/artgen/adopt` import ' +
+    '`@vn/taskgraph/write`, and a test refuses any other file passing `tasksLog` to ' +
+    '`appendJsonl`. `adopt` hashes the inputs it is handed, derived from the project as it ' +
+    'stands, so it can only mark done the node whose output these bytes now are. Its callers live ' +
+    'in `adoptslot.ts`: `adoptSlot` (an author hands bytes to a slot), `fileGraphDraw` (the ' +
+    'picture an interactive graph run ended on, `via: graph`), `holdPortrait` (an older portrait ' +
+    'draft the gate approves, `via: restore`, so `repairCurrent` does not hand the slot back to the ' +
+    'logged output) and `repinAdoption` (the desktop repin keeping its bytes). Adoption is refused ' +
+    'for a `portrait:` slot (the gate owns it), for mock-marked bytes, and for superseding a ' +
+    'render that already holds the slot without an explicit `replace`. `promoteConcept` is one ' +
+    'caller of adoption. In `@vn/taskgraph/maintain`, `restoreDone` and `logRestored` append a ' +
+    'copy of a record a tombstone replaced, and `logTombstone` and `logRequeue` write `pending`.',
+});
 
 /** Appends a task's current state as one JSONL record. */
 export async function logTask(paths: ProjectPaths, task: AnyTask): Promise<void> {

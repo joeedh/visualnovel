@@ -48,3 +48,13 @@ describe('query_contracts in the analyst', () => {
     expect(budget.spent).toBe(0);
   });
 });
+
+describe('query_contracts over the committed index', () => {
+  it('finds the line-id contract by the module it is declared in', async () => {
+    const res = await createContractTools()
+      .get('query_contracts')!
+      .run({ subject: 'module:packages/scriptedit/src/lineops.ts' }, ctx);
+    expect(res.ok).toBe(true);
+    expect(res.output).toMatch(/^script\.lineIdsAllocated: Line ids are allocated and stored/);
+  });
+});

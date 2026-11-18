@@ -11,10 +11,10 @@ describe('query_contracts', () => {
   });
 
   it('answers a lookup from the committed index, and refuses a query that names nothing', async () => {
-    const id = INDEX.contracts[0]?.id ?? 'script.none';
-    const found = await run('query_contracts', { id }, ctx);
+    expect(INDEX.contracts.length).toBeGreaterThan(0);
+    const found = await run('query_contracts', { subject: 'tool:edit_scene' }, ctx);
     expect(found.ok).toBe(true);
-    expect(found.output).toContain(id);
+    expect(found.output).toContain('script.lineIdsAllocated');
     const empty = await run('query_contracts', {}, ctx);
     expect(empty.ok).toBe(false);
   });

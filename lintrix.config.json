@@ -102,7 +102,7 @@
                 "contracts"
               ],
               "debug2d"           : ["contracts"],
-              "taskgraph"         : ["types", "util", "store", "contracts"],
+              "taskgraph"         : ["types", "util", "store", "contracts", "taskgraph-write"],
               "taskgraph-write"   : ["types", "util", "store", "contracts"],
               "taskgraph-maintain": ["types", "util", "store", "taskgraph", "contracts"],
               "providers"         : ["types", "util", "config", "contracts"],

@@ -16,10 +16,15 @@ import {
   createSourceTools,
 } from '../../packages/agentreport/src/index.js';
 import { createDesktopRegistry } from '../../apps/desktop/src/main/commands/index.js';
+import { CONTRACTS as scriptedit } from '../../packages/scriptedit/src/contracts.js';
+import { CONTRACTS as taskgraph } from '../../packages/taskgraph/src/contracts.js';
 import { buildIndex, type Declared, type Facts } from './build.js';
 
 /** Every `contracts.ts`, with the array it exports. */
-export const DECLARED: readonly Declared[] = [];
+export const DECLARED: readonly Declared[] = [
+  { file: 'packages/scriptedit/src/contracts.ts', contracts: scriptedit },
+  { file: 'packages/taskgraph/src/contracts.ts', contracts: taskgraph },
+];
 
 /** Every task kind, spelled out so the type checker fails here when `TaskKind` changes. */
 const TASK_KINDS: Record<TaskKind, true> = {
