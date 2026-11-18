@@ -24,6 +24,20 @@
       "declared": "packages/taskgraph/src/write.ts"
     },
     {
+      "id"      : "script.entityByTag",
+      "rule": "A character or set-location is a file whose front matter says `type: character` or `type: location`, found only in `characters/<id>/character.md`, `locations/<id>.md` and `wiki/**/*.md`, and it is read and written only in the file it was found in.",
+      "prevents": "Approving or editing a `characters/<id>/character.md` rebuilt from the id, which silently writes a file that is not the one loaded, and treating every stray Markdown file in the wiki as an input.",
+      "subjects": [
+        "module:packages/store/src/entities.ts",
+        "function:packages/store/src/entities.ts#discoverEntities",
+        "function:packages/store/src/entities.ts#entityFile",
+        "function:packages/store/src/entities.ts#entityIdentity"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#entity-discovery-by-meta-tag"],
+      "detail": "In the two conventional directories the tag is implied by the directory and may be stated redundantly; stating the other kind there is an `entity_tag_conflict` error rather than an override, because a document changes kind only when its file moves. In the wiki a file is an entity only if it carries the tag, and an untagged file belongs to the story bible and is skipped without a diagnostic. Discovery yields an `EntityDoc` (`id`, `file`, parsed `doc`, raw `text`), and `entityFile(docs, id)` is how `vngen approve`, the desktop session, testkit and `vnauthor`'s edit tools find their target. When two files claim one id, discovery warns `duplicate_entity` naming both and prefers the conventional file, then the lexicographically first path. Unparseable front matter is an `entity_file` diagnostic rather than a thrown load: an error under the conventional directories, a warning under the wiki. That the declared `id:` agrees with the file's name is `script.entityIdMatchesFile`, checked by the model build.",
+      "declared": "packages/store/src/entities.ts"
+    },
+    {
       "id"      : "script.lineIdsAllocated",
       "rule": "Line ids are allocated and stored, and a read never writes: a new line takes its id from its scene's allocator, never from its position, and loading a project allocates ids in memory only.",
       "prevents": "Re-pointing every shot below an inserted line at a different line, which re-renders that art at cost and reports nothing.",
@@ -38,23 +52,64 @@
       "see"     : ["docs/plans/archive/INDEX.md#allocated-line-ids"],
       "detail": "`Shot.coversLines` binds art to `<sceneId>:L<n>`, so an id derived from position would re-point every shot below an inserted line. `splitScenes` prefers a `[[line: L4]]` note (a Fountain note leading the element it names) and allocates only for unmarked elements, starting from the scene's `[[nextline: 12]]` mark raised past every id in use; a stale allocator is a bug and never justifies reusing an id. Duplicate and dangling marks are `error` diagnostics. Allocation happens in memory, and loading a project never allocates. The `story.assignLineIds` command (undoable, over `assignLineIds` in `packages/model/src/lineids.ts`) persists the ids: it adds only whole marker lines, re-parses its own output, and discards the patch unless the re-parse reproduces the same scenes line for line, because a note inserted above a `CHARACTER` cue would turn that cue into action and the lines below it would no longer parse as dialogue.",
       "declared": "packages/scriptedit/src/lineops.ts"
+    },
+    {
+      "id"      : "storage.manifestQueue",
+      "rule": "Each asset root writes its manifest through one queue: a write waits for the previous one, re-reads the file, and applies only the rows its own instance changed.",
+      "prevents": "Two parallel tasks renaming onto `manifest.json` at once, which fails on Windows (EPERM), and a stale instance writing back rows another instance removed.",
+      "subjects": [
+        "module:packages/store/src/assetstore.ts",
+        "function:packages/store/src/assetstore.ts#AssetRoot",
+        "file:vngen/build/manifest.json",
+        "file:assets/manifest.json"
+      ],
+      "see"     : ["docs/reference/asset-stores.md"],
+      "declared": "packages/store/src/assetstore.ts"
+    },
+    {
+      "id"      : "storage.twoRoots",
+      "rule": "Image bytes are stored once per root under their content hash: base art (portraits, model sheets, plates, concepts, references) in `assets/`, shot frames in `vngen/build/`. A write routes by `AssetKind` alone, and each root has its own manifest.",
+      "prevents": "A base subtree that is its own git repo losing its provenance to the project's manifest, or one picture stored twice under two names, so a reader cannot tell which root an asset lives in.",
+      "subjects": [
+        "module:packages/store/src/assetstore.ts",
+        "function:packages/store/src/assetstore.ts#AssetStore",
+        "function:packages/store/src/assetstore.ts#isBaseKind",
+        "file:assets/manifest.json",
+        "file:vngen/build/manifest.json"
+      ],
+      "see": [
+        "docs/reference/asset-stores.md",
+        "docs/plans/archive/INDEX.md#base-and-project-asset-stores"
+      ],
+      "detail": "Base art lives at `assets/objects/<hash>.<ext>`, frames at `vngen/build/assets/<hash>.<ext>`. Reads consult both roots, which is safe because a hash names the same bytes wherever it is. A hash both roots hold is a picture adopted across them, and the project row answers when it is a frame (`rowRoot`). A project written before the split still resolves, because its base art stays indexed in the project manifest. Writing a base kind while the base root is `unavailable` throws rather than writing there.",
+      "declared": "packages/store/src/assetstore.ts"
     }
   ],
   "bySubject": {
-    "command:asset.adopt"                                    : ["log.doneWriters"],
-    "command:story.assignLineIds"                            : ["script.lineIdsAllocated"],
-    "file:state/tasks.jsonl"                                 : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#adoptSlot"    : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#fileGraphDraw": ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#holdPortrait" : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#repinAdoption": ["log.doneWriters"],
-    "function:packages/model/src/lineids.ts#assignLineIds"   : ["script.lineIdsAllocated"],
-    "function:packages/model/src/scenes.ts#splitScenes"      : ["script.lineIdsAllocated"],
-    "function:packages/scriptedit/src/lineops.ts#nextIdOf"   : ["script.lineIdsAllocated"],
-    "module:packages/artgen/src/adopt.ts"                    : ["log.doneWriters"],
-    "module:packages/scriptedit/src/lineops.ts"              : ["script.lineIdsAllocated"],
-    "module:packages/taskgraph/src/maintain.ts"              : ["log.doneWriters"],
-    "module:packages/taskgraph/src/write.ts"                 : ["log.doneWriters"],
-    "tool:edit_scene"                                        : ["script.lineIdsAllocated"]
+    "command:asset.adopt"                                     : ["log.doneWriters"],
+    "command:story.assignLineIds"                             : ["script.lineIdsAllocated"],
+    "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
+    "file:state/tasks.jsonl"                                  : ["log.doneWriters"],
+    "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
+    "function:packages/artgen/src/adoptslot.ts#adoptSlot"     : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#fileGraphDraw" : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#holdPortrait"  : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#repinAdoption" : ["log.doneWriters"],
+    "function:packages/model/src/lineids.ts#assignLineIds"    : ["script.lineIdsAllocated"],
+    "function:packages/model/src/scenes.ts#splitScenes"       : ["script.lineIdsAllocated"],
+    "function:packages/scriptedit/src/lineops.ts#nextIdOf"    : ["script.lineIdsAllocated"],
+    "function:packages/store/src/assetstore.ts#AssetRoot"     : ["storage.manifestQueue"],
+    "function:packages/store/src/assetstore.ts#AssetStore"    : ["storage.twoRoots"],
+    "function:packages/store/src/assetstore.ts#isBaseKind"    : ["storage.twoRoots"],
+    "function:packages/store/src/entities.ts#discoverEntities": ["script.entityByTag"],
+    "function:packages/store/src/entities.ts#entityFile"      : ["script.entityByTag"],
+    "function:packages/store/src/entities.ts#entityIdentity"  : ["script.entityByTag"],
+    "module:packages/artgen/src/adopt.ts"                     : ["log.doneWriters"],
+    "module:packages/scriptedit/src/lineops.ts"               : ["script.lineIdsAllocated"],
+    "module:packages/store/src/assetstore.ts": ["storage.manifestQueue", "storage.twoRoots"],
+    "module:packages/store/src/entities.ts"                   : ["script.entityByTag"],
+    "module:packages/taskgraph/src/maintain.ts"               : ["log.doneWriters"],
+    "module:packages/taskgraph/src/write.ts"                  : ["log.doneWriters"],
+    "tool:edit_scene"                                         : ["script.lineIdsAllocated"]
   }
 }

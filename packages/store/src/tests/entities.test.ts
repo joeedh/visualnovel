@@ -1,6 +1,7 @@
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pins } from '@vn/contracts';
 import { parseFrontMatter } from '@vn/parse';
 import type { Diagnostic } from '@vn/types';
 import { writeFileAtomic } from '@vn/util';
@@ -13,6 +14,7 @@ import {
   ProjectPaths,
   workspacePath,
 } from '../index.js';
+import { scriptEntityByTag } from '../entities.js';
 
 async function tempRoot(): Promise<ProjectPaths> {
   return new ProjectPaths(await mkdtemp(join(tmpdir(), 'vn-entities-')));
@@ -26,7 +28,7 @@ function sheet(id: string, opts: { tag?: string; name?: string } = {}): string {
 
 const codes = (diagnostics: Diagnostic[]): string[] => diagnostics.map((d) => d.code);
 
-describe('entity discovery by tag', () => {
+describe(pins(scriptEntityByTag), () => {
   it('finds a tagged character in the wiki and reports the file it lives in', async () => {
     const paths = await tempRoot();
     await writeFileAtomic(

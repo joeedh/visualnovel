@@ -5,6 +5,8 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pins } from '@vn/contracts';
+import { storageManifestQueue } from '../assetstore.js';
 import { AssetRoot, AssetStore, ProjectPaths } from '../index.js';
 
 const bytes = (s: string) => new TextEncoder().encode(s);
@@ -48,18 +50,28 @@ describe('AssetRoot.remove and reinstate', () => {
     expect(reopened.get(a.hash)).toEqual(row);
   });
 
-  it('does not bring back rows another instance removed when it persists later', async () => {
-    const store = await AssetStore.open(paths);
-    const a = await store.write(bytes('A'), 'png', shot);
-    const b = await store.write(bytes('B'), 'png', shot);
+  describe(pins(storageManifestQueue), () => {
+    it('does not bring back rows another instance removed when it persists later', async () => {
+      const store = await AssetStore.open(paths);
+      const a = await store.write(bytes('A'), 'png', shot);
+      const b = await store.write(bytes('B'), 'png', shot);
 
-    const stale = await AssetStore.open(paths);
-    const collector = await AssetRoot.open(paths.assetsDir, paths.manifest);
-    await collector.remove([a.hash]);
-    // An unrelated write through the instance that still holds `a` in memory
-    await stale.accept(b.hash);
+      const stale = await AssetStore.open(paths);
+      const collector = await AssetRoot.open(paths.assetsDir, paths.manifest);
+      await collector.remove([a.hash]);
+      // An unrelated write through the instance that still holds `a` in memory
+      await stale.accept(b.hash);
 
-    expect(await rowsIn(paths.manifest)).toEqual([b.hash]);
-    expect((await AssetStore.open(paths)).get(b.hash)?.accepted).toBe(true);
+      expect(await rowsIn(paths.manifest)).toEqual([b.hash]);
+      expect((await AssetStore.open(paths)).get(b.hash)?.accepted).toBe(true);
+    });
+
+    it('keeps every row when many writes to one root run at once', async () => {
+      const store = await AssetStore.open(paths);
+      const refs = await Promise.all(
+        Array.from({ length: 12 }, (_, i) => store.write(bytes(`F${i}`), 'png', shot)),
+      );
+      expect((await rowsIn(paths.manifest)).sort()).toEqual(refs.map((r) => r.hash).sort());
+    });
   });
 });

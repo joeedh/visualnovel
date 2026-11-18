@@ -17,12 +17,14 @@ import {
 } from '../../packages/agentreport/src/index.js';
 import { createDesktopRegistry } from '../../apps/desktop/src/main/commands/index.js';
 import { CONTRACTS as scriptedit } from '../../packages/scriptedit/src/contracts.js';
+import { CONTRACTS as store } from '../../packages/store/src/contracts.js';
 import { CONTRACTS as taskgraph } from '../../packages/taskgraph/src/contracts.js';
 import { buildIndex, type Declared, type Facts } from './build.js';
 
 /** Every `contracts.ts`, with the array it exports. */
 export const DECLARED: readonly Declared[] = [
   { file: 'packages/scriptedit/src/contracts.ts', contracts: scriptedit },
+  { file: 'packages/store/src/contracts.ts', contracts: store },
   { file: 'packages/taskgraph/src/contracts.ts', contracts: taskgraph },
 ];
 

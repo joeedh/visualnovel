@@ -1,23 +1,45 @@
 /**
  * Entity discovery — which files on disk are character and set-location sheets.
  *
- * Discovery is by the `type:` tag in front-matter rather than by path, so a character filed under
- * `wiki/cast/ada.md` is still discovered. Only three surfaces are searched — `characters/`,
- * `locations/`, and a walk of `wiki/**` — because searching everywhere would make every stray
- * markdown file a potential entity and would put the cost of that walk on every load.
- *
  * Turning a doc into a `Character`/`Location` is `@vn/model`'s job, as it is for scene chunks.
  * This module decides which files qualify, and reports a diagnostic when two of them claim the
  * same identity.
  */
 import { promises as fs } from 'node:fs';
 import { basename, join } from 'node:path';
+import { contract } from '@vn/contracts';
 import { parseFrontMatter, type EntityDoc } from '@vn/parse';
 import { docKind, ENTITY_TAGS, taggedKind, type Diagnostic, type EntityTag } from '@vn/types';
 import { exists, pool, readText } from '@vn/util';
 import { READ_CONCURRENCY } from './docfile.js';
 import type { ProjectPaths } from './paths.js';
 import { listWikiFiles } from './tree.js';
+
+export const scriptEntityByTag = contract({
+  id      : 'script.entityByTag',
+  rule: 'A character or set-location is a file whose front matter says `type: character` or `type: location`, found only in `characters/<id>/character.md`, `locations/<id>.md` and `wiki/**/*.md`, and it is read and written only in the file it was found in.',
+  prevents:
+    'Approving or editing a `characters/<id>/character.md` rebuilt from the id, which silently writes a file that is not the one loaded, and treating every stray Markdown file in the wiki as an input.',
+  subjects: [
+    'module:packages/store/src/entities.ts',
+    'function:packages/store/src/entities.ts#discoverEntities',
+    'function:packages/store/src/entities.ts#entityFile',
+    'function:packages/store/src/entities.ts#entityIdentity',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#entity-discovery-by-meta-tag'],
+  detail:
+    'In the two conventional directories the tag is implied by the directory and may be stated ' +
+    'redundantly; stating the other kind there is an `entity_tag_conflict` error rather than an ' +
+    'override, because a document changes kind only when its file moves. In the wiki a file is an ' +
+    'entity only if it carries the tag, and an untagged file belongs to the story bible and is ' +
+    'skipped without a diagnostic. Discovery yields an `EntityDoc` (`id`, `file`, parsed `doc`, raw ' +
+    '`text`), and `entityFile(docs, id)` is how `vngen approve`, the desktop session, testkit and ' +
+    "`vnauthor`'s edit tools find their target. When two files claim one id, discovery warns " +
+    '`duplicate_entity` naming both and prefers the conventional file, then the lexicographically ' +
+    'first path. Unparseable front matter is an `entity_file` diagnostic rather than a thrown load: ' +
+    'an error under the conventional directories, a warning under the wiki. That the declared ' +
+    "`id:` agrees with the file's name is `script.entityIdMatchesFile`, checked by the model build.",
+});
 
 /** A discovered sheet, with the surface it came from, which breaks a duplicate tie. */
 export interface EntityCandidate {

@@ -68,17 +68,6 @@ package.
         - Plan:
           [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md),
           stage 2.
-- **Assets are content-addressed and stored in two separate roots.**
-    - Image bytes are stored once per root. Base art (portraits, model sheets, location
-      plates) is stored at `assets/objects/<hash>.<ext>`. Shot frames are stored at
-      `vngen/build/assets/<hash>.<ext>`.
-    - Each root's `manifest.json` indexes the provenance of the files under that root, so
-      a base subtree that is its own git repo describes its own provenance.
-    - Routing uses `AssetKind` and nothing else. Reads consult both; a hash both hold is a
-      picture adopted across them, and the project row answers when it is a frame.
-    - Manifest writes are serialized through a single-writer queue so parallel tasks don't
-      race on the atomic rename (this matters on Windows).
-    - Full statement: [`asset-stores.md`](asset-stores.md).
 - A base root that exists without a manifest is marked `unavailable`, and the run stops.
     - A checkout missing the base repo leaves the same state behind, and a check that only
       counts assets cannot distinguish it from "nothing generated yet".

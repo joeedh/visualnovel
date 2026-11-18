@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { contract } from '@vn/contracts';
 import type {
   Asset,
   AssetBinding,
@@ -76,6 +77,20 @@ const BASE_KINDS = new Set<AssetKind>([
 export function isBaseKind(kind: AssetKind): boolean {
   return BASE_KINDS.has(kind);
 }
+
+export const storageManifestQueue = contract({
+  id      : 'storage.manifestQueue',
+  rule: 'Each asset root writes its manifest through one queue: a write waits for the previous one, re-reads the file, and applies only the rows its own instance changed.',
+  prevents:
+    'Two parallel tasks renaming onto `manifest.json` at once, which fails on Windows (EPERM), and a stale instance writing back rows another instance removed.',
+  subjects: [
+    'module:packages/store/src/assetstore.ts',
+    'function:packages/store/src/assetstore.ts#AssetRoot',
+    'file:vngen/build/manifest.json',
+    'file:assets/manifest.json',
+  ],
+  see     : ['docs/reference/asset-stores.md'],
+});
 
 /**
  * One content-addressed root: bytes at `<dir>/<hash>.<ext>` plus the manifest indexing them.
@@ -272,13 +287,8 @@ export class AssetRoot {
   }
 
   /**
-   * Persist the rows `touched` names, serialized through a single-writer queue. The scheduler
-   * runs tasks in parallel, so without this two `write`s would atomically rename onto
-   * `manifest.json` at once — which fails on Windows (EPERM).
-   *
-   * Each write re-reads the file and applies only this instance's own changes to it, so an
-   * instance opened before another one removed rows does not bring them back by writing its whole
-   * index. Another process can still land a write between the read and the rename.
+   * Persists the rows `touched` names, queued behind this root's earlier writes. Another process
+   * can still land a write between the re-read and the rename.
    */
   private persist(touched: Iterable<string>): Promise<void> {
     for (const hash of touched) this.dirty.add(hash);
@@ -370,15 +380,38 @@ export function parseManifest(text: string): Asset[] {
   return parsed.assets.map((asset) => ({ ...asset, satisfies: asList(asset.satisfies) }));
 }
 
+export const storageTwoRoots = contract({
+  id      : 'storage.twoRoots',
+  rule: 'Image bytes are stored once per root under their content hash: base art (portraits, model sheets, plates, concepts, references) in `assets/`, shot frames in `vngen/build/`. A write routes by `AssetKind` alone, and each root has its own manifest.',
+  prevents:
+    "A base subtree that is its own git repo losing its provenance to the project's manifest, or one picture stored twice under two names, so a reader cannot tell which root an asset lives in.",
+  subjects: [
+    'module:packages/store/src/assetstore.ts',
+    'function:packages/store/src/assetstore.ts#AssetStore',
+    'function:packages/store/src/assetstore.ts#isBaseKind',
+    'file:assets/manifest.json',
+    'file:vngen/build/manifest.json',
+  ],
+  see: [
+    'docs/reference/asset-stores.md',
+    'docs/plans/archive/INDEX.md#base-and-project-asset-stores',
+  ],
+  detail:
+    'Base art lives at `assets/objects/<hash>.<ext>`, frames at `vngen/build/assets/<hash>.<ext>`. ' +
+    'Reads consult both roots, which is safe because a hash names the same bytes wherever it is. ' +
+    'A hash both roots hold is a picture adopted across them, and the project row answers when it ' +
+    'is a frame (`rowRoot`). A project written before the split still resolves, because its base ' +
+    'art stays indexed in the project manifest. Writing a base kind while the base root is ' +
+    '`unavailable` throws rather than writing there.',
+});
+
 /**
  * Content-addressed asset store + manifest (report §8), across two roots: base art (portraits,
  * model sheets, location refs) under `assets/`, and project art (shot frames) under
  * `vngen/build/`. Full write-up: `docs/reference/asset-stores.md`.
  *
- * Routing is by {@link AssetKind} and nothing else, so where an asset lives is never ambiguous.
- * Reads consult both roots, which is safe because hashes are content hashes and a hash present in
- * both roots names the same bytes. It is also why a project written before the split keeps
- * resolving: its base art is still indexed in the project manifest, and nothing on disk moves.
+ * Reads consult both roots, so a project written before the split, whose base art is still
+ * indexed in the project manifest, keeps resolving without anything on disk moving.
  */
 export class AssetStore implements IAssetStore {
   private constructor(

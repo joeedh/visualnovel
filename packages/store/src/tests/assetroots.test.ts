@@ -6,6 +6,8 @@
 import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pins } from '@vn/contracts';
+import { storageTwoRoots } from '../assetstore.js';
 import { AssetStore, ProjectPaths, baseAssetsOf } from '../index.js';
 
 async function tempRoot(): Promise<string> {
@@ -20,7 +22,7 @@ const meta = (kind: 'portrait' | 'shot_image', extra = {}) => ({
   ...extra,
 });
 
-describe('routing by kind', () => {
+describe(pins(storageTwoRoots), () => {
   it('writes base kinds to assets/ and shot images to vngen/build/', async () => {
     const paths = new ProjectPaths(await tempRoot());
     const store = await AssetStore.open(paths);
