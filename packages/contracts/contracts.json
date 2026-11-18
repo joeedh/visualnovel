@@ -49,6 +49,18 @@
       "declared": "packages/gengraph/src/migrate.ts"
     },
     {
+      "id"      : "identity.conceptNoNode",
+      "rule": "A concept image never gets a node in the task graph: `generateConcept` records a hash of the request (prompt, params, refs) as the asset's `sourceTask`, and nothing a run plans consumes the asset, so a project holding a concept plans exactly the tasks it planned before.",
+      "prevents": "A concept bound to `{locationId: 'cafe'}` being taken for that location's plate, or a sketch the author asked for changing what the next run plans and pays for.",
+      "subjects": [
+        "module:packages/artgen/src/concept.ts",
+        "function:packages/artgen/src/concept.ts#generateConcept",
+        "command:art.generate"
+      ],
+      "detail": "The asset is bound to what it sketches so the document tree and the backlink panel can find it. Every binding lookup outside the document tree filters by `kind` first, and the planner resolves a shot's plate by task hash rather than by manifest binding.",
+      "declared": "packages/artgen/src/concept.ts"
+    },
+    {
       "id"      : "identity.headingRekeysShots",
       "rule": "A shot's task inputs carry its location twice: `buildShotPrompt` names the location, and the plate's asset hash leads `refs`. So rewriting a scene's heading re-keys every shot in the scene, unlike retyping a line, which re-keys nothing.",
       "prevents": "Treating a heading edit as free, like other prose edits, when the next run re-renders every shot in the scene; the price has to be shown before the edit runs.",
@@ -128,6 +140,35 @@
       ],
       "detail": "`artNotes` is an optional free-text field at five rungs: `Character`, `Location`, `Shot`, each `Outfit` and each `LocationVariant`. Setting a note costs money by design, like an outfit and unlike a scene edit: the note is in the prompt, so it re-keys exactly the tasks its rung reaches. `buildShotPrompt` leaves out the entity notes because they already reach the frame through the plates and sheets it references. The test worth having is the byte-identical output of a project with no notes, not the feature. Where the notes, seeds and image models are written is `prompts.artRungsShared`, in `@vn/artgen`.",
       "declared": "packages/stills/src/prompts.ts"
+    },
+    {
+      "id"      : "prompts.artRungsShared",
+      "rule": "Art notes, image seeds and image models are authored at the same five rungs, addressed as `character:<id>[/<outfit>]`, `location:<id>[/<variant>]` or `shot:<sceneId>/<shotId>`, and every host writes them through one parser and one write path, with the same refusals.",
+      "prevents": "Two hosts drifting into two rung vocabularies, so the agent and the desktop refuse or write the same authorial act differently, or create the outfit, variant or shot a typo named.",
+      "subjects": [
+        "module:packages/artgen/src/setnotes.ts",
+        "function:packages/artgen/src/artnotes.ts#parseArtTarget",
+        "function:packages/artgen/src/artnotes.ts#rungsFor",
+        "function:packages/artgen/src/setnotes.ts#setArtNotes",
+        "function:packages/artgen/src/setnotes.ts#setArtSeed",
+        "function:packages/artgen/src/setnotes.ts#setArtModel",
+        "function:packages/stills/src/prompts.ts#seedFor",
+        "function:packages/stills/src/prompts.ts#modelFor",
+        "module:apps/desktop/renderer/pathux/doctree/sheetform.ts",
+        "command:art.setNotes",
+        "command:art.setSeed",
+        "command:art.setModel",
+        "tool:list_assets",
+        "tool:art_notes",
+        "tool:set_art_notes",
+        "tool:regenerate_asset"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor",
+        "docs/plans/archive/INDEX.md#agent-art-revision"
+      ],
+      "detail": "An entity rung is written into the sheet the model was built from, through `@vn/model`'s `apply*Edit`; a shot rung into `work/shots/<sceneId>.json`. An empty value clears the rung back to inheriting. The narrowest seed wins (`seedFor`) and is in the task hash; the narrowest image model wins (`modelFor`) and is outside it, and a slot a generation graph binds takes the graph node's own model and seed instead. The Wiki pane's sheet form is a second writer of the same keys (`art_notes`, `seed`, `image_model`) through `@vn/parse`'s front-matter codec, because the `art.*` commands re-serialise the whole front matter and lose the author's comments; the model reads the keys back identically, and a blank box removes the key. `regenerate_asset` is always confirm-gated and refuses where the host has no pipeline (vnauthor). The agent reads a rendered picture back through `view_image` (`describeAsset`, a plain vision question rather than the P7 reviewer).",
+      "declared": "packages/artgen/src/setnotes.ts"
     },
     {
       "id"      : "prompts.decomposeByLineId",
@@ -372,6 +413,10 @@
     }
   ],
   "bySubject": {
+    "command:art.generate"                                           : ["identity.conceptNoNode"],
+    "command:art.setModel"                                           : ["prompts.artRungsShared"],
+    "command:art.setNotes"                                           : ["prompts.artRungsShared"],
+    "command:art.setSeed"                                            : ["prompts.artRungsShared"],
     "command:asset.adopt"                                            : ["log.doneWriters"],
     "command:gengraph.run"                                           : ["identity.stagingSheet"],
     "command:gengraph.setProp": ["graphs.groupNodeKey", "graphs.instanceEditsOverride"],
@@ -390,6 +435,12 @@
     "function:packages/artgen/src/adoptslot.ts#fileGraphDraw"        : ["log.doneWriters"],
     "function:packages/artgen/src/adoptslot.ts#holdPortrait"         : ["log.doneWriters"],
     "function:packages/artgen/src/adoptslot.ts#repinAdoption"        : ["log.doneWriters"],
+    "function:packages/artgen/src/artnotes.ts#parseArtTarget"        : ["prompts.artRungsShared"],
+    "function:packages/artgen/src/artnotes.ts#rungsFor"              : ["prompts.artRungsShared"],
+    "function:packages/artgen/src/concept.ts#generateConcept"        : ["identity.conceptNoNode"],
+    "function:packages/artgen/src/setnotes.ts#setArtModel"           : ["prompts.artRungsShared"],
+    "function:packages/artgen/src/setnotes.ts#setArtNotes"           : ["prompts.artRungsShared"],
+    "function:packages/artgen/src/setnotes.ts#setArtSeed"            : ["prompts.artRungsShared"],
     "function:packages/gengraph/src/edit.ts#decideGenEdit": ["graphs.instanceEditsOverride"],
     "function:packages/gengraph/src/execute.ts#sharedAncestors"      : ["identity.stagingSheet"],
     "function:packages/gengraph/src/migrate.ts#migrateGraphJSON": ["graphs.socketRenameMigrates"],
@@ -438,6 +489,8 @@
       "identity.headingRekeysShots",
       "prompts.artNotesAppended"
     ],
+    "function:packages/stills/src/prompts.ts#modelFor"               : ["prompts.artRungsShared"],
+    "function:packages/stills/src/prompts.ts#seedFor"                : ["prompts.artRungsShared"],
     "function:packages/stills/src/prompts.ts#shotInputs": [
       "identity.headingRekeysShots",
       "identity.stagingSheet"
@@ -473,8 +526,11 @@
     "function:packages/store/src/scenes.ts#readSceneChunks"          : ["script.sceneOneFile"],
     "function:packages/store/src/worktree.ts#findScreenplay": ["script.sceneSourcesOneLoad"],
     "function:packages/store/src/worktree.ts#loadInputs": ["script.sceneSourcesOneLoad"],
+    "module:apps/desktop/renderer/pathux/doctree/sheetform.ts"       : ["prompts.artRungsShared"],
     "module:apps/desktop/src/main/session/prompt.ts"                 : ["prompts.refsAcyclic"],
     "module:packages/artgen/src/adopt.ts"                            : ["log.doneWriters"],
+    "module:packages/artgen/src/concept.ts"                          : ["identity.conceptNoNode"],
+    "module:packages/artgen/src/setnotes.ts"                         : ["prompts.artRungsShared"],
     "module:packages/gengraph/src/edit.ts": ["graphs.instanceEditsOverride"],
     "module:packages/gengraph/src/migrate.ts": ["graphs.socketRenameMigrates"],
     "module:packages/gengraph/src/nodekey.ts"                        : ["graphs.groupNodeKey"],
@@ -501,8 +557,12 @@
       "identity.stagingSheet",
       "prompts.reviewerSpec"
     ],
+    "tool:art_notes"                                                 : ["prompts.artRungsShared"],
     "tool:edit_scene"                                                : ["script.lineIdsAllocated"],
+    "tool:list_assets"                                               : ["prompts.artRungsShared"],
     "tool:propose_storyboard": ["prompts.decomposeByLineId"],
+    "tool:regenerate_asset"                                          : ["prompts.artRungsShared"],
+    "tool:set_art_notes"                                             : ["prompts.artRungsShared"],
     "tool:write_storyboard"                                          : ["prompts.decomposeByLineId"]
   }
 }

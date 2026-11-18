@@ -75,16 +75,6 @@ package.
       references a base plate.
     - The run reports a single sentence that names the root, rather than regenerating an
       approved library at cost.
-- A concept never gets a node in the graph, because `generateConcept` hashes the request
-  rather than a planned task.
-    - `generateConcept` writes an asset whose `sourceTask` is a hash of the request
-      (prompt, params, refs) rather than a planned task.
-    - Nothing consumes it. Every binding lookup outside the document tree filters by kind
-      first, and the planner resolves a shot's plate by task hash rather than by manifest
-      binding, so a concept bound to `{locationId: 'cafe'}` can never be mistaken for that
-      location's plate.
-    - A test covers this by checking that a project holding a concept plans exactly the
-      tasks it planned before.
 - **The collector removes what nothing uses, and decides liveness per row.**
     - `collectProject` (`packages/gengraph/src/collect.ts`, over `planAssetCollection` in
       `@vn/artgen`) decides everything before anything is written; `applyCollection`
@@ -428,44 +418,6 @@ package.
       verdict. The boxes stamped are the matching reviewer's.
     - Dry runs read the file but never write it, so a real run never reuses a mock
       decomposition.
-- **Art direction is authored and appended, and the re-render covers exactly what that
-  direction reaches.**
-    - `artNotes` is an optional free-text field at five rungs — `Character`, `Location`,
-      `Shot`, each `Outfit`, each `LocationVariant`. The builders append it to what they
-      derived, entity note first and the specific rung second, so the style preamble, the
-      reference scaffolding and the closing "single illustrated frame" clause all survive.
-    - The same five rungs carry an optional `seed` (`seedFor`, narrowest wins, in the
-      hash) and an optional `imageModel` (`modelFor`, narrowest wins, outside the hash;
-      front-matter key `image_model`). `art.setSeed` and `art.setModel` write them the way
-      `art.setNotes` writes a note, and an empty value clears the rung back to inheriting.
-      A slot a generation graph binds takes the graph node's own model and seed, so the
-      override does not reach it.
-    - The Wiki pane's sheet form is a second writer of the same keys, at every rung a
-      sheet holds (`art_notes`, `seed`, `image_model` at the root and inside an outfit or
-      a variant). It writes through `@vn/parse`'s front-matter codec rather than the
-      `art.*` commands because those re-serialise the whole front matter and lose the
-      author's comments, and the model reads the keys back identically from either writer;
-      a blank box removes the key, so the byte-identical test below holds for a sheet
-      edited through the form.
-    - Setting a note costs money by design, like the outfit and unlike every scene edit.
-      The note is in the prompt, so setting one re-keys precisely the tasks that rung
-      reaches, and the next run re-renders them.
-    - `buildShotPrompt` reads only `shot.artNotes`. An entity's note already appears in
-      the plates and sheets that the shot references, so restating it here would repeat
-      the same note twice.
-    - Every builder ends in `.filter(Boolean).join(' ')`, so a project that authors no
-      notes produces byte-identical prompts and re-keys nothing. The test worth having
-      checks that byte-identical output, not the feature.
-    - The agent reaches the same five rungs through the same refusals. `list_assets`,
-      `art_notes` and `set_art_notes` share `@vn/artgen`'s rung parser and write path with
-      the desktop's asset editor, and `describeAsset` (a plain vision question rather than
-      the P7 `VisionReviewer`) lets the agent read a rendered asset back before proposing
-      the next note. `regenerate_asset` is an injected `PipelineControl` capability that
-      is always confirm-gated, and it refuses outright where the capability is absent (a
-      bare REPL).
-    - Plans:
-      [`../plans/archive/INDEX.md#asset-names-and-the-asset-editor`](../plans/archive/INDEX.md#asset-names-and-the-asset-editor),
-      [`../plans/archive/INDEX.md#agent-art-revision`](../plans/archive/INDEX.md#agent-art-revision).
 - **A prompt is a list of clauses.** An override edits that list rather than the prompt
   string.
     - Every builder in `@vn/stills` assembles a `PromptChunk[]`. Each clause is keyed,

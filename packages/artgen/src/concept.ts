@@ -2,6 +2,7 @@ import type { AssetBinding, AssetRef, ImageProvider, ProjectModel } from '@vn/ty
 import type { ProjectConfig } from '@vn/config';
 import type { AssetStore } from '@vn/store';
 import { hashParts, VnError } from '@vn/util';
+import { contract } from '@vn/contracts';
 import {
   imageParams,
   approvedPortraitOf,
@@ -74,14 +75,23 @@ function subjectRefs(deps: ArtGenDeps, subject?: ConceptSubject): AssetRef[] {
     .map((a) => ({ hash: a.hash, ext: a.ext }));
 }
 
-/**
- * Generate one concept image and store it.
- *
- * This path deliberately bypasses the planner: a sentence goes in and an asset comes out, with no
- * task node and no place in any plan. The result is bound to what it sketches so the document tree
- * and the backlink panel can find it, and consumed by nothing — every other lookup in the codebase
- * filters by `kind` first, and the planner resolves a plate by task hash rather than by binding.
- */
+export const identityConceptNoNode = contract({
+  id      : 'identity.conceptNoNode',
+  rule: "A concept image never gets a node in the task graph: `generateConcept` records a hash of the request (prompt, params, refs) as the asset's `sourceTask`, and nothing a run plans consumes the asset, so a project holding a concept plans exactly the tasks it planned before.",
+  prevents:
+    "A concept bound to `{locationId: 'cafe'}` being taken for that location's plate, or a sketch the author asked for changing what the next run plans and pays for.",
+  subjects: [
+    'module:packages/artgen/src/concept.ts',
+    'function:packages/artgen/src/concept.ts#generateConcept',
+    'command:art.generate',
+  ],
+  detail:
+    'The asset is bound to what it sketches so the document tree and the backlink panel can find ' +
+    'it. Every binding lookup outside the document tree filters by `kind` first, and the planner ' +
+    "resolves a shot's plate by task hash rather than by manifest binding.",
+});
+
+/** Generates one concept image from a sentence and stores it in the base root. */
 export async function generateConcept(
   deps: ArtGenDeps,
   req: ConceptRequest,

@@ -70,12 +70,14 @@ on the rich editor, with every decision and what shipped against each, is
 - **Art direction is written by the form, at both rungs.** The root `art_notes`, `seed`
   and `image_model` controls and the ones in an outfit's or a variant's row all go through
   the codec, because the `art.*` commands re-serialise the whole front matter and lose the
-  author's comments. The model reads the keys back identically from either writer
-  ([`pipeline-contracts.md`](pipeline-contracts.md)). A blank box removes the key, so a
-  sheet that authors no notes keeps producing byte-identical prompts. `image_model` is the
-  same searchable menu every other surface draws for a model (`doctree/modelcontrol.ts`
-  over `widgets/modelmenu.ts`), with an inherit row naming the project's model; picking
-  inherit omits the key, which is why the row's button then reads Keep.
+  author's comments. The model reads the keys back identically from either writer (the
+  `prompts.artRungsShared` contract in
+  [`setnotes.ts`](../../packages/artgen/src/setnotes.ts)). A blank box removes the key, so
+  a sheet that authors no notes keeps producing byte-identical prompts. `image_model` is
+  the same searchable menu every other surface draws for a model
+  (`doctree/modelcontrol.ts` over `widgets/modelmenu.ts`), with an inherit row naming the
+  project's model; picking inherit omits the key, which is why the row's button then reads
+  Keep.
 - **Undo reaches the form's draft before the document.** An Omit, a swatch, a pick in the
   model menu and typing into a box are answers on the draft, not edits to the document, so
   they are not in the session's history. path.ux's editor offers the undo chord to the

@@ -3,8 +3,10 @@
  * nothing downstream sees it. A concept has no task node and no place in any plan, so a project
  * that holds one must plan exactly what it planned before.
  */
+import { pins } from '@vn/contracts';
 import { makeProject, SCRIPTS } from '@vn/testkit';
 import type { AssetRef, ImageProvider, ImageResult, ProjectModel } from '@vn/types';
+import { identityConceptNoNode } from '../concept.js';
 import { conceptTitle, generateConcept, redrawConcept, redrawOf } from '../index.js';
 import { conceptPrompt, matchSubject } from '@vn/stills';
 
@@ -137,31 +139,33 @@ describe('generateConcept', () => {
     }
   });
 
-  it('changes nothing the next run plans', async () => {
-    const hashes = (g: { all(): readonly { hash: string }[] }): string[] =>
-      g
-        .all()
-        .map((t) => t.hash)
-        .sort();
-    const p = await makeProject({ script: SCRIPTS.branching });
-    try {
-      await p.run();
-      const { config, model: built, store, graph } = await p.reload();
-      const before = hashes(graph);
+  describe(pins(identityConceptNoNode), () => {
+    it('changes nothing the next run plans', async () => {
+      const hashes = (g: { all(): readonly { hash: string }[] }): string[] =>
+        g
+          .all()
+          .map((t) => t.hash)
+          .sort();
+      const p = await makeProject({ script: SCRIPTS.branching });
+      try {
+        await p.run();
+        const { config, model: built, store, graph } = await p.reload();
+        const before = hashes(graph);
 
-      await generateConcept(
-        { config, model: built, store, image: fakeImage().image },
-        { sentence: 'an aerial shot of the rooftop at dawn' },
-      );
+        await generateConcept(
+          { config, model: built, store, image: fakeImage().image },
+          { sentence: 'an aerial shot of the rooftop at dawn' },
+        );
 
-      const after = await p.run();
-      expect(after.ran).toHaveLength(0);
-      expect(hashes((await p.reload()).graph)).toEqual(before);
-    } finally {
-      await p.cleanup();
-    }
-    // Two full scheduler passes over a real project on disk need more than jest's default timeout
-  }, 30_000);
+        const after = await p.run();
+        expect(after.ran).toHaveLength(0);
+        expect(hashes((await p.reload()).graph)).toEqual(before);
+      } finally {
+        await p.cleanup();
+      }
+      // Two full scheduler passes over a real project on disk need more than jest's default timeout
+    }, 30_000);
+  });
 });
 
 describe('redrawConcept', () => {

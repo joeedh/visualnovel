@@ -3,6 +3,7 @@
  * matters is which bytes land where. An entity rung goes through `apply*Edit` into the sheet and a
  * shot rung into `work/shots/<sceneId>.json`, and neither may lose what was sitting beside it.
  */
+import { pins } from '@vn/contracts';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { readShots, writeShots } from '@vn/store';
 import type { Shot } from '@vn/types';
@@ -10,6 +11,7 @@ import {
   artModelOf,
   artNotesOf,
   artSeedOf,
+  promptsArtRungsShared,
   setArtModel,
   setArtNotes,
   setArtSeed,
@@ -42,7 +44,7 @@ async function fixture(): Promise<TestProject> {
   return p;
 }
 
-describe('artNotesOf', () => {
+describe(pins(promptsArtRungsShared), () => {
   it('refuses a target that names no rung, and one whose rung is not there', async () => {
     const p = await fixture();
     try {

@@ -2,13 +2,9 @@
  * Art rungs: which rung an authored field is written at, and which rungs reach a given asset.
  * Three fields ride the same five rungs — art notes, the image seed, and the image model.
  *
- * A note is authored input, the one thing an author can say about how generated art should look,
- * and it goes into the prompt, so setting one re-keys the tasks it reaches. There are five rungs,
- * named with the document tree's `kind:key` vocabulary extended by one `/sub` segment:
- * `character:aiko`, `character:aiko/gala`, `location:cafe`, `location:cafe/night`, `shot:greet/s2`.
- * Both hosts use that vocabulary — the desktop's `art.setNotes` and `vnauthor`'s `set_art_notes` —
- * which is why it lives here rather than in either host. Pure: every fact comes from the caller;
- * {@link setArtNotes} is the half that touches disk.
+ * The rungs are named with the document tree's `kind:key` vocabulary extended by one `/sub`
+ * segment. Pure: every fact comes from the caller; {@link setArtNotes} is the half that touches
+ * disk.
  */
 import type { Asset, ProjectModel, Shot } from '@vn/types';
 

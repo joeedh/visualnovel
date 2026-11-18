@@ -1,10 +1,7 @@
 /**
  * Writing an art rung's notes or seed: the refusals, and the two files either write can land in.
  *
- * The rung vocabulary is defined in `artnotes.ts`; this module is the half that touches disk. An
- * entity rung goes through `@vn/model`'s `apply*Edit` into the sheet the model was built from, the
- * same path `edit_character` takes, so one authorial act has one answer. A shot rung goes into
- * `work/shots/<sceneId>.json`, one of the handful of writers that file has.
+ * The rung vocabulary is defined in `artnotes.ts`; this module is the half that touches disk.
  *
  * The work is split in two layers: {@link artNotesOf} decides, and {@link setArtNotes} re-asks
  * before writing rather than trusting that a check ran.
@@ -26,6 +23,48 @@ import { entityDoc, loadInputs, readShots, writeShots, type ProjectPaths } from 
 import { VnError, writeFileAtomic } from '@vn/util';
 import { parseArtTarget, rungAt, type ArtRung, type ArtTarget } from './artnotes.js';
 import type { Decided } from '@vn/stills';
+import { contract } from '@vn/contracts';
+
+export const promptsArtRungsShared = contract({
+  id      : 'prompts.artRungsShared',
+  rule: 'Art notes, image seeds and image models are authored at the same five rungs, addressed as `character:<id>[/<outfit>]`, `location:<id>[/<variant>]` or `shot:<sceneId>/<shotId>`, and every host writes them through one parser and one write path, with the same refusals.',
+  prevents:
+    'Two hosts drifting into two rung vocabularies, so the agent and the desktop refuse or write the same authorial act differently, or create the outfit, variant or shot a typo named.',
+  subjects: [
+    'module:packages/artgen/src/setnotes.ts',
+    'function:packages/artgen/src/artnotes.ts#parseArtTarget',
+    'function:packages/artgen/src/artnotes.ts#rungsFor',
+    'function:packages/artgen/src/setnotes.ts#setArtNotes',
+    'function:packages/artgen/src/setnotes.ts#setArtSeed',
+    'function:packages/artgen/src/setnotes.ts#setArtModel',
+    'function:packages/stills/src/prompts.ts#seedFor',
+    'function:packages/stills/src/prompts.ts#modelFor',
+    'module:apps/desktop/renderer/pathux/doctree/sheetform.ts',
+    'command:art.setNotes',
+    'command:art.setSeed',
+    'command:art.setModel',
+    'tool:list_assets',
+    'tool:art_notes',
+    'tool:set_art_notes',
+    'tool:regenerate_asset',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor',
+    'docs/plans/archive/INDEX.md#agent-art-revision',
+  ],
+  detail:
+    "An entity rung is written into the sheet the model was built from, through `@vn/model`'s " +
+    '`apply*Edit`; a shot rung into `work/shots/<sceneId>.json`. An empty value clears the rung ' +
+    'back to inheriting. The narrowest seed wins (`seedFor`) and is in the task hash; the narrowest ' +
+    'image model wins (`modelFor`) and is outside it, and a slot a generation graph binds takes the ' +
+    "graph node's own model and seed instead. The Wiki pane's sheet form is a second writer of the " +
+    "same keys (`art_notes`, `seed`, `image_model`) through `@vn/parse`'s front-matter codec, " +
+    "because the `art.*` commands re-serialise the whole front matter and lose the author's " +
+    'comments; the model reads the keys back identically, and a blank box removes the key. ' +
+    '`regenerate_asset` is always confirm-gated and refuses where the host has no pipeline ' +
+    '(vnauthor). The agent reads a rendered picture back through `view_image` (`describeAsset`, a ' +
+    'plain vision question rather than the P7 reviewer).',
+});
 
 export interface SetNotesDeps {
   /**

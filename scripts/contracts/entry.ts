@@ -16,6 +16,7 @@ import {
   createSourceTools,
 } from '../../packages/agentreport/src/index.js';
 import { createDesktopRegistry } from '../../apps/desktop/src/main/commands/index.js';
+import { CONTRACTS as artgen } from '../../packages/artgen/src/contracts.js';
 import { CONTRACTS as gengraph } from '../../packages/gengraph/src/contracts.js';
 import { CONTRACTS as model } from '../../packages/model/src/contracts.js';
 import { CONTRACTS as scriptedit } from '../../packages/scriptedit/src/contracts.js';
@@ -26,6 +27,7 @@ import { buildIndex, type Declared, type Facts } from './build.js';
 
 /** Every `contracts.ts`, with the array it exports. */
 export const DECLARED: readonly Declared[] = [
+  { file: 'packages/artgen/src/contracts.ts', contracts: artgen },
   { file: 'packages/gengraph/src/contracts.ts', contracts: gengraph },
   { file: 'packages/model/src/contracts.ts', contracts: model },
   { file: 'packages/scriptedit/src/contracts.ts', contracts: scriptedit },
