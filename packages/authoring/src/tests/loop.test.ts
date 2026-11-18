@@ -1194,6 +1194,7 @@ describe('the tool catalog', () => {
       ]);
       // Everything else defers, because the catalog is most of the prefix
       expect(backend.seen[0]!.tools.length).toBeGreaterThan(loaded.length);
+      expect(backend.seen[0]!.tools.find((t) => t.name === 'query_contracts')?.defer).toBe(true);
     } finally {
       await cleanup();
     }

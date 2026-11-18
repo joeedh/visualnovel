@@ -290,6 +290,7 @@ export async function analysisParts(req: AnalysisRequest): Promise<AnalysisParts
       evidence,
       backend: analystBackend(req.modelId, req.config, req.keys, req.effort),
       redactor,
+      budget,
       ...(req.wanted?.trim() ? { wanted: req.wanted } : {}),
       ...(req.reportedTools?.length ? { reportedTools: req.reportedTools } : {}),
       ...(req.source ? { source: await sourceAccess(req, budget) } : {}),

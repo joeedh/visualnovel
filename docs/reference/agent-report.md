@@ -8,6 +8,7 @@
 - [Redaction is a boundary](#redaction-is-a-boundary)
 - [The analyst](#the-analyst)
     - [What source it may read](#what-source-it-may-read)
+    - [The contract tool](#the-contract-tool)
     - [The request-capture tools](#the-request-capture-tools)
 - [The setup, and the conversation](#the-setup-and-the-conversation)
 - [Review, then the issue](#review-then-the-issue)
@@ -59,17 +60,18 @@ gains the same command. It may import the input-side packages plus `@vn/commands
 (`commands.jsonl` holds the acting record a transcript lacks) and `@vn/providers`. The
 boundaries rule forbids `@vn/pipeline` and `@vn/scheduler`.
 
-| Module            | What it holds                                                                                         |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `transcript.ts`   | `assemble` / `toMarkdown` — evidence from a thread plus the command log                               |
-| `redact.ts`       | `buildRedactor` / `sourcesFrom` — the substitution boundary and `leaks()`                             |
-| `report.ts`       | `analysisSchema` — the report shape both analysis paths produce                                       |
-| `analyze.ts`      | `createAnalyst`, the two analysis paths, and redaction on both sides of the model                     |
-| `render.ts`       | the one markdown renderer both paths share                                                            |
-| `sourcemap.ts`    | `READABLE` / `DENY` — the declared manifest of what source may be read, and what the installer copies |
-| `sourcetools.ts`  | `grep`, `read_file`, `fetch_api_docs`, and the shared `Budget`                                        |
-| `requesttools.ts` | `list_requests` / `read_request` over a frozen capture snapshot                                       |
-| `issue.ts`        | `ISSUE_REPO`, `issueUrl`, `PASTE_BODY` — the GitHub issue URL and its check                           |
+| Module             | What it holds                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
+| `transcript.ts`    | `assemble` / `toMarkdown` — evidence from a thread plus the command log                               |
+| `redact.ts`        | `buildRedactor` / `sourcesFrom` — the substitution boundary and `leaks()`                             |
+| `report.ts`        | `analysisSchema` — the report shape both analysis paths produce                                       |
+| `analyze.ts`       | `createAnalyst`, the two analysis paths, and redaction on both sides of the model                     |
+| `render.ts`        | the one markdown renderer both paths share                                                            |
+| `sourcemap.ts`     | `READABLE` / `DENY` — the declared manifest of what source may be read, and what the installer copies |
+| `sourcetools.ts`   | `grep`, `read_file`, `fetch_api_docs`, and the shared `Budget`                                        |
+| `requesttools.ts`  | `list_requests` / `read_request` over a frozen capture snapshot                                       |
+| `contracttools.ts` | `query_contracts` over the committed contract index (`@vn/contracts/query`)                           |
+| `issue.ts`         | `ISSUE_REPO`, `issueUrl`, `PASTE_BODY` — the GitHub issue URL and its check                           |
 
 All but `analyze.ts` are pure functions and node-tested in `src/tests/`.
 
@@ -201,6 +203,14 @@ private manuscript must not hold an exfiltration channel.
 Every tool in a run shares one `Budget` (steps, input tokens, and a byte budget across all
 reads). Truncation is reported to the model, because a cap silently read as "no matches"
 produces a confidently wrong report.
+
+### The contract tool
+
+Whenever the analyst runs a tool loop, it also gets `query_contracts`, which looks up the
+pipeline contracts in the committed index by subject, id or text. Contracts describe the
+code rather than the author's data, so no grant gates the tool, and what it returns is
+charged to the run's byte budget like any read. With neither grant, `analyze` still makes
+its one direct call with no tools.
 
 ### The request-capture tools
 

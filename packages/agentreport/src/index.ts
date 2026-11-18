@@ -1,4 +1,5 @@
 export * from './analyze.js';
+export * from './contracttools.js';
 export * from './issue.js';
 export * from './redact.js';
 export * from './render.js';

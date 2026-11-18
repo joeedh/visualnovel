@@ -392,6 +392,7 @@ describe('on a backend that supports conversations', () => {
     const names = backend.catalogs[0]!.map((t) => t.name);
     expect(names).toContain('submit_report');
     expect(names).toContain('grep');
+    expect(names).toContain('query_contracts');
     expect(backend.catalogs[0]!.filter((t) => t.defer)).toEqual([]);
   });
 

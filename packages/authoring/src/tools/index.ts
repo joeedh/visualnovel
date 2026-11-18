@@ -22,6 +22,7 @@ import {
 import { editSceneTool, editBranchesTool } from './scenes.js';
 import { deleteCharacterTool, deleteFilesTool, deleteLocationTool } from './deletes.js';
 import { collectUnusedAssetsTool } from './collect.js';
+import { queryContractsTool } from './contractquery.js';
 import { setOutfitTool, setVariantTool } from './outfits.js';
 import {
   readShotsTool,
@@ -65,6 +66,7 @@ export const ALL_TOOLS: Tool[] = [
   searchTool,
   listArchiveTool,
   searchBibleTool,
+  queryContractsTool,
   validateInputsTool,
   validateProjectTool,
   parseFountainTool,

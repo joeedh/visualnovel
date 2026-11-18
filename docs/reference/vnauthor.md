@@ -221,13 +221,13 @@ project guidance that the agent follows.
 
 ## Tools
 
-`packages/authoring/src/tools/` holds the registry of 58 tools. **M** marks
+`packages/authoring/src/tools/` holds the registry of 59 tools. **M** marks
 `mutating: true` (plan mode blocks it); **C** marks `confirm: true` (it always goes
 through the permission gate, in every mode).
 
 | Group               | Tools                                                                                                                                                                                                                        |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Read & search       | `read_file`, `list_workspace`, `search`, `search_bible`, `list_archive`                                                                                                                                                      |
+| Read & search       | `read_file`, `list_workspace`, `search`, `search_bible`, `list_archive`, `query_contracts`                                                                                                                                   |
 | Domain & validation | `validate_inputs`, `validate_project`, `parse_fountain`, `story_graph`, `extract_entities`                                                                                                                                   |
 | Entity editing      | `create_character` **M**, `create_location` **M**, `edit_character` **M**, `edit_location` **M**                                                                                                                             |
 | Scene prose         | `edit_scene` **M**                                                                                                                                                                                                           |

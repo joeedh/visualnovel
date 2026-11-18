@@ -28,6 +28,8 @@ import {
 import { analysisArgs, type Analysis, type Report } from './report.js';
 import type { Redactor } from './redact.js';
 import { toMarkdown, type Evidence } from './transcript.js';
+import { createContractTools } from './contracttools.js';
+import type { Budget } from './sourcetools.js';
 
 const SYSTEM = [
   'You are a debugging analyst. An author of a visual-novel authoring tool had a conversation',
@@ -228,6 +230,11 @@ export interface AnalyzeOptions {
   ctx?: ToolContext;
   /** Runaway backstop on tool-call iterations for whichever loop runs. */
   maxIterations?: number;
+  /**
+   * The analysis's reading budget, which the contract tool charges like the source and request
+   * tools. Absent gives that tool a budget of its own.
+   */
+  budget?: Budget;
 }
 
 /**
@@ -432,6 +439,10 @@ export function createAnalyst(opts: AnalystOptions): Analyst {
   };
   if (opts.source) add('source', opts.source.registry);
   if (opts.detail) add('detail', opts.detail);
+  // Contracts describe the code rather than the author's data, so no grant gates this one
+  for (const [name, tool] of createContractTools(opts.budget ? { budget: opts.budget } : {})) {
+    registry.set(name, tool);
+  }
   const attending = opts.host !== undefined;
   const submit = submitTool(sink, attending);
   registry.set(submit.name, submit as Tool);

@@ -10,7 +10,11 @@ import type { TaskKind } from '@vn/types';
 import { createRegistry } from '@vn/authoring';
 import { parseSlot } from '@vn/artgen/slotaddr';
 import type { ContractIndex } from '@vn/contracts/query';
-import { createRequestTools, createSourceTools } from '../../packages/agentreport/src/index.js';
+import {
+  createContractTools,
+  createRequestTools,
+  createSourceTools,
+} from '../../packages/agentreport/src/index.js';
 import { createDesktopRegistry } from '../../apps/desktop/src/main/commands/index.js';
 import { buildIndex, type Declared, type Facts } from './build.js';
 
@@ -37,6 +41,7 @@ export function facts(root: string): Facts {
       snapshot: { headers: () => [], body: () => undefined },
       redactor: { apply: (text) => text, leaks: () => [] },
     }).keys(),
+    ...createContractTools().keys(),
   ];
   return {
     commands        : new Set(commands.map((c) => c.id)),
