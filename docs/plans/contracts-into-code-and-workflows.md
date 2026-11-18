@@ -456,6 +456,51 @@ The plan as written before it landed:
 
 ### Stage 1: tooling and guards
 
+**Landed 2026-11-18 on the `contracts` branch, as `ffd3bbd1` to `f5250170` and the commit
+that adds this note.** As built:
+
+- **A seventh `tasks.jsonl` writer** the table below missed: the desktop's `forget`
+  (`apps/desktop/src/main/session/missing.ts:293`) tombstones every record whose output is
+  the forgotten picture. It now imports `logTombstone` from `@vn/taskgraph/maintain` like
+  the others.
+- **The `done` contract names two verbatim writers, not one.** The collector's undo
+  (`session/collect.ts`, formerly `:328`) puts back the records a collection tombstoned,
+  and those can be `done`. It now goes through `logRestored`, which `restoreDone` also
+  calls. The declaration (`log.doneWriters`) says the maintenance writers re-write a
+  record the log already held, verbatim, or write `pending`.
+- **Allow-lists.** There were 24 `allow` entries, not 25; with the three file elements
+  (`taskgraph-write`, `taskgraph-maintain`, `artgen-adopt`) there are 27, and every one
+  lists `contracts`, `debug2d`'s included. `taskgraph` may import `taskgraph-write`, for
+  its own `contracts.ts`. `artgen-adopt` lists `taskgraph-maintain` as the plan says,
+  although `adopt.ts` imports nothing from it today.
+- **The repin.** `repinAdoption` in `adoptslot.ts` takes over swapping the pin in the
+  previous node's inputs as well as the write, so the desktop no longer builds task
+  inputs.
+- **The oracle** has two fixtures beyond the four named: staging sheets resolved from a
+  manifest, and a gate held by an unapproved character no shot shows. The pins are every
+  task any wave planned, and a test checks that each fixture reaches its case.
+- **The index.** Each record carries `declared`, the file whose const declares it. A
+  `module:` query also matches the `function:` subjects in that file. `tool:` subjects are
+  checked against `vnauthor`'s registry and the analyst's source, request and contract
+  tools; the desktop-only agent tools (`show_me`, `ux_*`, history) and `submit_report` are
+  not in the check. `slot:` is checked by probing `parseSlot`, which also reads `asset:`.
+  Each `contracts.ts` exports `CONTRACTS`, imported by path in
+  `scripts/contracts/entry.ts`. The staleness, listing and coverage tests are in
+  `scripts/contracts/tests/`.
+- **Commands** gained the optional `contracts` field, and the generator adds
+  `command:<id>` to those contracts' subjects. `SlotKind`'s field waits for stage 6a.
+- **The line-id contract** is pinned rather than newly refused: `insertLine` already
+  allocates from the scene, so the stage adds the declaration and its test, not a refusal.
+- **Naming.** The authoring tool's module is `tools/contractquery.ts`, because
+  `contracts.ts` is reserved for a package's declaration list.
+- **Docs.** `CLAUDE.md`'s core-ideas list and `docs/index.md` dropped "line ids" and point
+  at `pnpm contracts`. `docs/reference/packages.md`, `CLAUDE.md`'s layering diagram and
+  the command table are left for stage 9, which the plan gives them to.
+- The vnauthor, desktop main and renderer bundles all build with `@vn/contracts`; the
+  first two carry the index.
+
+The plan as written before it landed:
+
 - **Contracts as data.** Add `@vn/contracts`, the two lintrix rules, `pnpm gen:contracts`,
   the committed index, the staleness and coverage tests, `pnpm contracts <query>`, and the
   two agents' `query_contracts` tools. Declare one existing contract end to end, to prove
