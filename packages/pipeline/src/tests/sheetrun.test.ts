@@ -24,7 +24,7 @@ import type { Shot } from '@vn/types';
 import { readText } from '@vn/util';
 
 import { sheetReviewNote } from '../runners.js';
-import type { SheetSeeds } from '@vn/artgen';
+import type { SheetSeeds } from '@vn/stills';
 
 jest.setTimeout(120_000);
 

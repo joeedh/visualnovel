@@ -6,7 +6,7 @@
  * is bound to never reaches this file.
  */
 import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
-import { slotKey } from '@vn/artgen';
+import { slotKey } from '@vn/stills';
 import {
   activeOutputs,
   applyRecord,

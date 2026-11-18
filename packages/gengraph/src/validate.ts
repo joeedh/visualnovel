@@ -1,4 +1,4 @@
-import { parseSlot } from '@vn/artgen/slotaddr';
+import { parseSlot } from '@vn/stills/slotaddr';
 import { definitionOfSubgraph } from 'pathux-graph';
 import type { Graph, GraphId, Node } from 'pathux-graph';
 

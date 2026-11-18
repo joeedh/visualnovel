@@ -18,8 +18,7 @@ import {
 } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { exists, readText } from '@vn/util';
-import { overHeld } from './overheld.js';
-import { angleOfTask } from './takes.js';
+import { overHeld, angleOfTask } from '@vn/stills';
 
 /**
  * `blocking` means the next run or a read of the project would fail; `information` is stale

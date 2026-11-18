@@ -20,27 +20,29 @@ import {
 } from '@vn/providers';
 import type { TextLLM } from '@vn/types';
 import {
-  bindingSubject,
-  conceptPrompt,
   describeAsset,
   generateConcept,
-  matchSubject,
   redrawConcept,
-  subjectEntity,
   type ConceptRequest,
   type ConceptResult,
-  type ConceptSubject,
   type DescribeRequest,
   type DescribeResult,
   type RedrawRequest,
   type RedrawResult,
 } from '@vn/artgen';
+import {
+  bindingSubject,
+  conceptPrompt,
+  matchSubject,
+  subjectEntity,
+  type ConceptSubject,
+} from '@vn/stills';
 import { VnError } from '@vn/util';
 import type { Workspace } from './workspace.js';
 
 // Re-exported so a host surface offering `/makeimage` can name what it bound to and parse an
-// override without importing `@vn/artgen`
-export { formatSubject, parseSubject, type ConceptSubject } from '@vn/artgen';
+// override without importing `@vn/stills`
+export { formatSubject, parseSubject, type ConceptSubject } from '@vn/stills';
 
 /** What {@link ArtGen.preview} answers: the picture that would be drawn, for the price of a read. */
 export interface ConceptPreview {

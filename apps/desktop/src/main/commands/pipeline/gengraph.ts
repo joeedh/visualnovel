@@ -15,7 +15,7 @@
  * the definition's subgraph, and writes the definition file. A node inside a group instance is
  * named by its key, `<instance id>/<inner id>`, and takes value edits only.
  */
-import { slotLabel } from '@vn/artgen';
+import { slotLabel } from '@vn/stills';
 import { defineFor, prop, type CheckResult } from '@vn/commands';
 import {
   Graph,

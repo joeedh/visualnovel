@@ -1,4 +1,4 @@
-import { LAYOUT_TEMPLATES, evenLayout } from '@vn/artgen/layout';
+import { LAYOUT_TEMPLATES, evenLayout } from '@vn/stills/layout';
 import { SITUATIONS } from '../situations/page.js';
 import {
   LAYOUTS,

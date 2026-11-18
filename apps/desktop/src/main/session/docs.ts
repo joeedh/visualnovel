@@ -14,7 +14,7 @@ import {
 import { bindSlots, registerGenRuntimes, type Graph as GenGraph } from '@vn/gengraph';
 import { exists } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { buildSlotGraph } from '@vn/artgen';
+import { buildSlotGraph } from '@vn/stills';
 import {
   PROJECT_SKILLS_DIR,
   cloneSkill,

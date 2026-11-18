@@ -54,14 +54,8 @@ import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { driftOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
-import {
-  slotLabel,
-  suspensionMap,
-  type AdoptVia,
-  type ProjectFinding,
-  type PromptRung,
-  type Suspension,
-} from '@vn/artgen';
+import { suspensionMap, type AdoptVia, type ProjectFinding, type Suspension } from '@vn/artgen';
+import { slotLabel, type PromptRung } from '@vn/stills';
 import {
   chatBackendFor,
   chatRoute,

@@ -25,15 +25,15 @@ import {
 } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
+import { baseRefusal } from '@vn/artgen';
 import {
   approvedPortraitOf,
-  baseRefusal,
   cycleRefusal,
   firstCycle,
   layoutDefect,
   sceneUnblocked,
   sheetKeys,
-} from '@vn/artgen';
+} from '@vn/stills';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
 import {
@@ -56,7 +56,7 @@ const PNG = 'png';
 /**
  * One model-sheet task. Two places build these: P4 fans them out, and a shot in a non-default
  * outfit names one as a ref. The identity is written down once here so a shot cannot end up
- * depending on a hash nothing planned. The inputs come from `@vn/artgen` because adoption
+ * depending on a hash nothing planned. The inputs come from `@vn/stills` because adoption
  * derives them too.
  */
 function modelSheetTask(

@@ -7,7 +7,8 @@ import type { Asset, ProjectModel } from '@vn/types';
 import { AssetStore, type ProjectPaths } from '@vn/store';
 import { logTask } from '@vn/taskgraph/write';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
-import { migrateCurrent, openTakeDeps, repairCurrent, resolveBinding, slotOf } from '../index.js';
+import { migrateCurrent, openTakeDeps, repairCurrent } from '../index.js';
+import { resolveBinding, slotOf } from '@vn/stills';
 
 jest.setTimeout(60_000);
 

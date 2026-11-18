@@ -1,5 +1,5 @@
 import type { PromptChunk, PromptOverride } from '@vn/types';
-import { chunkFingerprint } from '@vn/artgen';
+import { chunkFingerprint } from '@vn/stills';
 import { sha256 } from '@vn/util';
 import { applyPromptEdit } from '../agent/promptedit.js';
 

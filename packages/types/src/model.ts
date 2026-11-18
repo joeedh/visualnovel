@@ -96,7 +96,7 @@ export interface AssetStore {
    * Make an asset the take its slot holds, clearing `current` on the hashes in `supersede` in the
    * same write. Currency is exclusive per slot: a slot holding two current rows cannot be
    * resolved, so it reads as empty. `supersede` is the slot's other current rows, which `heldBy`
-   * in `@vn/artgen` computes.
+   * in `@vn/stills` computes.
    */
   hold(hash: string, supersede: readonly string[], stamp?: TakeStamp): Promise<void>;
   /** Mark an asset approved by a person. Selects nothing: which take a slot holds is `hold`'s. */

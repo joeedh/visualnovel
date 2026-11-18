@@ -11,10 +11,14 @@
  * chooses between re-approving and regenerating. Auto-cascade is the alternative to suspension, and
  * the pinned reference (§13) is what makes suspension possible.
  */
-import { refDrift, resolveBinding, type BindingContext } from './refs.js';
-import { slotLabel } from './slotaddr.js';
-import type { RungContext } from './resolve.js';
-import { attachedRefs } from './upstream.js';
+import {
+  refDrift,
+  resolveBinding,
+  type BindingContext,
+  slotLabel,
+  type RungContext,
+  attachedRefs,
+} from '@vn/stills';
 
 /** Everything the walk reads: the manifest and the rungs an override could be stored at. */
 export interface SuspendContext extends BindingContext, RungContext {}

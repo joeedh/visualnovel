@@ -6,7 +6,7 @@
  * the authoring view of the same string: each builder's array of clauses, made addressable, with
  * `renderPrompt` collapsing them exactly as the builders always did.
  *
- * The shapes live here rather than in `@vn/artgen` because the entity types that store an
+ * The shapes live here rather than in `@vn/stills` because the entity types that store an
  * override are here too, and the two copies would drift apart if the type were declared twice.
  */
 

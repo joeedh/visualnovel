@@ -5,8 +5,8 @@
     "types"           : ["node", "jest"],
     "moduleResolution": "bundler",
     "paths": {
-      "@vn/artgen/slotaddr"     : ["../../../packages/artgen/src/slotaddr.ts"],
-      "@vn/artgen/layout"       : ["../../../packages/artgen/src/layout.ts"],
+      "@vn/stills/slotaddr"     : ["../../../packages/stills/src/slotaddr.ts"],
+      "@vn/stills/layout"       : ["../../../packages/stills/src/layout.ts"],
       "@vn/authoring"           : ["../../../packages/authoring/src/index.ts"],
       "@vn/contracts"           : ["../../../packages/contracts/src/index.ts"],
       "@vn/commands"            : ["../../../packages/commands/src/index.ts"],

@@ -9,7 +9,7 @@
 import type { AnyTask, Asset, ProjectModel, Shot } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
-import { buildSlotGraph } from '@vn/artgen';
+import { buildSlotGraph } from '@vn/stills';
 import {
   activeOutputs,
   bindSlots,

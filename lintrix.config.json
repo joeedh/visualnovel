@@ -38,6 +38,7 @@
               "bible"             : "packages/bible",
               "artgen"            : "packages/artgen",
               "artgen-adopt"      : "packages/artgen/src/adopt.ts",
+              "stills"            : "packages/stills",
               "gengraph"          : "packages/gengraph",
               "git"               : "packages/git",
               "commands"          : "packages/commands",
@@ -67,6 +68,16 @@
               "export"            : ["types", "util", "parse", "model", "store", "contracts"],
               "scriptedit"        : ["types", "util", "parse", "model", "store", "contracts"],
               "bible"             : ["types", "util", "parse", "store", "contracts"],
+              "stills": [
+                "types",
+                "util",
+                "config",
+                "parse",
+                "model",
+                "store",
+                "taskgraph",
+                "contracts"
+              ],
               "artgen": [
                 "types",
                 "util",
@@ -75,6 +86,7 @@
                 "model",
                 "store",
                 "taskgraph",
+                "stills",
                 "providers",
                 "artgen-adopt",
                 "contracts"
@@ -115,6 +127,7 @@
                 "taskgraph",
                 "providers",
                 "artgen",
+                "stills",
                 "gengraph",
                 "contracts"
               ],
@@ -127,6 +140,7 @@
                 "taskgraph",
                 "taskgraph-maintain",
                 "artgen",
+                "stills",
                 "pathux",
                 "contracts"
               ],
@@ -167,6 +181,7 @@
                 "scriptedit",
                 "bible",
                 "artgen",
+                "stills",
                 "gengraph",
                 "providers",
                 "git",
@@ -208,6 +223,7 @@
                 "scriptedit",
                 "bible",
                 "artgen",
+                "stills",
                 "gengraph",
                 "git",
                 "commands",

@@ -845,7 +845,7 @@ rewrites and refusals; the session writes the plan through `deleteEntity` or `ed
   the rule still refuses while anything points at the scene.
 - **The check reads as the plan.** Its lines say what the command rewrites, how many shots
   will be drawn again on the next run and how many of those are already rendered
-  (`priceShotChanges` in `@vn/artgen`), which files and folders it removes, which scenes
+  (`priceShotChanges` in `@vn/stills`), which files and folders it removes, which scenes
   and wiki pages still name the entity in prose (listed, never rewritten), and, last, what
   undo cannot restore: an approved portrait is media, so it is gone for good.
 - **Where the app does not commit, removing asks first.** These three, `doc.delete`,

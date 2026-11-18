@@ -610,7 +610,7 @@ says what the write would do before it does it. The pure (side-effect-free) rule
   glyphs are drawn at the project's page aspect (`PAGE_ASPECT`, 3:4) rather than the
   frame's, since they show what the frame would become.
 - **The layout row is the named templates, then the even layouts from two to six.**
-  `LAYOUTS` in `rules/page.ts` lists `@vn/artgen/layout`'s `LAYOUT_TEMPLATES` and
+  `LAYOUTS` in `rules/page.ts` lists `@vn/stills/layout`'s `LAYOUT_TEMPLATES` and
   `evenLayout(2..6)`. Picking one runs `relaid`: each new shape takes the record (lines,
   framing, camera, cast, notes) of the panel at the same index, and the lines of any panel
   the new layout drops are handed to the last kept panel, so no line goes uncovered by a

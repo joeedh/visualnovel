@@ -25,6 +25,16 @@ export function slotOf(asset: Asset, angle?: string): RefBinding | undefined {
   return b ? slotOfBinding(asset.kind, b, angle) : undefined;
 }
 
+/**
+ * What a picture is called, from the slot it fills. A concept or an upload fills none, so the title
+ * it was stored with is used instead.
+ */
+export function assetSlotLabel(asset: Asset): string {
+  const slot = slotOf(asset);
+  if (slot) return slotLabel(slot);
+  return asset.title?.trim() || `${asset.kind} ${asset.hash.slice(0, 8)}`;
+}
+
 /** Every slot an asset serves, one per binding that names one. A row bound twice fills two. */
 export function slotsOf(asset: Asset, angle?: string): RefBinding[] {
   const out: RefBinding[] = [];

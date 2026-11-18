@@ -90,14 +90,14 @@ export interface Character {
    * The image seed every prompt this character reaches is drawn with, overriding
    * `config.image_params.seed`. In {@link ImageParams}, so it is in the task hash: setting one
    * re-keys what it reaches and the next run redraws exactly that. Changing the seed asks for a
-   * different picture of the same words, which {@link artNotes} cannot express. `@vn/artgen`'s
+   * different picture of the same words, which {@link artNotes} cannot express. `@vn/stills`'
    * `seedFor` is the only place the narrowest-rung-wins chain is written down.
    */
   seed?: number;
   /**
    * The image model every picture this character reaches is drawn with, in place of the
    * project's `models.image`. Not in the task hash — a rendered picture stays until it is
-   * regenerated, and the next render uses this model. `@vn/artgen`'s `modelFor` resolves the
+   * regenerated, and the next render uses this model. `@vn/stills`' `modelFor` resolves the
    * same narrowest-rung-wins chain `seedFor` does.
    */
   imageModel?: string;

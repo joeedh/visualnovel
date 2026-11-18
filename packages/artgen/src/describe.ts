@@ -8,12 +8,10 @@
  * defect report, and widening the reviewer to carry it would put two jobs in one interface, one of
  * them in the task graph's hot path.
  */
-import type { Asset } from '@vn/types';
 import type { AssetStore } from '@vn/store';
 import type { ChatBackend } from '@vn/providers';
+import { assetSlotLabel } from '@vn/stills';
 import { VnError } from '@vn/util';
-import { slotOf } from './refcycle.js';
-import { slotLabel } from './slotaddr.js';
 
 export interface DescribeDeps {
   store: AssetStore;
@@ -43,16 +41,6 @@ const SYSTEM =
   'You are looking at one generated image from a visual novel. Answer the question about it ' +
   'directly and concretely, in one short paragraph. Describe what is actually there — do not ' +
   'invent detail you cannot see, and do not offer to help further.';
-
-/**
- * What a picture is called, from the slot it fills. A concept or an upload fills none, so the title
- * it was stored with is used instead.
- */
-export function assetSlotLabel(asset: Asset): string {
-  const slot = slotOf(asset);
-  if (slot) return slotLabel(slot);
-  return asset.title?.trim() || `${asset.kind} ${asset.hash.slice(0, 8)}`;
-}
 
 /**
  * Ask a vision model about one stored picture. Refuses an asset the store has never heard of

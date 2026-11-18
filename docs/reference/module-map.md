@@ -16,7 +16,8 @@
 - [Layer 3 — rules packages (leaves by design; two hosts run each)](#layer-3--rules-packages-leaves-by-design-two-hosts-run-each)
     - [@vn/scriptedit — scene prose writes (`packages/scriptedit`)](#vnscriptedit--scene-prose-writes-packagesscriptedit)
     - [@vn/bible — retrieval over `wiki/` (`packages/bible`)](#vnbible--retrieval-over-wiki-packagesbible)
-    - [@vn/artgen — art rules: prompts, slot graph, approvals (`packages/artgen`)](#vnartgen--art-rules-prompts-slot-graph-approvals-packagesartgen)
+    - [@vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)](#vnstills--the-stills-family-prompts-slot-graph-approvals-packagesstills)
+    - [@vn/artgen — on-demand art, adoption, and the stills rules' I/O (`packages/artgen`)](#vnartgen--on-demand-art-adoption-and-the-stills-rules-io-packagesartgen)
     - [@vn/gengraph — generation graphs (`packages/gengraph`)](#vngengraph--generation-graphs-packagesgengraph)
 - [Layer 4 — orchestration](#layer-4--orchestration)
     - [@vn/taskgraph — content-addressed task graph (`packages/taskgraph`)](#vntaskgraph--content-addressed-task-graph-packagestaskgraph)
@@ -48,7 +49,7 @@ the file; the authoritative package responsibilities and import rules are in
 | `model.ts`         | the project model types: characters, locations, scenes, assets                                                                                                        |
 | `entities.ts`      | entity-sheet value types and tags                                                                                                                                     |
 | `tasks.ts`         | task-graph node and task-kind types                                                                                                                                   |
-| `prompt.ts`        | prompt chunk / ref types shared by artgen and providers                                                                                                               |
+| `prompt.ts`        | prompt chunk / ref types shared by stills and providers                                                                                                               |
 | `providers.ts`     | backend capability types (`ChatBackend`, `ImageBackend`, reviewers)                                                                                                   |
 | `textmodels.ts`    | chat message / request types for text backends                                                                                                                        |
 | `imagemodels.ts`   | the cached OpenRouter image-model listing and its two response schemas                                                                                                |
@@ -172,33 +173,50 @@ it ([`history-pane.md`](history-pane.md)).
 `index.ts` (`openBible`, the only entry point), `indexer.ts` (build/read index),
 `query.ts` (budgeted ranked query), `types.ts`.
 
-### @vn/artgen — art rules: prompts, slot graph, approvals (`packages/artgen`)
+### @vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)
+
+No I/O and no provider; `@vn/artgen` holds the halves that read or write the project.
+
+| module          | purpose                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
+| `gate.ts`       | P3 approval gate (`gateStatus`, `isApproved`, `sceneUnblocked`)                 |
+| `chunks.ts`     | `PromptChunk` composition + fingerprint                                         |
+| `prompts.ts`    | per-slot-kind prompt builders (portrait/location/model-sheet/shot)              |
+| `resolve.ts`    | rung/override resolution                                                        |
+| `refs.ts`       | reference binding resolution                                                    |
+| `upstream.ts`   | upstream attachment walk                                                        |
+| `slotaddr.ts`   | slot key parse/format; **side entry** `@vn/stills/slotaddr` (renderer-safe)     |
+| `slotgraph.ts`  | slot graph construction (`buildSlotGraph`)                                      |
+| `refcycle.ts`   | reference cycle detection; `assetSlotLabel`                                     |
+| `prereq.ts`     | prerequisite refusals                                                           |
+| `overheld.ts`   | slots with more than one current row, and the holds that fix them               |
+| `takes.ts`      | the take the task log names (`loggedTake`, `angleOfTask`)                       |
+| `kept.ts`       | the slots a collection keeps art for (`keptSlots`)                              |
+| `layout.ts`     | page layout templates, panel words, overlap; **side entry** `@vn/stills/layout` |
+| `sheet.ts`      | staging-sheet grouping, grids and seeds                                         |
+| `storyboard.ts` | shot decomposition (`deterministicShots`, `decomposeScene`)                     |
+| `shotprice.ts`  | the price of changed shots (`priceShotChanges`)                                 |
+| `coverage.ts`   | prompt-coverage check                                                           |
+| `condense.ts`   | prompt condensing                                                               |
+| `subject.ts`    | concept subject parse/match                                                     |
+| `drift.ts`      | prose-hash drift marker                                                         |
+| `index.ts`      | barrel (reaches `node:fs` through `@vn/taskgraph`; the renderer uses the sides) |
+
+### @vn/artgen — on-demand art, adoption, and the stills rules' I/O (`packages/artgen`)
 
 | module                                     | purpose                                                                          |
 | ------------------------------------------ | -------------------------------------------------------------------------------- |
-| `gate.ts`                                  | P3 approval gate (`gateStatus`, `isApproved`, `sceneUnblocked`)                  |
-| `chunks.ts`                                | `PromptChunk` composition + fingerprint                                          |
-| `prompts.ts`                               | per-slot-kind prompt builders (portrait/location/model-sheet/shot)               |
-| `resolve.ts`                               | rung/override resolution                                                         |
-| `refs.ts`                                  | reference binding resolution                                                     |
-| `upstream.ts`                              | upstream attachment walk                                                         |
-| `slotaddr.ts`                              | slot key parse/format                                                            |
-| `slotgraph.ts`                             | slot graph construction (`buildSlotGraph`)                                       |
 | `suspend.ts`                               | suspension walk (drifted upstream ⇒ suspended downstream)                        |
-| `refcycle.ts`                              | reference cycle detection                                                        |
-| `prereq.ts`                                | prerequisite refusals                                                            |
 | `adopt.ts` / `adoptslot.ts` / `promote.ts` | adoption and concept promotion; `adopt.ts` is `@vn/artgen/adopt`, off the barrel |
 | `concept.ts`                               | concept image generation                                                         |
 | `describe.ts`                              | asset description                                                                |
-| `storyboard.ts`                            | shot decomposition (`deterministicShots`, `decomposeScene`)                      |
-| `coverage.ts`                              | prompt-coverage check                                                            |
-| `condense.ts`                              | prompt condensing                                                                |
 | `setnotes.ts`                              | art notes / seed setters                                                         |
 | `artnotes.ts`                              | art-target rung queries                                                          |
-| `subject.ts`                               | concept subject parse/match                                                      |
 | `base.ts`                                  | base-asset refusals                                                              |
 | `upload.ts`                                | reference image upload                                                           |
-| `drift.ts`                                 | prose-hash drift marker                                                          |
+| `takes.ts`                                 | the `current` repair and migration, and accepting a take                         |
+| `collect.ts`                               | which rows, files and task records a collection removes                          |
+| `validate.ts`                              | the asset half of `validateProject`                                              |
 | `index.ts`                                 | barrel                                                                           |
 
 ### @vn/gengraph — generation graphs (`packages/gengraph`)
@@ -264,7 +282,7 @@ and `pending` requeues).
 | `graphrun.ts` / `graphload.ts` | bound generation-graph runs                               |
 | `drift.ts`                     | pipeline-side drift reporting                             |
 | `prompts.ts`                   | pipeline LLM prompts                                      |
-| `index.ts`                     | barrel (re-exports the P3 gate from `@vn/artgen` by name) |
+| `index.ts`                     | barrel (re-exports the P3 gate from `@vn/stills` by name) |
 
 ### @vn/scheduler — resumable run loop (`packages/scheduler`)
 

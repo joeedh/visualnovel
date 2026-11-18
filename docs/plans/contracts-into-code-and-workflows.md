@@ -557,6 +557,51 @@ The plan as written before it landed:
 
 ### Stage 2: the `@vn/stills` package
 
+**Landed 2026-11-18 on the `stills` branch, in the commit that adds this note.** As built:
+
+- **`assetSlotLabel` went into `refcycle.ts`, not `slotaddr.ts`.** It calls `slotOf`,
+  which lives in `refcycle.ts` and reads `SHEET_FRONT` from `prompts.ts`, which imports
+  `@vn/taskgraph`. In `slotaddr.ts` it would have pulled that chain into the
+  `@vn/stills/slotaddr` subpath, which `@vn/gengraph`'s barrel, and through it the
+  renderer, imports.
+- **`takes.ts`.** `angleOfTask` and `loggedTake` moved, into
+  `packages/stills/src/takes.ts`. The rest stayed:
+    - `openTakeDeps`, `migrateCurrent`, `repairCurrent`, `catchUpMirrors` and `acceptTake`
+      read or write the store.
+    - `acceptableTakes` writes nothing, but it reads through the `TakeDeps` store handle
+      and shares the private `contextOf` and `prereqContextOf` with the functions that do
+      I/O. Moving it would have meant moving `TakeDeps` and publishing both helpers.
+    - `migrationPick` and `isSheet` are private helpers of `migrateCurrent` alone.
+      `migrationPick` is a take-choosing rule, so stage 6d, which moves the take into the
+      solver, should decide it again.
+- **`keptSlots`** is exported from a new file, `packages/stills/src/kept.ts`.
+- **Tests.** The tests of the moved files moved with them, as did `page.test.ts` and
+  `seed.test.ts`, which test only `layout.ts` and `prompts.ts`. `gate.test.ts` was split:
+  its second half drives `setArtNotes` and `repairCurrent` through a real project, so it
+  stayed in `@vn/artgen` as `mirror.test.ts`. `prompthash.test.ts` is unchanged, and the
+  oracle's import lines are the only change to it.
+- **Allow-lists.** `stills` may import `types`, `util`, `config`, `parse`, `model`,
+  `store`, `taskgraph` and `contracts`. `constraint-solver` is left off until stage 6
+  creates the package. `stills` was added to `artgen`, `gengraph`, `pipeline`, `authoring`
+  and `desktop`, all of which import it, and no other package needed it. Its
+  `package.json` lists only what it imports: `types`, `util`, `config`, `model` and
+  `taskgraph`.
+- **Re-exports.** `@vn/pipeline` re-exports from `@vn/stills` where it re-exported a moved
+  name from `@vn/artgen`: the gate in `index.ts`, the prompt builders in `prompts.ts`, the
+  storyboard in `p5.ts`, `heldBy` in `repair.ts` and `proseHash` in `drift.ts`.
+  `baseRefusal` stays in `@vn/artgen`, because `base.ts` is not on the list. The CLI and
+  the scheduler import nothing new.
+- **Setup.** `stills` is in `PACKAGES` and `SUBPATHS` in `scripts/aliases.mjs`, as
+  `docs/guides/toolchain.md` asks of a new package, although `artgen` itself is not in
+  that `PACKAGES` list. The `@vn/artgen/slotaddr` and `@vn/artgen/layout` subpaths are
+  gone.
+- **Contracts.** No declared subject named a moved file, so the index is unchanged.
+- **Docs.** `packages.md`, `module-map.md`, `CLAUDE.md`'s diagram and layering rules, and
+  the reference pages that named a moved function or subpath under `@vn/artgen` now name
+  `@vn/stills`. Plans and research pages keep the paths they were written against.
+
+The plan as written before it landed:
+
 No behaviour change. It comes before the contracts are declared, so that each stills
 contract is declared once, in its final package.
 

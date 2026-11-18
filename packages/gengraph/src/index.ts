@@ -7,7 +7,7 @@
  * touch the filesystem is reached through `@vn/gengraph/state` instead, and so does the
  * executor, because it hashes each node through `@vn/util` and that reaches `node:crypto`.
  * The slot vocabulary
- * comes from `@vn/artgen/slotaddr` rather than that package's barrel, which reaches
+ * comes from `@vn/stills/slotaddr` rather than that package's barrel, which reaches
  * `node:fs/promises` and would fail the renderer's bundle without failing either typecheck.
  */
 export * from 'pathux-graph';

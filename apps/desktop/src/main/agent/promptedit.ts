@@ -10,7 +10,7 @@
  * removed key rather than an empty block. That is what lets an author undo their way back to a
  * sheet that looks untouched.
  */
-import { chunkFingerprint, effectiveChunks } from '@vn/artgen';
+import { chunkFingerprint, effectiveChunks } from '@vn/stills';
 import {
   promptOverrideIsEmpty,
   type ChunkEdit,

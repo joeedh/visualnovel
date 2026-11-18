@@ -120,7 +120,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store ─ export scriptedit bible artgen gengraph   git ──── commands
+  │   model store ─ export scriptedit bible stills ─ artgen gengraph   git ──── commands
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -144,6 +144,12 @@ providers   │      ╲ ╲  │
   forbidden from importing the pipeline or the scheduler for the same reason `@vn/artgen`
   is. `@vn/agentreport` is a leaf because its one host is the desktop app; it additionally
   imports `@vn/commands` for the command records that transcripts do not contain.
+- `@vn/stills` sits below `@vn/artgen` and holds the stills family's pure rules: prompt
+  composition, the slot graph, reference binding, layout, sheets and the portrait gate. It
+  may import neither `@vn/providers` nor `@vn/artgen`. `@vn/artgen` does not re-export it,
+  so its importers name it directly; the CLI and the scheduler may not import it and reach
+  the gate through `@vn/pipeline`'s re-exports. The renderer reaches it only through the
+  `@vn/stills/slotaddr` and `@vn/stills/layout` subpaths.
 - Two packages sit outside the graph. `@vn/debug2d` imports nothing from `packages/` and
   is dev-only in the renderer. `@vn/testkit` may import every layer, and nothing may
   import it.

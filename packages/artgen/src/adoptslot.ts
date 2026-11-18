@@ -40,12 +40,19 @@ import {
 import { loadGraph } from '@vn/taskgraph';
 import { isPlaceholderImage } from '@vn/providers';
 import { VnError } from '@vn/util';
-import { proseHash } from './drift.js';
+import {
+  proseHash,
+  slotLabel,
+  type Decided,
+  type ResolvedSlot,
+  heldBy,
+  resolveSlot,
+  slotTaskHash,
+  angleOfTask,
+  loggedTake,
+} from '@vn/stills';
 import { adopt, adoptionOf, type AdoptContext } from './adopt.js';
 import { baseRefusal } from './base.js';
-import { slotLabel } from './slotaddr.js';
-import { type Decided, type ResolvedSlot, heldBy, resolveSlot, slotTaskHash } from './slotgraph.js';
-import { angleOfTask, loggedTake } from './takes.js';
 
 export interface AdoptSlotDeps {
   config: ProjectConfig;

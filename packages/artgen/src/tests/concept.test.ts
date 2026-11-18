@@ -5,14 +5,8 @@
  */
 import { makeProject, SCRIPTS } from '@vn/testkit';
 import type { AssetRef, ImageProvider, ImageResult, ProjectModel } from '@vn/types';
-import {
-  conceptPrompt,
-  conceptTitle,
-  generateConcept,
-  matchSubject,
-  redrawConcept,
-  redrawOf,
-} from '../index.js';
+import { conceptTitle, generateConcept, redrawConcept, redrawOf } from '../index.js';
+import { conceptPrompt, matchSubject } from '@vn/stills';
 
 /** An image provider that records what it was asked for and answers deterministically. */
 function fakeImage(): { image: ImageProvider; calls: { prompt: string; refs: AssetRef[] }[] } {

@@ -279,9 +279,9 @@ export type {
 // Type-only, so the browser bundle never pulls in `@vn/bible` (which reads the filesystem):
 // `bible.search` results cross the wire as data, and this is the shape the renderer names.
 export type { BibleFile, Excerpt } from '@vn/bible';
-// Type-only for the same reason: `@vn/artgen` reads prompts off the model, and the renderer names
+// Type-only for the same reason: `@vn/stills` reads prompts off the model, and the renderer names
 // this shape only as data that already crossed the wire.
-import type { Prereq, SlotNode } from '@vn/artgen';
+import type { Prereq, SlotNode } from '@vn/stills';
 export type { Prereq, SlotNode };
 export type {
   PagePanel,

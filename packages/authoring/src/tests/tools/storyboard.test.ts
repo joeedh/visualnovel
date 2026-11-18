@@ -7,7 +7,7 @@ import { run, tempProject, tool } from './testkit.js';
 
 /**
  * The storyboard tools sit at the seam between the agent and `@vn/scriptedit`'s shot rules plus
- * `@vn/artgen`'s realization gauntlet, both tested where they live. These cases cover which file
+ * `@vn/stills`' realization gauntlet, both tested where they live. These cases cover which file
  * each act writes (and that refusals write nothing), that the `nextShot` mark round-trips so a
  * deleted id stays retired, and that a proposal is read back rather than persisted.
  */

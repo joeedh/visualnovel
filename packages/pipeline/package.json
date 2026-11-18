@@ -13,6 +13,7 @@
     "@vn/model": "workspace:*",
     "@vn/store": "workspace:*",
     "@vn/artgen": "workspace:*",
+    "@vn/stills": "workspace:*",
     "@vn/taskgraph": "workspace:*",
     "@vn/providers": "workspace:*",
     "@vn/gengraph": "workspace:*",

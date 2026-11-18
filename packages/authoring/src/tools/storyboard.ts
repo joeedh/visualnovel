@@ -1,6 +1,6 @@
 // ── Storyboards: reading one, covering lines, and making one whole ──────────
 import { z } from 'zod';
-import { decomposeScene, realizeDecomposition } from '@vn/artgen';
+import { decomposeScene, realizeDecomposition } from '@vn/stills';
 import { readShots, writeShots } from '@vn/store';
 import {
   SHOT_FORMS,

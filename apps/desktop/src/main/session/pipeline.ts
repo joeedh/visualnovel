@@ -5,7 +5,7 @@ import { fileCache } from '../workspace/filecache.js';
 import { gateStatus, readTaskLog } from '@vn/pipeline';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
-import { buildSlotGraph } from '@vn/artgen';
+import { buildSlotGraph } from '@vn/stills';
 import { buildPlayable, loadSceneShots, unapprovedSentence, unapprovedTakes } from '@vn/export';
 import type { Playable } from '@vn/types';
 import type { PipelineStatus, TaskLogView } from '../../shared/ipc.js';

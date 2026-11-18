@@ -10,7 +10,7 @@
  * against like any other. The boundary and forwarded-row edits apply only to a definition's
  * subgraph, which is how they find the definition they edit.
  */
-import { parseSlot } from '@vn/artgen/slotaddr';
+import { parseSlot } from '@vn/stills/slotaddr';
 import {
   GroupInputNode,
   GroupNode,

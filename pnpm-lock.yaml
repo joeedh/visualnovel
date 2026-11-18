@@ -182,6 +182,9 @@ importers:
       '@vn/scriptedit':
         specifier: workspace:*
         version: link:../../packages/scriptedit
+      '@vn/stills':
+        specifier: workspace:*
+        version: link:../../packages/stills
       '@vn/store':
         specifier: workspace:*
         version: link:../../packages/store
@@ -258,6 +261,9 @@ importers:
       '@vn/providers':
         specifier: workspace:*
         version: link:../providers
+      '@vn/stills':
+        specifier: workspace:*
+        version: link:../stills
       '@vn/store':
         specifier: workspace:*
         version: link:../store
@@ -303,6 +309,9 @@ importers:
       '@vn/scriptedit':
         specifier: workspace:*
         version: link:../scriptedit
+      '@vn/stills':
+        specifier: workspace:*
+        version: link:../stills
       '@vn/store':
         specifier: workspace:*
         version: link:../store
@@ -379,6 +388,9 @@ importers:
       '@vn/model':
         specifier: workspace:*
         version: link:../model
+      '@vn/stills':
+        specifier: workspace:*
+        version: link:../stills
       '@vn/store':
         specifier: workspace:*
         version: link:../store
@@ -442,6 +454,9 @@ importers:
       '@vn/providers':
         specifier: workspace:*
         version: link:../providers
+      '@vn/stills':
+        specifier: workspace:*
+        version: link:../stills
       '@vn/store':
         specifier: workspace:*
         version: link:../store
@@ -508,6 +523,24 @@ importers:
       '@vn/store':
         specifier: workspace:*
         version: link:../store
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+      '@vn/util':
+        specifier: workspace:*
+        version: link:../util
+
+  packages/stills:
+    dependencies:
+      '@vn/config':
+        specifier: workspace:*
+        version: link:../config
+      '@vn/model':
+        specifier: workspace:*
+        version: link:../model
+      '@vn/taskgraph':
+        specifier: workspace:*
+        version: link:../taskgraph
       '@vn/types':
         specifier: workspace:*
         version: link:../types

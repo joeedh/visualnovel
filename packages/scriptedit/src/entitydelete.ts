@@ -6,7 +6,7 @@
  * Its functions are pure, like those in `lineops`. The write side (`entityplan.ts`) reads the
  * storyboards, the wiki pages and the manifest, hands them in as an {@link EntityWorld}, proves the
  * result and writes it. Two parts stay with the host because this package cannot reach them: the
- * price of the changed shots (`priceShotChanges` in `@vn/artgen`) and the files to remove, which
+ * price of the changed shots (`priceShotChanges` in `@vn/stills`) and the files to remove, which
  * come from where the sheet was found.
  */
 import {

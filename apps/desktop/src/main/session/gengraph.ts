@@ -34,14 +34,8 @@ import {
   type DecomposeAllResult,
   type GraphRuntime,
 } from '@vn/pipeline';
-import {
-  aspectFor,
-  assetSlotLabel,
-  fileGraphDraw,
-  imageParams,
-  sheetSeeds,
-  slotKey,
-} from '@vn/artgen';
+import { fileGraphDraw } from '@vn/artgen';
+import { aspectFor, assetSlotLabel, imageParams, sheetSeeds, slotKey } from '@vn/stills';
 import { SHEET_CELL_REF, sheetCellDef, sheetGraph } from '@vn/gengraph';
 import type { SheetCell } from '@vn/gengraph';
 import { readShots } from '@vn/store';

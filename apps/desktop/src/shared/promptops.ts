@@ -6,8 +6,8 @@
  * what a drop would produce, and `prompt.reorder` (`interactions.ts`) enumerates its targets with
  * them, so the preview and the commit are one rule rather than two copies that can disagree.
  *
- * `effectiveOrder` deliberately mirrors `reorder` in `@vn/artgen`'s `chunks.ts` rather than
- * importing it: artgen is node-side and this file is in the browser bundle. The mirroring is
+ * `effectiveOrder` deliberately mirrors `reorder` in `@vn/stills`' `chunks.ts` rather than
+ * importing it: the stills barrel is node-side and this file is in the browser bundle. The mirroring is
  * pinned by a test that walks the same partial-order cases.
  */
 

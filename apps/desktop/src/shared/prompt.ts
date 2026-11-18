@@ -1,7 +1,7 @@
 /**
  * A composed prompt as a surface sees it (`docs/plans/archive/INDEX.md#chunked-prompts` §6).
  *
- * `@vn/artgen` is node-side and `src/shared/` is in the browser bundle, so `EffectiveChunk` and
+ * `@vn/stills` is node-side and `src/shared/` is in the browser bundle, so `EffectiveChunk` and
  * `Composed` cannot cross — this re-declares them as plain data, the way `AssetInfo` already
  * projects `Asset`. `session.ts` maps between the two in one place. The vocabulary itself
  * (`ChunkCategory`, `ChunkOrigin`) comes from `@vn/types`, which is zod-only and crosses fine.

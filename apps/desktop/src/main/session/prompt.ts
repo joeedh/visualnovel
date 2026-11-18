@@ -1,6 +1,7 @@
 import { applyCharacterEdit, applyLocationEdit, docToMarkdown } from '@vn/model';
 import { entityDoc, readShots, writeShots } from '@vn/store';
 import { fileCache } from '../workspace/filecache.js';
+import { repinAdoption } from '@vn/artgen';
 import {
   composePrompt,
   condensePrompt,
@@ -14,13 +15,12 @@ import {
   refDrift,
   renderPrompt,
   resolveBinding,
-  repinAdoption,
   rungOf,
   slotKey,
   slotLabel,
   slotOf,
   type PromptRung,
-} from '@vn/artgen';
+} from '@vn/stills';
 import type { PromptChunk, PromptOverride } from '@vn/types';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import { deriveChunks } from '../assets/assetprompt.js';

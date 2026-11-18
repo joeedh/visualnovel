@@ -1,4 +1,4 @@
-import { buildPortraitChunks, renderPrompt } from '@vn/artgen';
+import { buildPortraitChunks, renderPrompt } from '@vn/stills';
 import { projectConfig } from '@vn/types';
 import type { Character } from '@vn/types';
 import { PropFlags } from 'pathux-toolprop';

@@ -12,7 +12,6 @@
  * import the pipeline and has to run it too.
  */
 import type {
-  AnyTask,
   Asset,
   AssetStore,
   Logger,
@@ -24,17 +23,24 @@ import type {
 import type { ProjectConfig } from '@vn/config';
 import { AssetStore as DiskStore, readAllShots, type ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
-import { candidatesFor } from './refs.js';
-import { assetSlotLabel } from './describe.js';
-import { lastRenderedAt, overHeld, type OverHeld, type OverHeldContext } from './overheld.js';
-import { acceptRefusal, assetApproved, type PrereqContext } from './prereq.js';
 import {
+  acceptRefusal,
+  angleOfTask,
+  assetApproved,
+  assetSlotLabel,
   buildSlotGraph,
+  candidatesFor,
+  lastRenderedAt,
+  loggedTake,
   newestFirst,
+  overHeld,
   resolveSlot,
   slotTaskHash,
+  type OverHeld,
+  type OverHeldContext,
+  type PrereqContext,
   type SlotGraphContext,
-} from './slotgraph.js';
+} from '@vn/stills';
 
 export interface TakeDeps {
   model: ProjectModel;
@@ -70,24 +76,6 @@ export interface Migration {
   held: Record<string, string>;
   /** Characters whose approved portrait is no longer the take the slot holds. */
   unapprovedPortraits: string[];
-}
-
-/** The angle a sheet task was for, off the task log. */
-export function angleOfTask(graph: {
-  get(hash: string): AnyTask | undefined;
-}): (sourceTask: string | undefined) => string | undefined {
-  return (sourceTask) => {
-    const task = sourceTask === undefined ? undefined : graph.get(sourceTask);
-    return task && 'angle' in task.inputs ? task.inputs.angle : undefined;
-  };
-}
-
-/** The take the log says a slot holds, or `undefined` where the row is authoritative. */
-export function loggedTake(task: AnyTask | undefined): string | undefined {
-  if (!task) return undefined;
-  if (task.status === 'done') return task.output;
-  if (task.status === 'needs_human') return task.output ?? task.attempts.at(-1)?.output;
-  return undefined;
 }
 
 function contextOf(deps: TakeDeps): SlotGraphContext {

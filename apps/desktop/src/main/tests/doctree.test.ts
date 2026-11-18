@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { BUILTIN_SKILL_IDS } from '@vn/types';
 import { userSkillsDir } from '@vn/config';
-import type { SlotGraph, SlotNode } from '@vn/artgen';
+import type { SlotGraph, SlotNode } from '@vn/stills';
 import type { Asset, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
 import type { DocNode } from '../../shared/ipc.js';

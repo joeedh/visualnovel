@@ -97,12 +97,12 @@ Every path below is read from one module, `paths.ts` in `@vn/gengraph`.
 ## The package
 
 `@vn/gengraph` is a constrained leaf that sits beside `@vn/artgen`. It may import `types`,
-`util`, `config`, `model`, `store`, `taskgraph` and `artgen` (for the slot vocabulary at
-`@vn/artgen/slotaddr`), and deliberately may not import `providers`, `pipeline` or
-`scheduler`. Every model call goes through the `GenServices` interface the package
-declares. Three consumers list it: `pipeline` (the graph runner), `authoring` (the agent
-tools' rules) and `desktop`. The layering rules are in [`packages.md`](packages.md), and
-the module list is in
+`util`, `config`, `model`, `store`, `taskgraph`, `artgen` and `stills` (for the slot
+vocabulary at `@vn/stills/slotaddr`), and deliberately may not import `providers`,
+`pipeline` or `scheduler`. Every model call goes through the `GenServices` interface the
+package declares. Three consumers list it: `pipeline` (the graph runner), `authoring` (the
+agent tools' rules) and `desktop`. The layering rules are in [`packages.md`](packages.md),
+and the module list is in
 [`module-map.md`](module-map.md#vngengraph--generation-graphs-packagesgengraph).
 
 - **It reaches path.ux through two aliases of its own.** `pathux-graph` is the graph
@@ -193,7 +193,7 @@ path.ux's coercion.
   state. `seedInputs` refuses to seed an input the type does not declare, so a further
   seeded type cannot count task state as authored. Every run seeds the derived prompt, the
   task refs and the refine prompt; the two sheet nodes are seeded only for a shot in a
-  sheet group, from `sheetSeeds` in `@vn/artgen`, and stay empty otherwise
+  sheet group, from `sheetSeeds` in `@vn/stills`, and stay empty otherwise
   ([`manga-style.md`](../plans/manga-style.md), Stage 4).
 - The image nodes record the pictures they were shown beside the picture they drew (`refs`
   in the journal record), so a host can tell what a frame was drawn from. The scheduled
@@ -378,7 +378,7 @@ implementation. The testkit passes a mock.
 ## Slots and outputs
 
 - An output node binds a slot by naming it in its `slot` prop, in the vocabulary that
-  `slotKey`, `slotLabel` and `parseSlot` share (`@vn/artgen/slotaddr`). `asset:<hash>` and
+  `slotKey`, `slotLabel` and `parseSlot` share (`@vn/stills/slotaddr`). `asset:<hash>` and
   a bare hex hash parse as asset bindings. A generator output cannot bind an immutable
   content address, so both forms are refused by name.
 - A graph may contain several output nodes, each binding its own slot, so sibling tasks
@@ -792,11 +792,11 @@ diagnostics from the read and from the file itself.
   that the next run redraws each drifted output.
 - `vngen cost` prices the bound slots as described under Cost.
 
-`apps/cli` may import neither `@vn/gengraph` nor `@vn/artgen`, so everything both hosts do
-with a project's graphs lives in `@vn/pipeline`'s `graphload.ts`: `readProjectGraphs`
-(which takes the reader as a parameter, because the desktop reads a graph through git and
-the CLI reads the file), `graphRuntime`, `reportGraphs`, `unrenderedBoundSlots`,
-`boundSlotsToDraw` and `priceSlots`.
+`apps/cli` may import none of `@vn/gengraph`, `@vn/artgen` and `@vn/stills`, so everything
+both hosts do with a project's graphs lives in `@vn/pipeline`'s `graphload.ts`:
+`readProjectGraphs` (which takes the reader as a parameter, because the desktop reads a
+graph through git and the CLI reads the file), `graphRuntime`, `reportGraphs`,
+`unrenderedBoundSlots`, `boundSlotsToDraw` and `priceSlots`.
 
 ## Plugins
 

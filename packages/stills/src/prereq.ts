@@ -16,8 +16,7 @@
  * everything drawn from one. What "approved" means otherwise is {@link assetApproved}.
  */
 import type { Asset, AssetKind } from '@vn/types';
-import { assetSlotLabel } from './describe.js';
-import { slotOf } from './refcycle.js';
+import { assetSlotLabel, slotOf } from './refcycle.js';
 import { slotKey, slotLabel } from './slotaddr.js';
 import { resolveBinding, sheetAngleOf, type BindingContext } from './refs.js';
 import type { RungContext } from './resolve.js';

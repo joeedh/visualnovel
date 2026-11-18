@@ -8,7 +8,7 @@
  */
 import type { TaskKind } from '@vn/types';
 import { createRegistry } from '@vn/authoring';
-import { parseSlot } from '@vn/artgen/slotaddr';
+import { parseSlot } from '@vn/stills/slotaddr';
 import type { ContractIndex } from '@vn/contracts/query';
 import {
   createContractTools,

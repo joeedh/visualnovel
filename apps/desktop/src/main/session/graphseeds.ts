@@ -5,7 +5,7 @@
  * the run files names the pictures the graph was actually shown. A shot in a staging-sheet group
  * seeds the sheet's prompt and references beside its own.
  */
-import { parseSlot, resolveSlot, sheetSeeds, type Decided } from '@vn/artgen';
+import { parseSlot, resolveSlot, sheetSeeds, type Decided } from '@vn/stills';
 import { genNodeSpec } from '@vn/gengraph';
 import type { Graph, GraphId } from '@vn/gengraph';
 import type { GenExecuteOptions } from '@vn/gengraph/state';

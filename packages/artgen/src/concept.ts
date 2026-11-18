@@ -2,16 +2,16 @@ import type { AssetBinding, AssetRef, ImageProvider, ProjectModel } from '@vn/ty
 import type { ProjectConfig } from '@vn/config';
 import type { AssetStore } from '@vn/store';
 import { hashParts, VnError } from '@vn/util';
-import { imageParams } from './prompts.js';
-import { baseRefusal } from './base.js';
-import { approvedPortraitOf } from './gate.js';
 import {
+  imageParams,
+  approvedPortraitOf,
   conceptPrompt,
   matchSubject,
   subjectBinding,
   subjectEntity,
   type ConceptSubject,
-} from './subject.js';
+} from '@vn/stills';
+import { baseRefusal } from './base.js';
 
 /** How many existing images of a subject are fed back as identity references. */
 const MAX_REFS = 2;

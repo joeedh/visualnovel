@@ -31,7 +31,7 @@ import {
   priceShotChanges,
   resolveSlot,
   slotTaskHash,
-} from '@vn/artgen';
+} from '@vn/stills';
 import { driftOf } from '@vn/pipeline';
 import {
   applyCoverage,

@@ -6,14 +6,15 @@
  * through separate call paths, so agreement is asserted rather than assumed. The planner is run to
  * exhaustion with mock providers and the two hash sets are compared outright.
  *
- * This test lives in `@vn/pipeline` because `@vn/artgen` may not import the planner; the pipeline
+ * This test lives in `@vn/pipeline` because `@vn/stills` may not import the planner; the pipeline
  * may import both, so this is the only package that can ask the question.
  */
 import { projectConfig, type Asset, type ProjectModel, type Scene, type Shot } from '@vn/types';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
 import { logTask } from '@vn/taskgraph/write';
 import { createMockProviders } from '@vn/providers';
-import { buildSlotGraph, planAssetCollection, type SlotGraph } from '@vn/artgen';
+import { planAssetCollection } from '@vn/artgen';
+import { buildSlotGraph, type SlotGraph } from '@vn/stills';
 import { readAllShots, readShots, writeShots } from '@vn/store';
 import { character, location, makeProject, model, scene, type TestProject } from '@vn/testkit';
 import { planTasks } from '../index.js';

@@ -6,7 +6,7 @@
  * `setPanels` rule main runs, so a refused control says the rule's own sentence before anything
  * is sent; a bubble edit is `story.setBubbles` the same way.
  */
-import { evenLayout, LAYOUT_TEMPLATES, type PanelShape } from '@vn/artgen/layout';
+import { evenLayout, LAYOUT_TEMPLATES, type PanelShape } from '@vn/stills/layout';
 import { bubblesOf, letterLine, removeBubble, setBubbles, setPanels } from '@vn/scriptedit';
 import type { Lettering, PagePanel, PanelBox, PanelBubble } from '@vn/types';
 import type { CoverageLine, CoverageShot } from '../../src/shared/ipc.js';

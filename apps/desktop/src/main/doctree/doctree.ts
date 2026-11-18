@@ -8,7 +8,7 @@ import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, type Asset, type AssetKind, type ProjectModel, type Shot } from '@vn/types';
 import { isBaseKind } from '@vn/store';
-import { assetApproved, sheetAngleOf, slotKey, slotOf, type SlotGraph } from '@vn/artgen';
+import { assetApproved, sheetAngleOf, slotKey, slotOf, type SlotGraph } from '@vn/stills';
 import { allLocationVariants, topologicalOrder, usedOutfits } from '@vn/model';
 import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';

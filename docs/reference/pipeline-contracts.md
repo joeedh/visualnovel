@@ -182,7 +182,7 @@ package.
       `TaskInputs.shot_image.refs` embeds the upstream asset hashes and `taskHash` covers
       the whole inputs object.
     - So the project enumerates every picture it implies over the slot vocabulary that
-      already exists in `@vn/artgen`'s `refcycle.ts`: `portrait:<id>`,
+      already exists in `@vn/stills`' `refcycle.ts`: `portrait:<id>`,
       `sheet:<id>/<outfit>/<angle>`, `plate:<loc>/<variant>`, `shot:<scene>/<shot>`.
       `refsOfSlot` supplies the edge rule. The planner attaches a real task identity only
       to the slots the project can currently state a task identity for.
@@ -441,7 +441,7 @@ package.
       reads that file whenever it exists, calling `decomposeScene` only when no file
       exists. A file created by a hand-placed shot is read the same way, so placing the
       first shot for a scene by hand stops the planner from decomposing that scene.
-    - (`decomposeScene` and its gauntlet are defined in `@vn/artgen`'s `storyboard.ts`,
+    - (`decomposeScene` and its gauntlet are defined in `@vn/stills`' `storyboard.ts`,
       which holds generative policy shared with the agent's `propose_storyboard`.
       `propose_storyboard` cannot import the pipeline. `@vn/pipeline`'s `p5.ts` re-exports
       them.)
@@ -583,7 +583,7 @@ package.
       [`../plans/archive/INDEX.md#agent-art-revision`](../plans/archive/INDEX.md#agent-art-revision).
 - **A prompt is a list of clauses.** An override edits that list rather than the prompt
   string.
-    - Every builder in `@vn/artgen` assembles a `PromptChunk[]`. Each clause is keyed,
+    - Every builder in `@vn/stills` assembles a `PromptChunk[]`. Each clause is keyed,
       categorised, and carries an origin (a builder, or the document and field the
       sentence came from) that lets a surface offer a `⇱` to it. `renderPrompt` collapses
       that list with the same `.filter(Boolean).join(' ')` the flat builders used.
@@ -728,7 +728,7 @@ package.
   force.**
     - A shot in a sheet group (`Shot.sheet`) carries
       `params.extra.sheet = sha256(sheet prompt, sheet ref hashes in order, group seed)`
-      (`sheetKey` over `sheetSeeds`, in `@vn/artgen`), so anything the sheet is drawn from
+      (`sheetKey` over `sheetSeeds`, in `@vn/stills`), so anything the sheet is drawn from
       — the members and their order, each member's framing, cast and camera, the plate,
       the group's notes and seed — re-keys every member's task at once, and nothing else
       does. A shot outside a group carries no `extra`, so no pre-existing hash moved when

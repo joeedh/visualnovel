@@ -8,7 +8,7 @@ import type { AssetRef, AssetStore, ImageParams, ImageResult, ProjectModel } fro
 import type { Providers } from '@vn/types';
 import type { ResolvedKeys } from '@vn/config';
 import { captureRequest, type ImageBackend } from '@vn/providers';
-import { parseSlot, resolveBinding } from '@vn/artgen';
+import { parseSlot, resolveBinding } from '@vn/stills';
 import type {
   GenAssetService,
   GenBlobService,

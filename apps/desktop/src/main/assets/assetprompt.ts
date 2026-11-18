@@ -15,7 +15,7 @@ import {
   buildShotChunks,
   composePrompt,
   overrideOf,
-} from '@vn/artgen';
+} from '@vn/stills';
 import type { AnyTask, Asset, ProjectModel, PromptChunk, Shot } from '@vn/types';
 
 /** What the derivation needs beyond the asset: the model, the config, and the storyboards. */

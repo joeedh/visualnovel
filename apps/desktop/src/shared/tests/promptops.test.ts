@@ -2,7 +2,7 @@
  * The pure order rules behind `prompt.moveChunk` and the `prompt.reorder` gesture
  * (`docs/plans/archive/INDEX.md#chunked-prompts` §7).
  */
-import { effectiveChunks } from '@vn/artgen';
+import { effectiveChunks } from '@vn/stills';
 import type { PromptChunk, PromptOverride } from '@vn/types';
 import {
   effectiveOrder,
@@ -53,9 +53,9 @@ describe('effectiveOrder', () => {
     ]);
   });
 
-  // `effectiveOrder` is duplicated across a package boundary (artgen is node-side and `shared/`
-  // is in the browser bundle), so this test pins the two copies together
-  it('agrees with the reordering @vn/artgen does inside composePrompt', () => {
+  // `effectiveOrder` is duplicated across a package boundary (the stills barrel is node-side and
+  // `shared/` is in the browser bundle), so this test pins the two copies together
+  it('agrees with the reordering @vn/stills does inside composePrompt', () => {
     const derived: PromptChunk[] = chunks.map((c) => ({
       key     : c.key,
       category: 'style',

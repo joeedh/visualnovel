@@ -9,7 +9,7 @@
 import { KeyMap, type Container } from 'pathux';
 import type { Invocation } from '@vn/commands';
 import { PhaseTimer, type TimingSample } from '@vn/commands';
-import { boxOf } from '@vn/artgen/layout';
+import { boxOf } from '@vn/stills/layout';
 import { aimBubble, bubblesOf, nameBubble, placeBubble } from '@vn/scriptedit';
 import { SHOT_FRAMINGS, type PagePanel, type PanelBubble } from '@vn/types';
 import { api } from '../../api.js';

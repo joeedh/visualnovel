@@ -16,6 +16,7 @@
     "@vn/model": "workspace:*",
     "@vn/store": "workspace:*",
     "@vn/taskgraph": "workspace:*",
-    "@vn/artgen": "workspace:*"
+    "@vn/artgen": "workspace:*",
+    "@vn/stills": "workspace:*"
   }
 }

@@ -5,7 +5,7 @@
  */
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { slotKey, slotLabel, slotsOf } from '@vn/artgen';
+import { slotKey, slotLabel, slotsOf } from '@vn/stills';
 import { Workspace } from '@vn/authoring';
 import {
   entryOf,

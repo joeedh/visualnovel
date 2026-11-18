@@ -16,6 +16,7 @@
     "@vn/parse": "workspace:*",
     "@vn/providers": "workspace:*",
     "@vn/scriptedit": "workspace:*",
+    "@vn/stills": "workspace:*",
     "@vn/store": "workspace:*",
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",

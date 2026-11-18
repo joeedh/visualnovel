@@ -1,14 +1,7 @@
 // ── Planned art: what exists, how it was directed, and drawing it again ─────
 import { z } from 'zod';
-import {
-  assetApproved,
-  assetSlotLabel,
-  openTakeDeps,
-  repairCurrent,
-  rungsFor,
-  setArtNotes,
-  type NotesMode,
-} from '@vn/artgen';
+import { openTakeDeps, repairCurrent, rungsFor, setArtNotes, type NotesMode } from '@vn/artgen';
+import { assetApproved, assetSlotLabel } from '@vn/stills';
 import { loadConfig } from '@vn/config';
 import { AssetStore, readShots } from '@vn/store';
 import { exists } from '@vn/util';

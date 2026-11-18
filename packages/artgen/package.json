@@ -5,8 +5,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./slotaddr": "./src/slotaddr.ts",
-    "./layout": "./src/layout.ts",
     "./adopt": "./src/adopt.ts"
   },
   "dependencies": {
@@ -17,6 +15,7 @@
     "@vn/model": "workspace:*",
     "@vn/store": "workspace:*",
     "@vn/taskgraph": "workspace:*",
+    "@vn/stills": "workspace:*",
     "@vn/providers": "workspace:*"
   }
 }

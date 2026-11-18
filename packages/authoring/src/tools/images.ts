@@ -1,6 +1,6 @@
 // ── Concept images: sketches bound to a subject, drawn from a sentence ──────
 import { z } from 'zod';
-import { formatSubject, parseSubject } from '@vn/artgen';
+import { formatSubject, parseSubject } from '@vn/stills';
 import { ok, fail, rel, type Tool } from './core.js';
 
 const generateImageTool: Tool<{ sentence: string; subject?: string }> = {

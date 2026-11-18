@@ -22,8 +22,7 @@ import {
   withTaskLog,
   withTaskLogScope,
 } from '@vn/providers';
-import { heldBy, layoutDefect, sheetSeeds } from '@vn/artgen';
-import type { SheetSeeds } from '@vn/artgen';
+import { heldBy, layoutDefect, sheetSeeds, type SheetSeeds } from '@vn/stills';
 import { refinePrompt } from './p6.js';
 import { shotSpec } from './prompts.js';
 import {

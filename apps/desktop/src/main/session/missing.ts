@@ -5,7 +5,7 @@
  */
 import { readdir } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
-import { assetSlotLabel } from '@vn/artgen';
+import { assetSlotLabel } from '@vn/stills';
 import { ensureProjectId } from '@vn/config';
 import { applyForget, forgetPlanMessage, planForget } from '@vn/scriptedit/write';
 import { addClaim, AssetRoot, parseManifest, ProjectPaths, removeClaim } from '@vn/store';

@@ -14,9 +14,9 @@
  * through the CLI, the agent, or by hand in the chunk file.
  */
 import type { Drift, Scene, Shot } from '@vn/types';
-import { proseHash } from '@vn/artgen';
+import { proseHash } from '@vn/stills';
 
-// Defined in `@vn/artgen` because adoption stamps the same hash; re-exported by name so callers
+// Defined in `@vn/stills` because adoption stamps the same hash; re-exported by name so callers
 // asking whether a frame is stale still find it here
 export { proseHash };
 

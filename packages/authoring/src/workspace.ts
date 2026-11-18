@@ -37,7 +37,7 @@ import {
   type SceneEditInput,
   type SceneSource,
 } from '@vn/scriptedit/write';
-import { storyboardStyle, type StoryboardStyle } from '@vn/artgen';
+import { storyboardStyle, type StoryboardStyle } from '@vn/stills';
 import { loadConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
 import { exists, readText, samePath, VnError, writeFileAtomic } from '@vn/util';
