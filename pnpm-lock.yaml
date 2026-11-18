@@ -448,6 +448,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/gengraph':
         specifier: workspace:*
         version: link:../gengraph
@@ -538,6 +541,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/model':
         specifier: workspace:*
         version: link:../model

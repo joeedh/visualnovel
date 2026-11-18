@@ -18,6 +18,7 @@ import {
 import { createDesktopRegistry } from '../../apps/desktop/src/main/commands/index.js';
 import { CONTRACTS as model } from '../../packages/model/src/contracts.js';
 import { CONTRACTS as scriptedit } from '../../packages/scriptedit/src/contracts.js';
+import { CONTRACTS as stills } from '../../packages/stills/src/contracts.js';
 import { CONTRACTS as store } from '../../packages/store/src/contracts.js';
 import { CONTRACTS as taskgraph } from '../../packages/taskgraph/src/contracts.js';
 import { buildIndex, type Declared, type Facts } from './build.js';
@@ -26,6 +27,7 @@ import { buildIndex, type Declared, type Facts } from './build.js';
 export const DECLARED: readonly Declared[] = [
   { file: 'packages/model/src/contracts.ts', contracts: model },
   { file: 'packages/scriptedit/src/contracts.ts', contracts: scriptedit },
+  { file: 'packages/stills/src/contracts.ts', contracts: stills },
   { file: 'packages/store/src/contracts.ts', contracts: store },
   { file: 'packages/taskgraph/src/contracts.ts', contracts: taskgraph },
 ];

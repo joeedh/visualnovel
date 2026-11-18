@@ -17,6 +17,7 @@ import type {
   Shot,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { contract } from '@vn/contracts';
 import { MAX_SHEET_CELLS } from '@vn/types';
 import { hashParts } from '@vn/util';
 import { chunk, chunkList, composePrompt } from './chunks.js';
@@ -251,10 +252,48 @@ export function sheetSeeds(
   return seeds;
 }
 
+export const identityStagingSheet = contract({
+  id      : 'identity.stagingSheet',
+  rule: "A shot in a staging-sheet group carries `params.extra.sheet`, a hash of the sheet's prompt, its reference hashes in order and the group seed, so anything the sheet is drawn from re-keys every member at once. A shot in no group carries no `extra`.",
+  prevents:
+    "A member drawn from an old sheet while the others are cut from a new one, or a sheet change that re-renders nothing, because the sheet's inputs are not in any member's identity.",
+  subjects: [
+    'module:packages/stills/src/sheet.ts',
+    'function:packages/stills/src/sheet.ts#sheetKey',
+    'function:packages/stills/src/sheet.ts#sheetKeys',
+    'function:packages/stills/src/sheet.ts#sheetSeeds',
+    'function:packages/stills/src/prompts.ts#shotInputs',
+    'function:packages/gengraph/src/execute.ts#sharedAncestors',
+    'function:packages/pipeline/src/graphrun.ts#runBoundGraph',
+    'task:shot_image',
+    'slot:shot',
+    'command:story.setSheetGroup',
+    'command:gengraph.run',
+  ],
+  see: [
+    'docs/reference/gen-graphs.md#slots-and-outputs',
+    'docs/plans/manga-style.md',
+    'docs/research/manga-live-tests.md',
+  ],
+  detail:
+    "What re-keys the members: the members and their order, each member's framing, cast and " +
+    "camera, the plate, and the group's notes and seed. A shot outside a group carries no `extra`, " +
+    'so no hash that predates the field moved. The seeds are derived from the project and the ' +
+    'manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner ' +
+    "and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the " +
+    "model scene's `sheets` through `readAllShots`. A sheet is rerolled by changing its seed " +
+    '(`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a ' +
+    'node feeds more than one output (`sharedAncestors`), because a forced run to one output would ' +
+    "redraw the sheet for it alone and leave the other members' frames cut from the old one with " +
+    'nothing to re-key them. Every slot a graph binds shares its one journal and its one `Graph` ' +
+    'object in a process, and `runBoundGraph` serialises the runs of one graph, because seeds are ' +
+    "written onto the graph's own sockets: two members running at once would read each other's " +
+    'prompt and references, and the sheet would be drawn once per member rather than once per group.',
+});
+
 /**
  * What a member shot's `params.extra.sheet` carries: a hash of the sheet's prompt, its
- * references in order and the group seed. Anything that changes what the sheet is drawn from
- * changes this, and with it every member's task identity.
+ * references in order and the group seed.
  */
 export function sheetKey(seeds: Pick<SheetSeeds, 'prompt' | 'refs' | 'seed'>): string {
   return hashParts(

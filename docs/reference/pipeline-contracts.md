@@ -521,12 +521,6 @@ package.
     - `regenerate=false` re-approves. It swaps the pin, computes the newly-keyed task's
       identity from the state just written, and records the existing bytes as its output.
       Promotion rests on the same don't-forge-work bound.
-- **The reference graph is kept acyclic at write time (over slots rather than hashes).**
-    - `refCycle` runs in `prompt.addRef`'s precondition and refuses with the whole path
-      named.
-    - Hashes cannot cycle today, but bindings can. A cycle in this graph does not raise an
-      error at run time. It leaves tasks that are never ready, so the run appears to do
-      nothing.
 - Editing a scene's prose never invalidates a frame's art, so drift has to be reported.
     - `buildShotPrompt` reads neither `coversLines` nor line text on a frame, because
       prose reaches only the P7 reviewer spec, which never enters a task's `inputs`.
@@ -609,37 +603,6 @@ package.
     - See [`gen-graphs.md`](gen-graphs.md#groups) for the reference and
       [`../plans/archive/group-nodes-in-the-gen-graph-editor.md`](../plans/archive/group-nodes-in-the-gen-graph-editor.md)
       for the plan.
-- **A staging sheet is in every member's identity, and is rerolled by its seed, never by
-  force.**
-    - A shot in a sheet group (`Shot.sheet`) carries
-      `params.extra.sheet = sha256(sheet prompt, sheet ref hashes in order, group seed)`
-      (`sheetKey` over `sheetSeeds`, in `@vn/stills`), so anything the sheet is drawn from
-      — the members and their order, each member's framing, cast and camera, the plate,
-      the group's notes and seed — re-keys every member's task at once, and nothing else
-      does. A shot outside a group carries no `extra`, so no pre-existing hash moved when
-      the field arrived.
-    - The seeds are derived from the project and the manifest, never from a task graph:
-      the planner, the scheduled runner and `gengraph.run` call the same `sheetSeeds`, so
-      the key the planner hashed is the sheet the runner seeds. The planner and the slot
-      graph's `resolveSlot` both key a member through `sheetKeys`, so the identity the
-      slot graph states for a member is the one the planner hashed, given the same
-      manifest and the same groups. A group's seed and notes live in the shots file beside
-      the shots, and `readAllShots` copies them onto each model scene's `sheets`
-      (`syncSheets`) as it reads, so every host that reads storyboards through it sees the
-      groups the planner sees.
-    - `gengraph.run` refuses `force` on a graph where a node feeds more than one output
-      (`sharedAncestors`). The sheet feeds every member's crop and a crop spends nothing,
-      so a forced run to one output would redraw the sheet for it alone while the other
-      members' frames stayed cut from the old one, with nothing to re-key them. The reroll
-      path is `story.setSheetGroup` changing the seed, which re-keys every member.
-    - Every slot a graph binds shares the graph's one journal and one `Graph` object in a
-      process, and `runBoundGraph` serialises the runs of one graph. Seeds are written
-      onto the graph's own sockets, so two members running at once would read each other's
-      prompt and references, and the sheet would be drawn once per member rather than once
-      per group. The live check that found both is in
-      [`manga-live-tests.md`](../research/manga-live-tests.md).
-    - Reference: [`gen-graphs.md`](gen-graphs.md#slots-and-outputs). Plan:
-      [`../plans/manga-style.md`](../plans/manga-style.md) (Decisions 14 to 17).
 - **Renaming a node type's socket or prop requires a migration in the same commit.**
     - path.ux reconciles a loaded node against its definition by key. A file written
       before a rename loads with the old key kept as an orphaned socket, the link into
@@ -656,41 +619,6 @@ package.
     - The file on disk keeps the old keys until something writes it back, which means the
       migration has to stay in place rather than being deleted a release later.
     - Reference: [`gen-graphs.md`](gen-graphs.md#node-types).
-- **Editing a scene's heading invalidates art (unlike every other scene edit) and shows
-  the cost before the edit runs.**
-    - A location appears in a shot's task inputs twice (`buildShotPrompt` bakes
-      `location.name` into the prompt, and the plate asset's hash leads the shot's
-      `refs`). Rewriting a heading therefore rehashes every shot in the scene, and the
-      next run re-renders them rather than reporting drift.
-    - This inverts the contract stated above, so `ShotFallout` counts the case separately
-      as `restaged` and never folds it into `drifted`.
-    - `setHeading` (`packages/scriptedit/src/lineops.ts`) implements this. The heading is
-      not a `SceneLine` but `location` + `locationVariant` + `headingPrefix`, which
-      `headingOf` reassembles and `parseHeading` reads back, so no line id moves and no
-      coverage changes.
-    - It also restages every shot in the scene onto the new heading's variant, through the
-      `relocated` channel on `LineOp`. `Shot.location` is a variant id persisted in
-      `work/shots/<sceneId>.json`, and once written that value takes precedence
-      permanently. The planner's `locationTask(…, shot.location, …)` `continue`s past a
-      shot whose variant the new location does not declare, so that shot is skipped
-      silently and permanently.
-    - The prose still describes the old place, and nothing here fixes that. The op's own
-      message says so and names the agent.
-    - Surfaces display the cost rather than asking for confirmation: `story.setHeading` is
-      deliberately not `confirm: true`, because a confirm command is never checked, and
-      the check is what raises the warning.
-- **P5 receives the scene as identified lines rather than prose.**
-    - `coversLines` takes line ids, so `decomposeScene` enumerates the scene as
-      `[<lineId>] <kind>/<speaker>: <text>` and requires that every line be assigned to
-      exactly one shot.
-    - Handing over flattened prose and a response template containing `"coversLines":[]`
-      made the question unanswerable. The model copied the empty array, producing shots
-      that were generated and never displayed.
-    - `withCoverage` supplies the fallbacks. A decomposition that binds no real line falls
-      back to the baseline, and an uncovered first line goes to the first shot, so a scene
-      cannot open on a blank frame.
-    - See
-      [`../plans/archive/INDEX.md#shot-timeline-editor`](../plans/archive/INDEX.md#shot-timeline-editor).
 
 ## Generation and review
 
@@ -705,34 +633,6 @@ package.
       so an unchanged prompt means the critique repeated verbatim and the next attempt
       would issue the identical request. Spending the rest of the cap on that repeats the
       same request rather than refining it.
-- The reviewer sees only what `shotSpec` requests, not the scene's full contents.
-    - `shotSpec` (`packages/pipeline/src/prompts.ts`) describes the shot's own framing,
-      location and cast, and marks the prose of its covered lines as "context only".
-      `spec.characters` determines who must be in frame, and an empty `spec.characters`
-      means a missing character is not a defect.
-    - `Shot.castOptional` exempts a shot that does have a cast from the same trap. The
-      subjects stay on the shot, so the character sheets still reach the generator as
-      references, but `shotSpec` hands the reviewer an empty `characters` and the
-      description states that an absence is not a defect. Without `Shot.castOptional`, a
-      frame the reviewer will never accept (a figure seen from behind, a crowd, a hand)
-      spends the whole cap and lands on `needs_human`. The field is part of the prompt, so
-      setting it re-renders that frame. `story.requireCast` writes the field, normally
-      from the Shot Coverage strip.
-    - Handing over the scene synopsis instead made every background plate fail for the
-      characters the scene mentions but the shot never ordered. No plate could satisfy
-      that request, so the loop used every attempt and ended at `needs_human`.
-    - `shotSpec`'s output never enters a task's `inputs`, so nothing is rehashed.
-- **Deterministic fallbacks.**
-    - Text steps (P1 location enrichment, P5 shot decomposition) use the LLM with
-      structured-output enforcement but fall back to a deterministic baseline when a step
-      fails, so the whole pipeline runs end-to-end with mock providers and no API calls.
-    - P5's baseline is one establishing shot carrying the scene's cast plus one medium
-      shot per character. A scene with no cast gets a bare plate, because the establishing
-      shot covers the narration and action beats, and those beats describe the characters
-      doing things.
-    - This changes the prompt, so it rehashes establishing tasks. Shots are persisted, so
-      an existing project keeps its old decomposition until `vngen/work/shots/*.json` is
-      deleted or edited.
 
 ## Seams
 

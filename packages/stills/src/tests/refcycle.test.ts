@@ -2,8 +2,10 @@
  * The reference-graph cycle check (`docs/plans/archive/INDEX.md#chunked-prompts` §14). The cycle is over logical
  * slots rather than hashes, so the interesting cases are the ones where no hash repeats.
  */
+import { pins } from '@vn/contracts';
 import type { Asset, Location, ProjectModel, RefBinding, Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
+import { promptsRefsAcyclic } from '../refcycle.js';
 import {
   cycleRefusal,
   firstCycle,
@@ -78,7 +80,7 @@ describe('refsOfSlot', () => {
   });
 });
 
-describe('refCycle', () => {
+describe(pins(promptsRefsAcyclic), () => {
   it('catches the direct case, and names the path the way the plan says', () => {
     // A portrait referencing its own gala sheet. No hash repeats, but the sheet is drawn from the
     // portrait, so the planner would starve waiting on an output that can never exist.

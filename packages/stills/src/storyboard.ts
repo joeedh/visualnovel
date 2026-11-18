@@ -10,6 +10,7 @@ import type {
   ProjectModel,
 } from '@vn/types';
 import { shotDecompositionSchema } from '@vn/types';
+import { contract } from '@vn/contracts';
 import { LAYOUT_TEMPLATES, shapesFor } from './layout.js';
 import { MAX_SHEET_CELLS } from './sheet.js';
 
@@ -49,15 +50,35 @@ function baseline(scene: Scene, model: ProjectModel, reason: string): Decomposit
   return { shots: deterministicShots(scene, model), source: 'baseline', reason };
 }
 
+export const providersTextFallback = contract({
+  id      : 'providers.textFallback',
+  rule: 'The text steps (P1 location enrichment, P5 shot decomposition) call the LLM with structured-output enforcement and fall back to a deterministic baseline when the step fails, so a whole run completes with mock providers and no API calls.',
+  prevents:
+    'A run that stops at the first text step a mock, missing or failing model cannot answer, which would make the pipeline impossible to run end to end without paid calls.',
+  subjects: [
+    'module:packages/stills/src/storyboard.ts',
+    'function:packages/stills/src/storyboard.ts#decomposeScene',
+    'function:packages/stills/src/storyboard.ts#deterministicShots',
+    'function:packages/pipeline/src/p1.ts#enrichLocation',
+    'function:packages/pipeline/src/p1.ts#deterministicBreakdown',
+    'function:packages/providers/src/mock.ts#createMockProviders',
+  ],
+  detail:
+    "P5's baseline is one establishing shot carrying the scene's cast plus one medium shot per " +
+    "character, each on the location's first variant. The establishing shot carries the cast " +
+    'because it covers the narration and action beats, which describe the characters doing ' +
+    'things; a scene with no cast gets a bare plate. `decomposeScene` never throws: a failure ' +
+    'becomes a `baseline` decomposition with a `reason`, so a caller that persists can refuse to ' +
+    'write it (`planning.storyboardOnRequest`). P1 keeps the mined location when enrichment fails. ' +
+    'Changing the baseline changes the prompt and re-keys establishing tasks, but shots are ' +
+    'persisted, so an existing project keeps its old decomposition until `vngen/work/shots/*.json` ' +
+    'is deleted or edited.',
+});
+
 /**
- * Deterministic shot decomposition (report §P5 baseline). Without an LLM we still produce
- * a runnable storyboard: one establishing shot of the scene's location plus one medium
- * shot per character present. Every shot defaults to the scene's primary location variant.
- *
- * The establishing shot carries the scene's cast rather than an empty frame, because it covers the
- * narration and action beats and those describe the characters doing things. An empty subject list
- * would order a bare plate whose own lines contradict it, and the P2 location reference already
- * produces such a plate. A cast-less scene still gets a bare plate.
+ * Deterministic shot decomposition (report §P5 baseline): one establishing shot of the scene's
+ * location, carrying its cast, plus one medium shot per character present. Every shot defaults
+ * to the scene's primary location variant.
  */
 export function deterministicShots(scene: Scene, model: ProjectModel): Shot[] {
   const location = model.locations.get(scene.location);
@@ -210,13 +231,34 @@ export function decompSystem(style: StoryboardStyle): string {
   ].join(' ');
 }
 
+export const promptsDecomposeByLineId = contract({
+  id      : 'prompts.decomposeByLineId',
+  rule: "P5 receives the scene as identified lines, `[<lineId>] <kind>/<speaker>: <text>`, never as flattened prose, and a decomposition that binds none of the scene's real line ids falls back to the baseline.",
+  prevents:
+    'A model copying an empty `"coversLines":[]` from the response template, which produces shots that are drawn and never displayed, because the exporter shows a shot only where its lines are.',
+  subjects: [
+    'function:packages/stills/src/storyboard.ts#decomposeScene',
+    'function:packages/stills/src/storyboard.ts#realizeDecomposition',
+    'function:packages/stills/src/storyboard.ts#withCoverage',
+    'tool:propose_storyboard',
+    'tool:write_storyboard',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#shot-timeline-editor'],
+  detail:
+    'The system prompt asks the model to assign every line to exactly one shot, in order; the code ' +
+    'does not enforce that, and a line the answer leaves uncovered stays uncovered. What the code ' +
+    'enforces: line ids the scene does not have are dropped, a decomposition that binds no real ' +
+    'line falls back to the baseline (`withCoverage`), and an uncovered first line goes to the ' +
+    "first shot, so a scene cannot open on a blank frame. `coversLines` is not in a frame's task " +
+    'inputs, so these repairs re-key nothing.',
+});
+
 /**
  * Decompose a scene into shots (report §P5). Uses the text LLM with structured-output
  * enforcement, falling back to the deterministic storyboard if the model is unavailable
  * or returns nothing usable. Shot ids are namespaced under the scene id.
  *
- * Never throws: every failure becomes a `baseline` {@link Decomposition} naming its own cause, so
- * a run always has a storyboard and a caller that persists can still refuse to write one.
+ * Never throws: every failure becomes a `baseline` {@link Decomposition} naming its own cause.
  */
 export async function decomposeScene(
   scene: Scene,
@@ -361,17 +403,12 @@ function realizePanels(
 }
 
 /**
- * Guarantee the storyboard actually binds to the screenplay. The exporter emits a `show` beat only
- * where the covering shot changes, so a decomposition that binds no lines renders every one of its
- * images and displays none of them, which leaves the scene unplayable. A model asked for line ids
- * it was never shown returns exactly that.
+ * Falls back to the baseline when the shots bind none of the scene's lines, and gives an uncovered
+ * first line to the first shot.
  *
  * Exported so that callers building shots some other way can reach it (a hand-made storyboard is
  * `@vn/scriptedit`'s business rather than this backstop's). Most callers want
  * {@link realizeDecomposition}, which ends here.
- *
- * `coversLines` is not part of a shot's task hash (`buildShotPrompt` ignores it), so repairing
- * coverage here rehashes nothing.
  */
 export function withCoverage(shots: Shot[], scene: Scene, model: ProjectModel): Decomposition {
   const covered = new Set(shots.flatMap((s) => s.coversLines));

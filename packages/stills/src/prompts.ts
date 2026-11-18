@@ -17,6 +17,7 @@ import type {
   TaskInputs,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { contract } from '@vn/contracts';
 import { outfitFor, outfitText } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
 import { chunk, chunkList, composePrompt } from './chunks.js';
@@ -94,13 +95,34 @@ export function paletteClause(palette: string[]): string {
   return palette.length ? ` Palette: ${palette.join(', ')}.` : '';
 }
 
-/**
- * Authored art direction, in order from the widest rung to the narrowest. Appended to the derived
- * prompt rather than replacing it — the style preamble, the reference instructions and the closing
- * framing sentence are what keep a generation on-model, and a hand-written prompt would freeze this
- * asset against every later improvement to the builders. Empty notes add nothing, which is what
- * keeps every existing task hash exactly where it was.
- */
+export const promptsArtNotesAppended = contract({
+  id      : 'prompts.artNotesAppended',
+  rule: "Authored `artNotes` are appended to what a builder derived, entity note first and the narrower rung second, and an empty note adds nothing, so a project that authors no notes composes byte-identical prompts. A shot's prompt reads only the shot's own notes.",
+  prevents:
+    'Re-keying every task in every project that authors no notes, and losing the style preamble, reference scaffolding and closing frame clause that keep a picture on-model, which a replaced prompt would drop.',
+  subjects: [
+    'module:packages/stills/src/prompts.ts',
+    'function:packages/stills/src/prompts.ts#artClause',
+    'function:packages/stills/src/prompts.ts#buildPortraitChunks',
+    'function:packages/stills/src/prompts.ts#buildLocationChunks',
+    'function:packages/stills/src/prompts.ts#buildModelSheetChunks',
+    'function:packages/stills/src/prompts.ts#buildShotChunks',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor',
+    'docs/plans/archive/INDEX.md#agent-art-revision',
+  ],
+  detail:
+    '`artNotes` is an optional free-text field at five rungs: `Character`, `Location`, `Shot`, each ' +
+    '`Outfit` and each `LocationVariant`. Setting a note costs money by design, like an outfit and ' +
+    'unlike a scene edit: the note is in the prompt, so it re-keys exactly the tasks its rung ' +
+    'reaches. `buildShotPrompt` leaves out the entity notes because they already reach the frame ' +
+    'through the plates and sheets it references. The test worth having is the byte-identical ' +
+    'output of a project with no notes, not the feature. Where the notes, seeds and image models ' +
+    'are written is `prompts.artRungsShared`, in `@vn/artgen`.',
+});
+
+/** Authored art direction, in order from the widest rung to the narrowest. */
 export function artClause(...notes: (string | undefined)[]): string {
   const said = notes.map((n) => n?.trim()).filter((n): n is string => !!n);
   return said.length ? `Art direction: ${said.join(' ')}` : '';
@@ -599,12 +621,31 @@ export function shotRefs(
   return authoredRefs(buildShotChunks(shot, scene, model, config), override ?? shot.promptOverride);
 }
 
+export const identityHeadingRekeysShots = contract({
+  id      : 'identity.headingRekeysShots',
+  rule: "A shot's task inputs carry its location twice: `buildShotPrompt` names the location, and the plate's asset hash leads `refs`. So rewriting a scene's heading re-keys every shot in the scene, unlike retyping a line, which re-keys nothing.",
+  prevents:
+    'Treating a heading edit as free, like other prose edits, when the next run re-renders every shot in the scene; the price has to be shown before the edit runs.',
+  subjects: [
+    'function:packages/stills/src/prompts.ts#shotInputs',
+    'function:packages/stills/src/prompts.ts#buildShotChunks',
+    'function:packages/scriptedit/src/lineops.ts#setHeading',
+    'command:story.setHeading',
+    'task:shot_image',
+  ],
+  detail:
+    "The planner passes the plate first in `upstream`, then each subject's portrait and outfit " +
+    'sheet. A heading edit inverts the rule that prose edits are reported as drift rather than ' +
+    're-rendered, so the price counts these shots as `restaged`, never as `drifted` ' +
+    '(`script.headingRestagesShots`, in `@vn/scriptedit`).',
+});
+
 /**
  * One shot task's inputs. `upstream` is what the caller resolved and this cannot — the plate the
  * shot is set in and the portrait/sheet of each subject — and it leads the refs, with the authored
  * ones appended after, the order the hash has always seen (§12). `sheet` is the key of the staging
- * sheet a member shot is drawn from (`sheetKey`), carried in `params.extra` so the sheet's inputs
- * are part of the member's identity; a shot in no group passes none and keeps the params it had.
+ * sheet a member shot is drawn from (`sheetKey`), carried in `params.extra`; a shot in no group
+ * passes none and keeps the params it had.
  */
 export function shotInputs(
   shot: Shot,
@@ -629,16 +670,27 @@ export function shotInputs(
   };
 }
 
-/**
- * What this shot is meant to depict: its own framing and cast first, the prose of the lines
- * it covers as context.
- *
- * Deliberately not the scene synopsis. A scene describes action no single shot is
- * responsible for, so a reviewer handed it flags every shot for the characters the scene
- * mentions but the shot never ordered — and since a background plate can never satisfy that,
- * the refine loop cannot converge and burns every attempt. `characters` is the authority on
- * who must be in frame, and the description states that explicitly.
- */
+export const promptsReviewerSpec = contract({
+  id      : 'prompts.reviewerSpec',
+  rule: 'The P7 reviewer sees only what `shotSpec` says about the shot: its own framing, location and cast, with the prose of its covered lines marked as context only. `spec.characters` decides who must be in frame, and an empty list means an absence is not a defect.',
+  prevents:
+    'A reviewer handed the scene synopsis flagging every shot, plates included, for characters the scene mentions but the shot never ordered, so the refine loop spends every attempt and lands on `needs_human`.',
+  subjects: [
+    'function:packages/stills/src/prompts.ts#shotSpec',
+    'command:story.requireCast',
+    'task:shot_image',
+  ],
+  detail:
+    '`Shot.castOptional` exempts a shot that has a cast from the same trap: the subjects stay on ' +
+    'the shot, so their sheets still reach the generator as references, but `shotSpec` hands the ' +
+    'reviewer an empty `characters` and the description says an absence is not a defect. Without ' +
+    'it, a frame the reviewer will never accept (a figure seen from behind, a crowd, a hand) spends ' +
+    'the whole cap. `story.requireCast` writes the field, normally from the Shot Coverage strip. ' +
+    "`shotSpec`'s output never enters a task's `inputs`, and `castOptional` is read only by " +
+    '`shotSpec`, so neither re-keys the shot: setting the field changes what the next review asks ' +
+    'and does not by itself redraw the frame.',
+});
+
 /**
  * What the description says about who is in frame. A shot with `castOptional` names its subjects
  * and then says their absence is not a defect, so the sheets still reach the image as references

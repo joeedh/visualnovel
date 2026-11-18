@@ -17,6 +17,7 @@
     "@vn/taskgraph": "workspace:*",
     "@vn/providers": "workspace:*",
     "@vn/gengraph": "workspace:*",
+    "@vn/contracts": "workspace:*",
     "jimp": "^1.6.0"
   }
 }

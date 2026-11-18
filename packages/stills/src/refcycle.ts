@@ -1,13 +1,8 @@
 /**
  * The reference graph, and the cycle check over it (`docs/plans/archive/INDEX.md#chunked-prompts` §14).
- *
- * Enforcement is over references, not `Task.deps` — `deps` is incomplete and is not hashed, so a
- * ref cycle is invisible to `topoOrder`. The cycle is over logical slots rather than hashes: "Aiko's
- * portrait references Aiko's gala sheet" closes a loop even though no hash repeats, because the
- * sheet's prompt already references the portrait. Left unchecked, `doneOutput` answers `undefined`,
- * the shot is skipped, and the plan-run-replan loop starves in silence, so the check runs at write
- * time and the refusal names the path.
+ * Edges are read from references, not `Task.deps`, which is incomplete and is not hashed.
  */
+import { contract } from '@vn/contracts';
 import type { Asset, AssetBinding, RefBinding } from '@vn/types';
 import { outfitFor } from '@vn/model';
 import { overrideAt, type PromptRung, type RungContext } from './resolve.js';
@@ -147,6 +142,29 @@ function attachedSlots(b: RefBinding, ctx: RungContext): RefBinding[] {
 export function refsOfSlot(b: RefBinding, ctx: RungContext): RefBinding[] {
   return [...derivedRefs(b, ctx), ...attachedSlots(b, ctx)];
 }
+
+export const promptsRefsAcyclic = contract({
+  id      : 'prompts.refsAcyclic',
+  rule: 'The reference graph over slots stays acyclic: `prompt.addRef` runs `refCycle` in its check and refuses a reference that would close a loop, naming the whole path. The cycle is over slots, not hashes.',
+  prevents:
+    'Tasks that are never ready, because each waits on the other, so a run appears to do nothing and reports no error.',
+  subjects: [
+    'module:packages/stills/src/refcycle.ts',
+    'function:packages/stills/src/refcycle.ts#refCycle',
+    'function:packages/stills/src/refcycle.ts#firstCycle',
+    'function:packages/stills/src/refcycle.ts#cycleRefusal',
+    'module:apps/desktop/src/main/session/prompt.ts',
+    'command:prompt.addRef',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#chunked-prompts'],
+  detail:
+    'Hashes cannot cycle, but bindings can: "Aiko\'s portrait references Aiko\'s gala sheet" closes ' +
+    "a loop although no hash repeats, because the sheet's prompt already references the portrait. " +
+    'A ref cycle is invisible to `topoOrder`, which reads `Task.deps`. Left unchecked, `doneOutput` ' +
+    'answers `undefined`, the shot is skipped, and the plan-run-replan loop starves in silence. ' +
+    '`firstCycle` finds a loop already on disk in a hand-edited project, and the planner calls it ' +
+    'so such a project fails loudly.',
+});
 
 /**
  * Whether attaching `candidate` to `from` would close a loop, and if so the path, named.

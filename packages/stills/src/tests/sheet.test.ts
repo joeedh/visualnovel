@@ -1,5 +1,7 @@
+import { pins } from '@vn/contracts';
 import { projectConfig, type Asset, type Shot } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
+import { identityStagingSheet } from '../sheet.js';
 import {
   MAX_SHEET_CELLS,
   buildSheetChunks,
@@ -87,7 +89,7 @@ describe('the sheet grid', () => {
   });
 });
 
-describe('the sheet prompt and key', () => {
+describe(pins(identityStagingSheet), () => {
   it('names the grid, the room, each cell in scene order, and the group notes', () => {
     const { m, room } = fixture();
     const members = sheetMembers(room, 'g1');

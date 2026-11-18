@@ -5,9 +5,18 @@
  * The legacy collapse is spelled out literally in each case rather than imported, so this proves
  * the property in code instead of asserting that two call sites agree.
  */
-import { projectConfig, type PromptChunk, type PromptOverride, type Shot } from '@vn/types';
+import { pins } from '@vn/contracts';
+import {
+  projectConfig,
+  type PromptChunk,
+  type PromptOverride,
+  type Scene,
+  type Shot,
+} from '@vn/types';
 import { outfitText } from '@vn/model';
+import { makeTask } from '@vn/taskgraph';
 import { character, location, model, scene } from '@vn/testkit';
+import { identityHeadingRekeysShots, promptsReviewerSpec } from '../prompts.js';
 import {
   artClause,
   buildLocationChunks,
@@ -19,8 +28,11 @@ import {
   buildShotChunks,
   buildShotPrompt,
   chunk,
+  imageParams,
   paletteClause,
   renderPrompt,
+  shotInputs,
+  shotSpec,
   stylePreamble,
 } from '../index.js';
 
@@ -205,5 +217,50 @@ describe('renderPrompt', () => {
     for (const list of lists) {
       expect(new Set(list.map((c2) => c2.key)).size).toBe(list.length);
     }
+  });
+});
+
+/** One frame's task hash, drawn in `sc` with `plate` leading its references. */
+function frameHash(sc: Scene, plate: string, s: Shot = shot): string {
+  const c = character('aiko');
+  const m = model([c], [sc], [location('cafe'), location('pier')]);
+  const inputs = shotInputs(s, sc, m, config, imageParams(config), [{ hash: plate, ext: 'png' }]);
+  return makeTask('shot_image', inputs).hash;
+}
+
+describe(pins(identityHeadingRekeysShots), () => {
+  it('names the location in the prompt and leads the refs with the plate', () => {
+    const sc = scene('s1', ['aiko'], 'cafe');
+    const c = character('aiko');
+    const m = model([c], [sc], [location('cafe')]);
+    const inputs = shotInputs(shot, sc, m, config, imageParams(config), [
+      { hash: 'plate-cafe', ext: 'png' },
+      { hash: 'portrait-aiko', ext: 'png' },
+    ]);
+    expect(inputs.prompt).toContain('in cafe');
+    expect(inputs.refs[0]?.hash).toBe('plate-cafe');
+  });
+
+  it('re-keys a shot when its scene moves, and not when a covered line is retyped', () => {
+    const before = scene('s1', ['aiko'], 'cafe');
+    before.lines = [{ id: 's1:L1', kind: 'narration', text: 'Rain.' }];
+    const covered = { ...shot, coversLines: ['s1:L1'] };
+    const key = frameHash(before, 'plate-cafe', covered);
+
+    const moved = { ...before, location: 'pier' };
+    expect(frameHash(moved, 'plate-pier', covered)).not.toBe(key);
+
+    const retyped = { ...before, lines: [{ ...before.lines[0]!, text: 'Snow.' }] };
+    expect(frameHash(retyped, 'plate-cafe', covered)).toBe(key);
+  });
+});
+
+describe(pins(promptsReviewerSpec), () => {
+  it('keeps what the reviewer is told out of the task inputs, castOptional included', () => {
+    const sc = scene('s1', ['aiko'], 'cafe');
+    const relaxed = { ...shot, castOptional: true };
+    expect(frameHash(sc, 'plate-cafe', relaxed)).toBe(frameHash(sc, 'plate-cafe'));
+    expect(shotSpec(relaxed, sc).characters).toEqual([]);
+    expect(shotSpec(shot, sc).characters).toEqual(['aiko']);
   });
 });

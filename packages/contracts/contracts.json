@@ -1,6 +1,45 @@
 {
   "contracts": [
     {
+      "id"      : "identity.headingRekeysShots",
+      "rule": "A shot's task inputs carry its location twice: `buildShotPrompt` names the location, and the plate's asset hash leads `refs`. So rewriting a scene's heading re-keys every shot in the scene, unlike retyping a line, which re-keys nothing.",
+      "prevents": "Treating a heading edit as free, like other prose edits, when the next run re-renders every shot in the scene; the price has to be shown before the edit runs.",
+      "subjects": [
+        "function:packages/stills/src/prompts.ts#shotInputs",
+        "function:packages/stills/src/prompts.ts#buildShotChunks",
+        "function:packages/scriptedit/src/lineops.ts#setHeading",
+        "command:story.setHeading",
+        "task:shot_image"
+      ],
+      "detail": "The planner passes the plate first in `upstream`, then each subject's portrait and outfit sheet. A heading edit inverts the rule that prose edits are reported as drift rather than re-rendered, so the price counts these shots as `restaged`, never as `drifted` (`script.headingRestagesShots`, in `@vn/scriptedit`).",
+      "declared": "packages/stills/src/prompts.ts"
+    },
+    {
+      "id"      : "identity.stagingSheet",
+      "rule": "A shot in a staging-sheet group carries `params.extra.sheet`, a hash of the sheet's prompt, its reference hashes in order and the group seed, so anything the sheet is drawn from re-keys every member at once. A shot in no group carries no `extra`.",
+      "prevents": "A member drawn from an old sheet while the others are cut from a new one, or a sheet change that re-renders nothing, because the sheet's inputs are not in any member's identity.",
+      "subjects": [
+        "module:packages/stills/src/sheet.ts",
+        "function:packages/stills/src/sheet.ts#sheetKey",
+        "function:packages/stills/src/sheet.ts#sheetKeys",
+        "function:packages/stills/src/sheet.ts#sheetSeeds",
+        "function:packages/stills/src/prompts.ts#shotInputs",
+        "function:packages/gengraph/src/execute.ts#sharedAncestors",
+        "function:packages/pipeline/src/graphrun.ts#runBoundGraph",
+        "task:shot_image",
+        "slot:shot",
+        "command:story.setSheetGroup",
+        "command:gengraph.run"
+      ],
+      "see": [
+        "docs/reference/gen-graphs.md#slots-and-outputs",
+        "docs/plans/manga-style.md",
+        "docs/research/manga-live-tests.md"
+      ],
+      "detail": "What re-keys the members: the members and their order, each member's framing, cast and camera, the plate, and the group's notes and seed. A shot outside a group carries no `extra`, so no hash that predates the field moved. The seeds are derived from the project and the manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the model scene's `sheets` through `readAllShots`. A sheet is rerolled by changing its seed (`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a node feeds more than one output (`sharedAncestors`), because a forced run to one output would redraw the sheet for it alone and leave the other members' frames cut from the old one with nothing to re-key them. Every slot a graph binds shares its one journal and its one `Graph` object in a process, and `runBoundGraph` serialises the runs of one graph, because seeds are written onto the graph's own sockets: two members running at once would read each other's prompt and references, and the sheet would be drawn once per member rather than once per group.",
+      "declared": "packages/stills/src/sheet.ts"
+    },
+    {
       "id"      : "log.doneWriters",
       "rule": "Outside the scheduler, a `done` record is written only by adoption (`@vn/artgen/adopt`). The maintenance writers re-write a record the log already held, verbatim, or write `pending`.",
       "prevents": "Marking a task done with bytes no run produced for its current inputs, so the next run skips it and the slot's picture no longer matches the project.",
@@ -22,6 +61,83 @@
       ],
       "detail": "`vn/element-types` lets only the scheduler and `@vn/artgen/adopt` import `@vn/taskgraph/write`, and a test refuses any other file passing `tasksLog` to `appendJsonl`. `adopt` hashes the inputs it is handed, derived from the project as it stands, so it can only mark done the node whose output these bytes now are. Its callers live in `adoptslot.ts`: `adoptSlot` (an author hands bytes to a slot), `fileGraphDraw` (the picture an interactive graph run ended on, `via: graph`), `holdPortrait` (an older portrait draft the gate approves, `via: restore`, so `repairCurrent` does not hand the slot back to the logged output) and `repinAdoption` (the desktop repin keeping its bytes). Adoption is refused for a `portrait:` slot (the gate owns it), for mock-marked bytes, and for superseding a render that already holds the slot without an explicit `replace`. `promoteConcept` is one caller of adoption. In `@vn/taskgraph/maintain`, `restoreDone` and `logRestored` append a copy of a record a tombstone replaced, and `logTombstone` and `logRequeue` write `pending`.",
       "declared": "packages/taskgraph/src/write.ts"
+    },
+    {
+      "id"      : "prompts.artNotesAppended",
+      "rule": "Authored `artNotes` are appended to what a builder derived, entity note first and the narrower rung second, and an empty note adds nothing, so a project that authors no notes composes byte-identical prompts. A shot's prompt reads only the shot's own notes.",
+      "prevents": "Re-keying every task in every project that authors no notes, and losing the style preamble, reference scaffolding and closing frame clause that keep a picture on-model, which a replaced prompt would drop.",
+      "subjects": [
+        "module:packages/stills/src/prompts.ts",
+        "function:packages/stills/src/prompts.ts#artClause",
+        "function:packages/stills/src/prompts.ts#buildPortraitChunks",
+        "function:packages/stills/src/prompts.ts#buildLocationChunks",
+        "function:packages/stills/src/prompts.ts#buildModelSheetChunks",
+        "function:packages/stills/src/prompts.ts#buildShotChunks"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor",
+        "docs/plans/archive/INDEX.md#agent-art-revision"
+      ],
+      "detail": "`artNotes` is an optional free-text field at five rungs: `Character`, `Location`, `Shot`, each `Outfit` and each `LocationVariant`. Setting a note costs money by design, like an outfit and unlike a scene edit: the note is in the prompt, so it re-keys exactly the tasks its rung reaches. `buildShotPrompt` leaves out the entity notes because they already reach the frame through the plates and sheets it references. The test worth having is the byte-identical output of a project with no notes, not the feature. Where the notes, seeds and image models are written is `prompts.artRungsShared`, in `@vn/artgen`.",
+      "declared": "packages/stills/src/prompts.ts"
+    },
+    {
+      "id"      : "prompts.decomposeByLineId",
+      "rule": "P5 receives the scene as identified lines, `[<lineId>] <kind>/<speaker>: <text>`, never as flattened prose, and a decomposition that binds none of the scene's real line ids falls back to the baseline.",
+      "prevents": "A model copying an empty `\"coversLines\":[]` from the response template, which produces shots that are drawn and never displayed, because the exporter shows a shot only where its lines are.",
+      "subjects": [
+        "function:packages/stills/src/storyboard.ts#decomposeScene",
+        "function:packages/stills/src/storyboard.ts#realizeDecomposition",
+        "function:packages/stills/src/storyboard.ts#withCoverage",
+        "tool:propose_storyboard",
+        "tool:write_storyboard"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#shot-timeline-editor"],
+      "detail": "The system prompt asks the model to assign every line to exactly one shot, in order; the code does not enforce that, and a line the answer leaves uncovered stays uncovered. What the code enforces: line ids the scene does not have are dropped, a decomposition that binds no real line falls back to the baseline (`withCoverage`), and an uncovered first line goes to the first shot, so a scene cannot open on a blank frame. `coversLines` is not in a frame's task inputs, so these repairs re-key nothing.",
+      "declared": "packages/stills/src/storyboard.ts"
+    },
+    {
+      "id"      : "prompts.refsAcyclic",
+      "rule": "The reference graph over slots stays acyclic: `prompt.addRef` runs `refCycle` in its check and refuses a reference that would close a loop, naming the whole path. The cycle is over slots, not hashes.",
+      "prevents": "Tasks that are never ready, because each waits on the other, so a run appears to do nothing and reports no error.",
+      "subjects": [
+        "module:packages/stills/src/refcycle.ts",
+        "function:packages/stills/src/refcycle.ts#refCycle",
+        "function:packages/stills/src/refcycle.ts#firstCycle",
+        "function:packages/stills/src/refcycle.ts#cycleRefusal",
+        "module:apps/desktop/src/main/session/prompt.ts",
+        "command:prompt.addRef"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
+      "detail": "Hashes cannot cycle, but bindings can: \"Aiko's portrait references Aiko's gala sheet\" closes a loop although no hash repeats, because the sheet's prompt already references the portrait. A ref cycle is invisible to `topoOrder`, which reads `Task.deps`. Left unchecked, `doneOutput` answers `undefined`, the shot is skipped, and the plan-run-replan loop starves in silence. `firstCycle` finds a loop already on disk in a hand-edited project, and the planner calls it so such a project fails loudly.",
+      "declared": "packages/stills/src/refcycle.ts"
+    },
+    {
+      "id"      : "prompts.reviewerSpec",
+      "rule": "The P7 reviewer sees only what `shotSpec` says about the shot: its own framing, location and cast, with the prose of its covered lines marked as context only. `spec.characters` decides who must be in frame, and an empty list means an absence is not a defect.",
+      "prevents": "A reviewer handed the scene synopsis flagging every shot, plates included, for characters the scene mentions but the shot never ordered, so the refine loop spends every attempt and lands on `needs_human`.",
+      "subjects": [
+        "function:packages/stills/src/prompts.ts#shotSpec",
+        "command:story.requireCast",
+        "task:shot_image"
+      ],
+      "detail": "`Shot.castOptional` exempts a shot that has a cast from the same trap: the subjects stay on the shot, so their sheets still reach the generator as references, but `shotSpec` hands the reviewer an empty `characters` and the description says an absence is not a defect. Without it, a frame the reviewer will never accept (a figure seen from behind, a crowd, a hand) spends the whole cap. `story.requireCast` writes the field, normally from the Shot Coverage strip. `shotSpec`'s output never enters a task's `inputs`, and `castOptional` is read only by `shotSpec`, so neither re-keys the shot: setting the field changes what the next review asks and does not by itself redraw the frame.",
+      "declared": "packages/stills/src/prompts.ts"
+    },
+    {
+      "id"      : "providers.textFallback",
+      "rule": "The text steps (P1 location enrichment, P5 shot decomposition) call the LLM with structured-output enforcement and fall back to a deterministic baseline when the step fails, so a whole run completes with mock providers and no API calls.",
+      "prevents": "A run that stops at the first text step a mock, missing or failing model cannot answer, which would make the pipeline impossible to run end to end without paid calls.",
+      "subjects": [
+        "module:packages/stills/src/storyboard.ts",
+        "function:packages/stills/src/storyboard.ts#decomposeScene",
+        "function:packages/stills/src/storyboard.ts#deterministicShots",
+        "function:packages/pipeline/src/p1.ts#enrichLocation",
+        "function:packages/pipeline/src/p1.ts#deterministicBreakdown",
+        "function:packages/providers/src/mock.ts#createMockProviders"
+      ],
+      "detail": "P5's baseline is one establishing shot carrying the scene's cast plus one medium shot per character, each on the location's first variant. The establishing shot carries the cast because it covers the narration and action beats, which describe the characters doing things; a scene with no cast gets a bare plate. `decomposeScene` never throws: a failure becomes a `baseline` decomposition with a `reason`, so a caller that persists can refuse to write it (`planning.storyboardOnRequest`). P1 keeps the mined location when enrichment fails. Changing the baseline changes the prompt and re-keys establishing tasks, but shots are persisted, so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is deleted or edited.",
+      "declared": "packages/stills/src/storyboard.ts"
     },
     {
       "id"      : "script.entityByTag",
@@ -208,71 +324,126 @@
     }
   ],
   "bySubject": {
-    "command:asset.adopt"                                          : ["log.doneWriters"],
-    "command:story.assignLineIds"                                  : ["script.lineIdsAllocated"],
-    "command:story.moveShot"                                       : ["script.shotOrderFromProse"],
-    "command:story.setHeading": ["script.headingRestagesShots"],
+    "command:asset.adopt"                                            : ["log.doneWriters"],
+    "command:gengraph.run"                                           : ["identity.stagingSheet"],
+    "command:prompt.addRef"                                          : ["prompts.refsAcyclic"],
+    "command:story.assignLineIds"                                    : ["script.lineIdsAllocated"],
+    "command:story.moveShot": ["script.shotOrderFromProse"],
+    "command:story.requireCast"                                      : ["prompts.reviewerSpec"],
+    "command:story.setHeading": ["identity.headingRekeysShots", "script.headingRestagesShots"],
+    "command:story.setSheetGroup"                                    : ["identity.stagingSheet"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:scenes": ["script.sceneOneFile", "script.sceneSourcesOneLoad"],
-    "file:state/tasks.jsonl"                                       : ["log.doneWriters"],
+    "file:state/tasks.jsonl"                                         : ["log.doneWriters"],
     "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
-    "function:packages/artgen/src/adoptslot.ts#adoptSlot"          : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#fileGraphDraw"      : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#holdPortrait"       : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#repinAdoption"      : ["log.doneWriters"],
-    "function:packages/model/src/build.ts#buildModel"              : ["script.entityIdMatchesFile"],
-    "function:packages/model/src/entities.ts#sceneFromDoc"         : ["script.sceneOneFile"],
-    "function:packages/model/src/lineids.ts#assignLineIds"         : ["script.lineIdsAllocated"],
-    "function:packages/model/src/outfits.ts#outfitFor"             : ["script.outfitInherited"],
-    "function:packages/model/src/outfits.ts#outfitText"            : ["script.outfitInherited"],
-    "function:packages/model/src/scenes.ts#splitScenes"            : ["script.lineIdsAllocated"],
+    "function:packages/artgen/src/adoptslot.ts#adoptSlot"            : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#fileGraphDraw"        : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#holdPortrait"         : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#repinAdoption"        : ["log.doneWriters"],
+    "function:packages/gengraph/src/execute.ts#sharedAncestors"      : ["identity.stagingSheet"],
+    "function:packages/model/src/build.ts#buildModel": ["script.entityIdMatchesFile"],
+    "function:packages/model/src/entities.ts#sceneFromDoc"           : ["script.sceneOneFile"],
+    "function:packages/model/src/lineids.ts#assignLineIds"           : ["script.lineIdsAllocated"],
+    "function:packages/model/src/outfits.ts#outfitFor"               : ["script.outfitInherited"],
+    "function:packages/model/src/outfits.ts#outfitText"              : ["script.outfitInherited"],
+    "function:packages/model/src/scenes.ts#splitScenes"              : ["script.lineIdsAllocated"],
     "function:packages/model/src/serialize.ts#sceneToDoc": [
       "script.sceneOneFile",
       "script.sceneRoundTrip"
     ],
-    "function:packages/model/src/serialize.ts#sceneToFountain"     : ["script.sceneRoundTrip"],
-    "function:packages/model/src/used.ts#usedOutfits"              : ["script.outfitInherited"],
+    "function:packages/model/src/serialize.ts#sceneToFountain"       : ["script.sceneRoundTrip"],
+    "function:packages/model/src/used.ts#usedOutfits"                : ["script.outfitInherited"],
+    "function:packages/pipeline/src/graphrun.ts#runBoundGraph"       : ["identity.stagingSheet"],
+    "function:packages/pipeline/src/p1.ts#deterministicBreakdown"    : ["providers.textFallback"],
+    "function:packages/pipeline/src/p1.ts#enrichLocation"            : ["providers.textFallback"],
+    "function:packages/providers/src/mock.ts#createMockProviders"    : ["providers.textFallback"],
     "function:packages/scriptedit/src/apply.ts#planSceneEdit": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/apply.ts#proveScenes": [
       "script.sceneEditAllOrNothing",
       "script.sceneRoundTrip"
     ],
-    "function:packages/scriptedit/src/lineops.ts#nextIdOf"         : ["script.lineIdsAllocated"],
-    "function:packages/scriptedit/src/lineops.ts#setHeading": ["script.headingRestagesShots"],
+    "function:packages/scriptedit/src/lineops.ts#nextIdOf"           : ["script.lineIdsAllocated"],
+    "function:packages/scriptedit/src/lineops.ts#setHeading": [
+      "identity.headingRekeysShots",
+      "script.headingRestagesShots"
+    ],
     "function:packages/scriptedit/src/markers.ts#applyMarkerPlan": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/markers.ts#planMarkerEdit": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/shotfallout.ts#shotFallout": ["script.headingRestagesShots"],
-    "function:packages/scriptedit/src/shotorder.ts#moveShot"       : ["script.shotOrderFromProse"],
-    "function:packages/scriptedit/src/shotorder.ts#planShotMove"   : ["script.shotOrderFromProse"],
+    "function:packages/scriptedit/src/shotorder.ts#moveShot": ["script.shotOrderFromProse"],
+    "function:packages/scriptedit/src/shotorder.ts#planShotMove": ["script.shotOrderFromProse"],
     "function:packages/scriptedit/src/sources.ts#chunkText": ["script.sceneEditAllOrNothing"],
-    "function:packages/scriptedit/src/sources.ts#sourcesOf"        : ["script.sceneSourcesOneLoad"],
-    "function:packages/stills/src/storyboard.ts#deterministicShots": ["script.outfitInherited"],
-    "function:packages/store/src/assetstore.ts#AssetRoot"          : ["storage.manifestQueue"],
-    "function:packages/store/src/assetstore.ts#AssetStore"         : ["storage.twoRoots"],
-    "function:packages/store/src/assetstore.ts#isBaseKind"         : ["storage.twoRoots"],
+    "function:packages/scriptedit/src/sources.ts#sourcesOf": ["script.sceneSourcesOneLoad"],
+    "function:packages/stills/src/prompts.ts#artClause"              : ["prompts.artNotesAppended"],
+    "function:packages/stills/src/prompts.ts#buildLocationChunks"    : ["prompts.artNotesAppended"],
+    "function:packages/stills/src/prompts.ts#buildModelSheetChunks"  : ["prompts.artNotesAppended"],
+    "function:packages/stills/src/prompts.ts#buildPortraitChunks"    : ["prompts.artNotesAppended"],
+    "function:packages/stills/src/prompts.ts#buildShotChunks": [
+      "identity.headingRekeysShots",
+      "prompts.artNotesAppended"
+    ],
+    "function:packages/stills/src/prompts.ts#shotInputs": [
+      "identity.headingRekeysShots",
+      "identity.stagingSheet"
+    ],
+    "function:packages/stills/src/prompts.ts#shotSpec"               : ["prompts.reviewerSpec"],
+    "function:packages/stills/src/refcycle.ts#cycleRefusal"          : ["prompts.refsAcyclic"],
+    "function:packages/stills/src/refcycle.ts#firstCycle"            : ["prompts.refsAcyclic"],
+    "function:packages/stills/src/refcycle.ts#refCycle"              : ["prompts.refsAcyclic"],
+    "function:packages/stills/src/sheet.ts#sheetKey"                 : ["identity.stagingSheet"],
+    "function:packages/stills/src/sheet.ts#sheetKeys"                : ["identity.stagingSheet"],
+    "function:packages/stills/src/sheet.ts#sheetSeeds"               : ["identity.stagingSheet"],
+    "function:packages/stills/src/storyboard.ts#decomposeScene": [
+      "prompts.decomposeByLineId",
+      "providers.textFallback"
+    ],
+    "function:packages/stills/src/storyboard.ts#deterministicShots": [
+      "providers.textFallback",
+      "script.outfitInherited"
+    ],
+    "function:packages/stills/src/storyboard.ts#realizeDecomposition": [
+      "prompts.decomposeByLineId"
+    ],
+    "function:packages/stills/src/storyboard.ts#withCoverage": ["prompts.decomposeByLineId"],
+    "function:packages/store/src/assetstore.ts#AssetRoot"            : ["storage.manifestQueue"],
+    "function:packages/store/src/assetstore.ts#AssetStore"           : ["storage.twoRoots"],
+    "function:packages/store/src/assetstore.ts#isBaseKind"           : ["storage.twoRoots"],
     "function:packages/store/src/entities.ts#discoverEntities": [
       "script.entityByTag",
       "script.entityIdMatchesFile"
     ],
-    "function:packages/store/src/entities.ts#entityFile"           : ["script.entityByTag"],
-    "function:packages/store/src/entities.ts#entityIdentity"       : ["script.entityByTag"],
-    "function:packages/store/src/scenes.ts#readSceneChunks"        : ["script.sceneOneFile"],
-    "function:packages/store/src/worktree.ts#findScreenplay"       : ["script.sceneSourcesOneLoad"],
-    "function:packages/store/src/worktree.ts#loadInputs"           : ["script.sceneSourcesOneLoad"],
-    "module:packages/artgen/src/adopt.ts"                          : ["log.doneWriters"],
-    "module:packages/model/src/build.ts"                           : ["script.entityIdMatchesFile"],
-    "module:packages/model/src/entities.ts"                        : ["script.sceneOneFile"],
-    "module:packages/model/src/outfits.ts"                         : ["script.outfitInherited"],
-    "module:packages/model/src/serialize.ts"                       : ["script.sceneRoundTrip"],
-    "module:packages/scriptedit/src/lineops.ts"                    : ["script.lineIdsAllocated"],
+    "function:packages/store/src/entities.ts#entityFile"             : ["script.entityByTag"],
+    "function:packages/store/src/entities.ts#entityIdentity"         : ["script.entityByTag"],
+    "function:packages/store/src/scenes.ts#readSceneChunks"          : ["script.sceneOneFile"],
+    "function:packages/store/src/worktree.ts#findScreenplay": ["script.sceneSourcesOneLoad"],
+    "function:packages/store/src/worktree.ts#loadInputs": ["script.sceneSourcesOneLoad"],
+    "module:apps/desktop/src/main/session/prompt.ts"                 : ["prompts.refsAcyclic"],
+    "module:packages/artgen/src/adopt.ts"                            : ["log.doneWriters"],
+    "module:packages/model/src/build.ts": ["script.entityIdMatchesFile"],
+    "module:packages/model/src/entities.ts"                          : ["script.sceneOneFile"],
+    "module:packages/model/src/outfits.ts"                           : ["script.outfitInherited"],
+    "module:packages/model/src/serialize.ts"                         : ["script.sceneRoundTrip"],
+    "module:packages/scriptedit/src/lineops.ts"                      : ["script.lineIdsAllocated"],
     "module:packages/scriptedit/src/markers.ts": ["script.sceneEditAllOrNothing"],
     "module:packages/scriptedit/src/shotfallout.ts": ["script.headingRestagesShots"],
-    "module:packages/scriptedit/src/shotorder.ts"                  : ["script.shotOrderFromProse"],
-    "module:packages/scriptedit/src/sources.ts"                    : ["script.sceneSourcesOneLoad"],
+    "module:packages/scriptedit/src/shotorder.ts": ["script.shotOrderFromProse"],
+    "module:packages/scriptedit/src/sources.ts": ["script.sceneSourcesOneLoad"],
+    "module:packages/stills/src/prompts.ts"                          : ["prompts.artNotesAppended"],
+    "module:packages/stills/src/refcycle.ts"                         : ["prompts.refsAcyclic"],
+    "module:packages/stills/src/sheet.ts"                            : ["identity.stagingSheet"],
+    "module:packages/stills/src/storyboard.ts"                       : ["providers.textFallback"],
     "module:packages/store/src/assetstore.ts": ["storage.manifestQueue", "storage.twoRoots"],
-    "module:packages/store/src/entities.ts"                        : ["script.entityByTag"],
-    "module:packages/taskgraph/src/maintain.ts"                    : ["log.doneWriters"],
-    "module:packages/taskgraph/src/write.ts"                       : ["log.doneWriters"],
-    "tool:edit_scene"                                              : ["script.lineIdsAllocated"]
+    "module:packages/store/src/entities.ts"                          : ["script.entityByTag"],
+    "module:packages/taskgraph/src/maintain.ts"                      : ["log.doneWriters"],
+    "module:packages/taskgraph/src/write.ts"                         : ["log.doneWriters"],
+    "slot:shot"                                                      : ["identity.stagingSheet"],
+    "task:shot_image": [
+      "identity.headingRekeysShots",
+      "identity.stagingSheet",
+      "prompts.reviewerSpec"
+    ],
+    "tool:edit_scene"                                                : ["script.lineIdsAllocated"],
+    "tool:propose_storyboard": ["prompts.decomposeByLineId"],
+    "tool:write_storyboard"                                          : ["prompts.decomposeByLineId"]
   }
 }

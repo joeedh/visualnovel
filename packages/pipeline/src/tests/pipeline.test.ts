@@ -1,6 +1,13 @@
+import { pins } from '@vn/contracts';
 import { projectConfig, type Defect, type ProjectModel, type Shot } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
+import {
+  promptsArtNotesAppended,
+  promptsDecomposeByLineId,
+  promptsReviewerSpec,
+  providersTextFallback,
+} from '@vn/stills';
 import { character, location, model, scene } from '@vn/testkit';
 import {
   basePromptOf,
@@ -36,10 +43,7 @@ describe('prompts', () => {
   });
 });
 
-describe('art notes', () => {
-  // The acceptance test for the whole feature. Every builder folds its notes in through
-  // `artClause`, which contributes nothing when none are authored — so a project that never
-  // writes an `art_notes:` keeps every task hash it had, and re-renders nothing.
+describe(pins(promptsArtNotesAppended), () => {
   it('adds not one character to a prompt when nothing is authored', () => {
     const c = character('aiko', 'approved', 'h1');
     const l = location('cafe');
@@ -160,7 +164,7 @@ describe('buildShotPrompt — the outfit it says', () => {
   });
 });
 
-describe('shotSpec', () => {
+describe(pins(promptsReviewerSpec), () => {
   const s = scene('s1', ['aiko'], 'class');
   s.synopsis = 'Aiko arrives and greets the player.';
   s.lines = [
@@ -277,7 +281,7 @@ describe('gateStatus', () => {
   });
 });
 
-describe('deterministicShots', () => {
+describe(pins(providersTextFallback), () => {
   it('produces an establishing shot plus one per character', () => {
     const m = model(
       [character('aiko', 'approved', 'h1')],
@@ -365,18 +369,6 @@ describe('decomposeScene (LLM path)', () => {
     return out;
   };
 
-  it('shows the model each line with its id, so coversLines is answerable at all', async () => {
-    const m = build();
-    const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
-    const spy = seeing(providers);
-
-    await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
-    expect(spy.seen).toContain('[s1:L1] narration: The room is quiet.');
-    expect(spy.seen).toContain('[s1:L2] dialogue/aiko: Hi.');
-    // The template must not show an empty answer as an example, because the LLM copies it
-    expect(spy.seen).not.toContain('"coversLines":[]');
-  });
-
   it('tells the model the art style and the storyboard notes, before the answer format', async () => {
     const m = build();
     const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
@@ -448,48 +440,6 @@ describe('decomposeScene (LLM path)', () => {
     expect(decompSystem(PLAIN)).toBe(system);
   });
 
-  it('keeps a decomposition that binds lines, dropping ids the scene does not have', async () => {
-    const m = build();
-    const { shots } = await decomposeScene(
-      m.scenes.get('s1')!,
-      m,
-      providersReturning([SHOT('a', ['s1:L1']), SHOT('b', ['s1:L2', 's1:L9'])]),
-      PLAIN,
-    );
-    expect(shots.map((s) => s.id)).toEqual([shotId('s1', 'a'), shotId('s1', 'b')]);
-    expect(shots[1]!.coversLines).toEqual(['s1:L2']);
-  });
-
-  it('falls back to the baseline when the decomposition binds nothing', async () => {
-    const m = build();
-    // Every shot would be generated and none ever displayed — an unplayable scene, not a
-    // stylistic difference, so the baseline is strictly better than honoring it.
-    const result = await decomposeScene(
-      m.scenes.get('s1')!,
-      m,
-      providersReturning([SHOT('a', []), SHOT('b', ['s1:L9'])]),
-      PLAIN,
-    );
-    expect(result.shots.map((s) => s.id)).toEqual([
-      shotId('s1', 'establishing'),
-      shotId('s1', 'beat1'),
-    ]);
-    // The storyboard is the ordinary baseline; the `source` field is what lets `decomposeAll`
-    // decline to write this one down forever.
-    expect(result).toMatchObject({ source: 'baseline', reason: expect.stringContaining('bound') });
-  });
-
-  it('names the failure rather than swallowing it, when the model cannot be reached', async () => {
-    const m = build();
-    const providers = providersReturning([]);
-    providers.text.structured = () => Promise.reject(new Error('no API key for claude'));
-    const result = await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
-    expect(result.source).toBe('baseline');
-    expect(result.reason).toBe('no API key for claude');
-    // Still a runnable storyboard: a run must not stop because a decomposition did.
-    expect(result.shots.length).toBeGreaterThan(0);
-  });
-
   it('says the answer was the model’s when it was', async () => {
     const m = build();
     const result = await decomposeScene(
@@ -501,16 +451,77 @@ describe('decomposeScene (LLM path)', () => {
     expect(result).toEqual({ shots: expect.any(Array), source: 'model' });
   });
 
-  it('gives the first line to the first shot, so the scene cannot open on a blank frame', async () => {
-    const m = build();
-    const { shots } = await decomposeScene(
-      m.scenes.get('s1')!,
-      m,
-      providersReturning([SHOT('a', []), SHOT('b', ['s1:L2'])]),
-      PLAIN,
-    );
-    expect(shots[0]!.coversLines).toEqual(['s1:L1']);
-    expect(shots[1]!.coversLines).toEqual(['s1:L2']);
+  describe(pins(promptsDecomposeByLineId), () => {
+    it('shows the model each line with its id, so coversLines is answerable at all', async () => {
+      const m = build();
+      const providers = providersReturning([SHOT('a', ['s1:L1', 's1:L2'])]);
+      const spy = seeing(providers);
+
+      await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
+      expect(spy.seen).toContain('[s1:L1] narration: The room is quiet.');
+      expect(spy.seen).toContain('[s1:L2] dialogue/aiko: Hi.');
+      // The template must not show an empty answer as an example, because the LLM copies it
+      expect(spy.seen).not.toContain('"coversLines":[]');
+    });
+
+    it('keeps a decomposition that binds lines, dropping ids the scene does not have', async () => {
+      const m = build();
+      const { shots } = await decomposeScene(
+        m.scenes.get('s1')!,
+        m,
+        providersReturning([SHOT('a', ['s1:L1']), SHOT('b', ['s1:L2', 's1:L9'])]),
+        PLAIN,
+      );
+      expect(shots.map((s) => s.id)).toEqual([shotId('s1', 'a'), shotId('s1', 'b')]);
+      expect(shots[1]!.coversLines).toEqual(['s1:L2']);
+    });
+
+    it('falls back to the baseline when the decomposition binds nothing', async () => {
+      const m = build();
+      // Every shot would be generated and none ever displayed — an unplayable scene, not a
+      // stylistic difference, so the baseline is strictly better than honoring it.
+      const result = await decomposeScene(
+        m.scenes.get('s1')!,
+        m,
+        providersReturning([SHOT('a', []), SHOT('b', ['s1:L9'])]),
+        PLAIN,
+      );
+      expect(result.shots.map((s) => s.id)).toEqual([
+        shotId('s1', 'establishing'),
+        shotId('s1', 'beat1'),
+      ]);
+      // The storyboard is the ordinary baseline; the `source` field is what lets `decomposeAll`
+      // decline to write this one down forever.
+      expect(result).toMatchObject({
+        source: 'baseline',
+        reason: expect.stringContaining('bound'),
+      });
+    });
+
+    it('gives the first line to the first shot, so the scene cannot open on a blank frame', async () => {
+      const m = build();
+      const { shots } = await decomposeScene(
+        m.scenes.get('s1')!,
+        m,
+        providersReturning([SHOT('a', []), SHOT('b', ['s1:L2'])]),
+        PLAIN,
+      );
+      expect(shots[0]!.coversLines).toEqual(['s1:L1']);
+      expect(shots[1]!.coversLines).toEqual(['s1:L2']);
+    });
+  });
+
+  describe(pins(providersTextFallback), () => {
+    it('names the failure rather than swallowing it, when the model cannot be reached', async () => {
+      const m = build();
+      const providers = providersReturning([]);
+      providers.text.structured = () => Promise.reject(new Error('no API key for claude'));
+      const result = await decomposeScene(m.scenes.get('s1')!, m, providers, PLAIN);
+      expect(result.source).toBe('baseline');
+      expect(result.reason).toBe('no API key for claude');
+      // Still a runnable storyboard: a run must not stop because a decomposition did.
+      expect(result.shots.length).toBeGreaterThan(0);
+    });
   });
 });
 

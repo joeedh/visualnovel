@@ -13,6 +13,7 @@
     "@vn/util": "workspace:*",
     "@vn/config": "workspace:*",
     "@vn/model": "workspace:*",
-    "@vn/taskgraph": "workspace:*"
+    "@vn/taskgraph": "workspace:*",
+    "@vn/contracts": "workspace:*"
   }
 }

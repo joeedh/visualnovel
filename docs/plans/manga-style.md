@@ -1162,9 +1162,8 @@ decided something it left open:
   `runBoundGraph` cloned the journal per slot binding, so six members drew six sheets and
   two members running at once read each other's seeds off the shared graph's sockets.
   Every sheet output is now active, the bindings of one graph share its journal, and the
-  runs of one graph are serialised
-  ([`pipeline-contracts.md`](../reference/pipeline-contracts.md#scenes-shots-and-lines)).
-  The full record, with the tables, is
+  runs of one graph are serialised (the `identity.stagingSheet` contract in
+  [`sheet.ts`](../../packages/stills/src/sheet.ts)). The full record, with the tables, is
   [`../research/manga-live-tests.md`](../research/manga-live-tests.md#stage-4--perspective-coherence-2026-09-17).
 - **The cell chain shows the model its cell, not the whole sheet.** Decision 17's "crop
   and full sheet as references" made `gemini-2.5-flash-image` redraw the grid in four
