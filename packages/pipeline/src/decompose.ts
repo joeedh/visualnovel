@@ -1,6 +1,7 @@
 import type { Logger, ProjectConfig, ProjectModel, Providers } from '@vn/types';
 import { reachableScenes } from '@vn/model';
 import { readShots, writeShots, type ProjectPaths } from '@vn/store';
+import { contract } from '@vn/contracts';
 import { decomposeScene, storyboardStyle } from './p5.js';
 
 /**
@@ -32,23 +33,35 @@ export interface DecomposeAllOptions {
   keepBaseline?: boolean;
 }
 
+export const planningStoryboardOnRequest = contract({
+  id      : 'planning.storyboardOnRequest',
+  rule: 'A batch decomposition writes a storyboard only for a reachable scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.',
+  prevents:
+    'One bad key permanently baselining a whole project, because an absent file is the only signal meaning "decompose this scene", and re-decomposing a kept scene changing its shot ids and so re-rendering art already paid for.',
+  subjects: [
+    'module:packages/pipeline/src/decompose.ts',
+    'function:packages/pipeline/src/decompose.ts#decomposeAll',
+    'function:packages/pipeline/src/decompose.ts#decomposeAllPreview',
+    'command:story.decomposeAll',
+    'command:story.newShot',
+    'tool:write_storyboard',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first'],
+  detail:
+    'Once written, the shots file takes precedence permanently. A hand-placed first shot ' +
+    "(`story.newShot`, the agent's `edit_scene op=newShot`, `write_storyboard`) writes the file and " +
+    'so ends decomposition for that scene just as permanently. `decomposeScene` returns a `source` ' +
+    'and a `reason` rather than throwing so that this batch can tell a baseline from a model answer; ' +
+    'inside one run a single silent fallback is `providers.textFallback` holding. `keepBaseline` ' +
+    'exists for a caller that wants the deterministic storyboard, and nothing in the app passes it. ' +
+    '`vngen decompose --mock` and the desktop command refuse mock providers by name.',
+});
+
 /**
  * Decompose every reachable scene that has no storyboard yet, so the project can see the whole
  * graph instead of one wave of it.
  *
- * Each rule guards a hazard the incremental path never had to face:
- *
  * - Reachable scenes only. A dead branch costs a model call and renders nothing.
- * - A scene that already has a file is kept, and there is no `force`. `work/shots/<sceneId>.json`
- *   wins forever; re-decomposing is non-deterministic, so it would change shot ids, hence task
- *   identities, hence re-render art that is already paid for. A file created by a hand-placed
- *   first shot (`story.newShot`, the agent's `write_storyboard`) is kept the same way, because
- *   writing it is how making shots by hand ends decomposition for a scene.
- * - A baseline is reported, not written. An absent file is the only signal that means
- *   "decompose this scene", so persisting a fallback is permanent. One scene inside a run is the
- *   deterministic-fallback contract working; sixty at once with one bad key would silently baseline
- *   an entire project with no way back short of deleting files by hand. `keepBaseline` exists for a
- *   caller that genuinely wants the deterministic storyboard, and nothing in the app passes it.
  * - One bad file does not stop the batch. `readShots` throws on a malformed file rather than
  *   re-decomposing over a hand-edit, so the throw is caught per scene and the scene is named.
  *

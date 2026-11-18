@@ -247,22 +247,6 @@ package.
       `acceptAll` accept through `acceptTake`, the same rule `asset.accept` applies.
     - Plan:
       [`../plans/archive/slot-history-on-the-manifest-row.md`](../plans/archive/slot-history-on-the-manifest-row.md).
-- **A storyboard is fetched only on an explicit request, and a fallback is never
-  persisted.**
-    - Once `work/shots/<sceneId>.json` is written it takes precedence permanently, and an
-      absent file is the only signal meaning "decompose this scene". The batch reads that
-      signal. A hand-placed first shot (`story.newShot`, the agent's
-      `edit_scene op=newShot`, `write_storyboard`) writes the file and so removes the
-      signal, which ends decomposition for that scene just as permanently.
-    - `decomposeAll` (behind `vngen decompose` and `story.decomposeAll`) is additive and
-      has no `force`. It skips a scene the model does not answer for and names that scene
-      instead of writing `deterministicShots`. It refuses mock or unresolved keys by name.
-    - `decomposeScene` returns a `source` and a `reason` instead of throwing for one
-      reason: to make that last distinction reportable. Within one run, one scene at a
-      time, a silent fallback means the deterministic-fallback contract is holding. Sixty
-      scenes at once with a bad key would baseline the project permanently.
-    - Plan:
-      [`../plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first`](../plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first).
 - **A terminal task records why, is retried once, and is reported from the live plan.**
   Each of the three rules fixes a separate defect. A `shot_image` failed, the reason
   existed only on a logger event nobody kept, the next run planned nothing for it, and the

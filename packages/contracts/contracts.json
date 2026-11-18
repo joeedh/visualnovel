@@ -123,6 +123,22 @@
       "declared": "packages/taskgraph/src/write.ts"
     },
     {
+      "id"      : "planning.storyboardOnRequest",
+      "rule": "A batch decomposition writes a storyboard only for a reachable scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.",
+      "prevents": "One bad key permanently baselining a whole project, because an absent file is the only signal meaning \"decompose this scene\", and re-decomposing a kept scene changing its shot ids and so re-rendering art already paid for.",
+      "subjects": [
+        "module:packages/pipeline/src/decompose.ts",
+        "function:packages/pipeline/src/decompose.ts#decomposeAll",
+        "function:packages/pipeline/src/decompose.ts#decomposeAllPreview",
+        "command:story.decomposeAll",
+        "command:story.newShot",
+        "tool:write_storyboard"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first"],
+      "detail": "Once written, the shots file takes precedence permanently. A hand-placed first shot (`story.newShot`, the agent's `edit_scene op=newShot`, `write_storyboard`) writes the file and so ends decomposition for that scene just as permanently. `decomposeScene` returns a `source` and a `reason` rather than throwing so that this batch can tell a baseline from a model answer; inside one run a single silent fallback is `providers.textFallback` holding. `keepBaseline` exists for a caller that wants the deterministic storyboard, and nothing in the app passes it. `vngen decompose --mock` and the desktop command refuse mock providers by name.",
+      "declared": "packages/pipeline/src/decompose.ts"
+    },
+    {
       "id"      : "prompts.artNotesAppended",
       "rule": "Authored `artNotes` are appended to what a builder derived, entity note first and the narrower rung second, and an empty note adds nothing, so a project that authors no notes composes byte-identical prompts. A shot's prompt reads only the shot's own notes.",
       "prevents": "Re-keying every task in every project that authors no notes, and losing the style preamble, reference scaffolding and closing frame clause that keep a picture on-model, which a replaced prompt would drop.",
@@ -422,7 +438,9 @@
     "command:gengraph.setProp": ["graphs.groupNodeKey", "graphs.instanceEditsOverride"],
     "command:prompt.addRef"                                          : ["prompts.refsAcyclic"],
     "command:story.assignLineIds"                                    : ["script.lineIdsAllocated"],
+    "command:story.decomposeAll": ["planning.storyboardOnRequest"],
     "command:story.moveShot": ["script.shotOrderFromProse"],
+    "command:story.newShot": ["planning.storyboardOnRequest"],
     "command:story.requireCast"                                      : ["prompts.reviewerSpec"],
     "command:story.setHeading": ["identity.headingRekeysShots", "script.headingRestagesShots"],
     "command:story.setSheetGroup"                                    : ["identity.stagingSheet"],
@@ -460,6 +478,10 @@
     ],
     "function:packages/model/src/serialize.ts#sceneToFountain"       : ["script.sceneRoundTrip"],
     "function:packages/model/src/used.ts#usedOutfits"                : ["script.outfitInherited"],
+    "function:packages/pipeline/src/decompose.ts#decomposeAll": ["planning.storyboardOnRequest"],
+    "function:packages/pipeline/src/decompose.ts#decomposeAllPreview": [
+      "planning.storyboardOnRequest"
+    ],
     "function:packages/pipeline/src/graphrun.ts#runBoundGraph"       : ["identity.stagingSheet"],
     "function:packages/pipeline/src/p1.ts#deterministicBreakdown"    : ["providers.textFallback"],
     "function:packages/pipeline/src/p1.ts#enrichLocation"            : ["providers.textFallback"],
@@ -538,6 +560,7 @@
     "module:packages/model/src/entities.ts"                          : ["script.sceneOneFile"],
     "module:packages/model/src/outfits.ts"                           : ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts"                         : ["script.sceneRoundTrip"],
+    "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
     "module:packages/scriptedit/src/lineops.ts"                      : ["script.lineIdsAllocated"],
     "module:packages/scriptedit/src/markers.ts": ["script.sceneEditAllOrNothing"],
     "module:packages/scriptedit/src/shotfallout.ts": ["script.headingRestagesShots"],
@@ -563,6 +586,6 @@
     "tool:propose_storyboard": ["prompts.decomposeByLineId"],
     "tool:regenerate_asset"                                          : ["prompts.artRungsShared"],
     "tool:set_art_notes"                                             : ["prompts.artRungsShared"],
-    "tool:write_storyboard"                                          : ["prompts.decomposeByLineId"]
+    "tool:write_storyboard": ["planning.storyboardOnRequest", "prompts.decomposeByLineId"]
   }
 }

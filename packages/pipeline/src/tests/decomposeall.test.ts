@@ -5,7 +5,8 @@
 import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
 import { createMockProviders } from '@vn/providers';
 import type { Providers } from '@vn/types';
-import { decomposeAll, decomposeAllPreview } from '../decompose.js';
+import { pins } from '@vn/contracts';
+import { decomposeAll, decomposeAllPreview, planningStoryboardOnRequest } from '../decompose.js';
 
 jest.setTimeout(30_000);
 
@@ -42,7 +43,7 @@ const missing = async (p: TestProject, scene: string): Promise<boolean> =>
     () => true,
   );
 
-describe('decomposeAll', () => {
+describe(pins(planningStoryboardOnRequest), () => {
   it('writes a storyboard for every reachable scene, and none for the one nothing points at', async () => {
     const p = await makeProject({ script: SCRIPTS.orphan });
     try {
