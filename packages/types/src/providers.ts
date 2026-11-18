@@ -3,7 +3,8 @@
  * imports a concrete provider — it only knows Task/deps/status. Providers are swapped
  * via model ids in project.yaml.
  */
-import type { AssetRef, ImageParams, PanelBox } from './entities.js';
+import type { AssetRef, ImageParams } from './assets.js';
+import type { PanelBox } from './production/shots.js';
 import type { Transport } from './textmodels.js';
 
 /** Result of an image generation or edit. */

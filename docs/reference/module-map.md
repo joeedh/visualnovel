@@ -46,8 +46,10 @@ the file; the authoritative package responsibilities and import rules are in
 | module             | purpose                                                                                                                                                               |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `schemas.ts`       | zod schemas for every parsed/machine-consumed boundary (inputs, model, tasks); `docKind`, the one resolver of a document's kind from its location and its `type:` tag |
-| `model.ts`         | the project model types: characters, locations, scenes, assets                                                                                                        |
-| `entities.ts`      | entity-sheet value types and tags                                                                                                                                     |
+| `model.ts`         | `ProjectModel`, whose `production` map holds each scene's storyboard by scene id; `shotsOf`; the composition contracts                                                |
+| `assets.ts`        | asset rows, the refs and image params a task names, and the bindings that say what an asset serves                                                                    |
+| `script/`          | the screenplay's types: `characters.ts`, `locations.ts`, `scenes.ts` (scenes, lines, choices); may not import `production/`                                           |
+| `production/`      | what a scene is drawn as: `shots.ts` (shots, page panels, bubbles, drift) and `storyboard.ts` (`ProductionData`, staging-sheet groups); may import `script/`          |
 | `tasks.ts`         | task-graph node and task-kind types                                                                                                                                   |
 | `prompt.ts`        | prompt chunk / ref types shared by stills and providers                                                                                                               |
 | `providers.ts`     | backend capability types (`ChatBackend`, `ImageBackend`, reviewers)                                                                                                   |

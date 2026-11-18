@@ -3,19 +3,12 @@
  * deterministic and generative halves together; `@vn/types` is the single source of
  * truth for these shapes so every other package depends only on this one.
  */
-import type {
-  Asset,
-  AssetBinding,
-  AssetKind,
-  AssetRef,
-  Character,
-  Location,
-  ProductionData,
-  Scene,
-  Shot,
-  TakeEdit,
-  TakeStamp,
-} from './entities.js';
+import type { Asset, AssetBinding, AssetKind, AssetRef, TakeEdit, TakeStamp } from './assets.js';
+import type { Character } from './script/characters.js';
+import type { Location } from './script/locations.js';
+import type { Scene } from './script/scenes.js';
+import type { Shot } from './production/shots.js';
+import type { ProductionData } from './production/storyboard.js';
 import type { AnyTask, Task, TaskKind } from './tasks.js';
 import type { Providers } from './providers.js';
 import type { Transport } from './textmodels.js';

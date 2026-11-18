@@ -3,7 +3,7 @@
  * a content hash of everything that determines its output — this is what gives the
  * pipeline dedupe, resumability, and staleness/invalidation for free.
  */
-import type { AssetRef, ImageParams, TakeVia } from './entities.js';
+import type { AssetRef, ImageParams, TakeVia } from './assets.js';
 
 export type TaskKind =
   | 'location_ref'

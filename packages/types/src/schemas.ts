@@ -4,7 +4,7 @@
  * output from leaking into the deterministic core.
  */
 import { z } from 'zod';
-import type { SheetGroup } from './entities.js';
+import type { SheetGroup } from './production/storyboard.js';
 import type { ChunkEdit, ChunkRef, PromptOverride } from './prompt.js';
 import { ANTHROPIC_DEFAULTS } from './textmodels.js';
 

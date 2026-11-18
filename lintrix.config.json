@@ -28,6 +28,8 @@
             "elements": {
               "contracts"         : "packages/contracts",
               "types"             : "packages/types",
+              "types-script"      : "packages/types/src/script",
+              "types-production"  : "packages/types/src/production",
               "util"              : "packages/util",
               "config"            : "packages/config",
               "parse"             : "packages/parse",
@@ -59,7 +61,9 @@
             },
             "allow": {
               "contracts"         : [],
-              "types"             : ["contracts"],
+              "types"             : ["contracts", "types-script", "types-production"],
+              "types-script"      : ["types", "contracts"],
+              "types-production"  : ["types", "types-script", "contracts"],
               "util"              : ["types", "contracts"],
               "config"            : ["types", "util", "contracts"],
               "parse"             : ["types", "util", "contracts"],
