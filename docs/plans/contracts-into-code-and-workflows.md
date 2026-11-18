@@ -637,6 +637,59 @@ contract is declared once, in its final package.
 
 ### Stage 3: contracts that are not about the pipeline
 
+**Landed 2026-11-18 on the `contracts3` branch, as `26a9d6bc` to `1b18b90f` and the commit
+that adds this note.** As built:
+
+- **25 declarations in eight packages**, one commit per package: `@vn/store`, `@vn/model`,
+  `@vn/scriptedit`, `@vn/stills`, `@vn/gengraph`, `@vn/artgen`, `@vn/pipeline` and
+  `@vn/providers`. With stage 1's two, the index holds 27, and `contracts.json` is 56 KB,
+  below the 100 KB shard threshold.
+- **Two claims were false**, and the declarations state what is true; behaviour is
+  unchanged:
+    - The reviewer bullet said `Shot.castOptional` "is part of the prompt, so setting it
+      re-renders that frame". Only `shotSpec` reads it, so it is outside the task inputs
+      and re-keys nothing. `prompts.reviewerSpec` says so, and a test pins it. The
+      `story.requireCast` description and `packages/scriptedit/src/cast.ts`'s module
+      comment repeat the false claim and are unchanged.
+    - The P5 bullet said `decomposeScene` "requires that every line be assigned to exactly
+      one shot". The system prompt asks for it, but the code only drops ids the scene does
+      not have, falls back when no real line is bound, and gives an uncovered first line
+      to the first shot. `prompts.decomposeByLineId` states that.
+- **Bullets split across packages**, where the enforcing code is in more than one:
+    - Entity discovery: `script.entityByTag` in `@vn/store`, where `entities.ts` is, and
+      `script.entityIdMatchesFile` in `@vn/model`.
+    - Each scene occupies one file: `script.sceneOneFile` in `@vn/model`, and
+      `script.sceneSourcesOneLoad` and `script.sceneEditAllOrNothing` in `@vn/scriptedit`.
+    - A heading edit: `identity.headingRekeysShots` in `@vn/stills` and
+      `script.headingRestagesShots` in `@vn/scriptedit`.
+    - Art direction: `prompts.artNotesAppended` in `@vn/stills`, where stage 2 moved the
+      builders, and `prompts.artRungsShared` in `@vn/artgen`.
+- **Sub-bullets kept in `detail`** rather than declared on their own: the staging sheet's
+  forced-run refusal and run serialisation, the outfit's `usedOutfits` fan-out, and the
+  art rungs' seed, image model and sheet-form writer. The staging sheet's sub-bullet that
+  the planner, the runner, `gengraph.run` and `resolveSlot` key through one function only
+  says two code paths agree, so it has no declaration.
+- **Pins.** Most retitle an existing `describe` or move existing tests under a new one.
+  New tests: `scriptedit/src/tests/sources.test.ts`, a 12-way concurrent write in
+  `store/src/tests/assetremove.test.ts`, and the heading and `castOptional` tests in
+  `stills/src/tests/prompts.test.ts`. The `@vn/stills` storyboard, art-notes and reviewer
+  contracts are pinned in `pipeline/src/tests/pipeline.test.ts`, where their tests already
+  were, so `@vn/pipeline` gained `@vn/contracts` in the stills commit.
+- **`query_contracts`' index test** matched the line-id contract only on the first line of
+  the answer. A `module:` query also matches `function:` subjects in that file, so
+  `script.headingRestagesShots` now sorts first for `lineops.ts`; the test matches any
+  line.
+- **The scheduler half of `providers.modelIdRoutes`** is enforced by `vn/element-types`,
+  not a test. The bullet's "imports `Task`, `deps`, and `status`" was loose, so the
+  declaration states only that the allow-list keeps providers out.
+- **Docs.** The "Seams" heading went with its only bullet, and its contents entry was
+  removed by hand. Links retargeted to the declaring file: `asset-stores.md`,
+  `story-bible.md`, `cli.md`, `manga-style.md`, `gen-graphs.md` (node types) and
+  `desktop-app-editors-misc.md`. The archived `pathux-rich-editor-widgets.md` names the
+  art-direction bullet in prose, not as a link, and is unchanged.
+
+The plan as written before it landed:
+
 - Move each bullet to a contract declaration and its tests in the package that owns it,
   then delete it. The list is the stage 3 rows of the disposition table.
 - Every link into a deleted bullet's anchor is retargeted in the same commit;
@@ -783,14 +836,14 @@ enforced.
 | 213  | Authoring earns a portrait or plate, not a sheet                | 6a     | Stills enumeration test                                                                                             |
 | 227  | `SlotNode.approved` means one thing                             | 6a     | `SlotKind.approved`, one per kind; stills test                                                                      |
 | 229  | Currency is exclusive per slot                                  | 6d     | Solver rule (`pick`); the write half stays in `adoptslot`                                                           |
-| 287  | A storyboard is fetched only on request; a fallback never saved | 3      | Declared on `decomposeAll` in `@vn/pipeline`, whose persistence rules stay there (`p5.ts:5`)                        |
+| 287  | A storyboard is fetched only on request; a fallback never saved | 3      | Declared on `decomposeAll` in `@vn/pipeline`'s `decompose.ts`, not `p5.ts`, as built                                |
 | 303  | A terminal task records why, is retried once                    | 8      | Executor declarations on `requeueFailed` and `requeueAbandoned`                                                     |
-| 391  | An entity is found by its tag                                   | 3      | `@vn/model` declaration and test                                                                                    |
-| 422  | Each scene occupies one file                                    | 3      | Refused at the write in `@vn/scriptedit`                                                                            |
+| 391  | An entity is found by its tag                                   | 3      | `@vn/store` declaration (`entities.ts` is there) and test; the id-matches-file half in `@vn/model`, as built        |
+| 422  | Each scene occupies one file                                    | 3      | `@vn/model` (`sceneFromDoc`) and two in `@vn/scriptedit` (one load, all-or-nothing edits), as built                 |
 | 453  | Shot decompositions are persisted                               | 4      | `@vn/store` declaration; the production map                                                                         |
 | 520  | Reordering a shot means editing the prose                       | 3      | `@vn/scriptedit` declaration and test                                                                               |
 | 536  | A character inherits what it wears                              | 3      | `@vn/model` declaration and test                                                                                    |
-| 562  | Art direction is authored and appended                          | 3      | `@vn/artgen` declaration and test                                                                                   |
+| 562  | Art direction is authored and appended                          | 3      | The builders' half in `@vn/stills`, the rungs' half in `@vn/artgen`, as built                                       |
 | 600  | A prompt is a list of clauses                                   | 4      | Type in `@vn/types` (`PromptChunk`), declared once stage 4 has reorganised `src/`                                   |
 | 632  | A reference attaches to a clause                                | 4      | Type in `@vn/types` (`ChunkRef`) and the refusal in `@vn/stills`                                                    |
 | 643  | Suspension is derived transitively                              | 6d     | Solver rule                                                                                                         |
@@ -800,14 +853,14 @@ enforced.
 | 725  | A group node is identified by its key                           | 3      | `@vn/gengraph` declaration and test                                                                                 |
 | 743  | A staging sheet is in every member's identity                   | 0, 3   | Stage 0's test; declared in `@vn/stills` in stage 3 and pinned by a test that a member's inputs carry the sheet key |
 | 768  | A socket rename needs a migration                               | 3      | `@vn/gengraph` test                                                                                                 |
-| 784  | A heading edit invalidates art                                  | 3      | Stills identity test                                                                                                |
+| 784  | A heading edit invalidates art                                  | 3      | Stills identity test, plus the restaging half in `@vn/scriptedit`, as built                                         |
 | 807  | Line ids are allocated and stored                               | 1      | Refused at the write in `@vn/scriptedit`; the first declaration                                                     |
-| 826  | The scene round-trip                                            | 3      | `@vn/scriptedit` round-trip test                                                                                    |
+| 826  | The scene round-trip                                            | 3      | `@vn/model` round-trip test, where the serializer and the test are, as built                                        |
 | 851  | P5 receives identified lines                                    | 3      | Stills decomposer declaration and test                                                                              |
 | 866  | P7 generate→critique→refine                                     | 8      | Executor declaration on the shot runner                                                                             |
 | 877  | The reviewer sees only `shotSpec`                               | 3      | `@vn/stills` `shotSpec` declaration and test                                                                        |
-| 894  | Deterministic fallbacks                                         | 3      | `@vn/providers` declaration and test                                                                                |
-| 908  | Provider seams                                                  | 3      | `@vn/providers` types                                                                                               |
+| 894  | Deterministic fallbacks                                         | 3      | `@vn/stills` declaration on `storyboard.ts` and test, as built; `@vn/providers` holds only the mocks                |
+| 908  | Provider seams                                                  | 3      | `@vn/providers` declaration on `factory.ts` and test; the scheduler half is the lintrix allow-list, as built        |
 
 Sub-bullets move with their bullet. A sub-bullet that only states that two code paths
 agree is deleted when the second path is, and the stage's commit message says so.
