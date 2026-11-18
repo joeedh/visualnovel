@@ -128,11 +128,11 @@ an unbounded tree behind a tool that cannot bound it.
 
 Any file under `wiki/` with `type: character` or `type: location` in its front matter is a
 real entity sheet, discovered exactly as one under `characters/` or `locations/` would be.
-The entity-discovery contract is in
-[`pipeline-contracts.md`](pipeline-contracts.md#scenes-shots-and-lines). Discovery and
-retrieval read the same file, and neither changes the other's result: a wiki-filed
-character appears in the workspace index at the path it actually lives at, is patched in
-place by `edit_character`, and is also reachable by `search_bible` like any other note.
+The entity-discovery contract is `script.entityByTag`, declared in
+[`entities.ts`](../../packages/store/src/entities.ts). Discovery and retrieval read the
+same file, and neither changes the other's result: a wiki-filed character appears in the
+workspace index at the path it actually lives at, is patched in place by `edit_character`,
+and is also reachable by `search_bible` like any other note.
 
 Creating a new entity still writes to the conventional directory. Filing one under `wiki/`
 is a choice the author makes; the tools follow that choice rather than making it.

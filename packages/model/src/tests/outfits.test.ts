@@ -1,5 +1,6 @@
+import { pins } from '@vn/contracts';
 import type { Character, Scene } from '@vn/types';
-import { outfitFor, outfitText } from '../outfits.js';
+import { outfitFor, outfitText, scriptOutfitInherited } from '../outfits.js';
 
 const aiko: Character = {
   id           : 'aiko',
@@ -17,7 +18,7 @@ const aiko: Character = {
 
 const sceneWith = (outfits?: Record<string, string>): Pick<Scene, 'outfits'> => ({ outfits });
 
-describe('outfitFor', () => {
+describe(pins(scriptOutfitInherited), () => {
   it('takes the shot subject over everything, and says so', () => {
     const r = outfitFor(
       { characterId: 'aiko', outfit: 'track' },

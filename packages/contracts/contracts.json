@@ -38,6 +38,19 @@
       "declared": "packages/store/src/entities.ts"
     },
     {
+      "id"      : "script.entityIdMatchesFile",
+      "rule": "A character or location sheet's front-matter `id:` must equal the id its file's name implies (the directory for a character sheet, the filename stem elsewhere); a mismatch is an `entity_id_mismatch` error and the entity is dropped.",
+      "prevents": "A sheet such as `characters/ada/` declaring `id: ren`, which produces a character no file on disk names, so every path derived from the id points somewhere the entity is not.",
+      "subjects": [
+        "module:packages/model/src/build.ts",
+        "function:packages/model/src/build.ts#buildModel",
+        "function:packages/store/src/entities.ts#discoverEntities"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#entity-discovery-by-meta-tag"],
+      "detail": "The disagreement is reported and never resolved by picking one side, the way `sceneFromDoc` treats a scene whose filename and `scene:` key disagree. Discovery itself is `script.entityByTag`, in `@vn/store`.",
+      "declared": "packages/model/src/build.ts"
+    },
+    {
       "id"      : "script.lineIdsAllocated",
       "rule": "Line ids are allocated and stored, and a read never writes: a new line takes its id from its scene's allocator, never from its position, and loading a project allocates ids in memory only.",
       "prevents": "Re-pointing every shot below an inserted line at a different line, which re-renders that art at cost and reports nothing.",
@@ -52,6 +65,53 @@
       "see"     : ["docs/plans/archive/INDEX.md#allocated-line-ids"],
       "detail": "`Shot.coversLines` binds art to `<sceneId>:L<n>`, so an id derived from position would re-point every shot below an inserted line. `splitScenes` prefers a `[[line: L4]]` note (a Fountain note leading the element it names) and allocates only for unmarked elements, starting from the scene's `[[nextline: 12]]` mark raised past every id in use; a stale allocator is a bug and never justifies reusing an id. Duplicate and dangling marks are `error` diagnostics. Allocation happens in memory, and loading a project never allocates. The `story.assignLineIds` command (undoable, over `assignLineIds` in `packages/model/src/lineids.ts`) persists the ids: it adds only whole marker lines, re-parses its own output, and discards the patch unless the re-parse reproduces the same scenes line for line, because a note inserted above a `CHARACTER` cue would turn that cue into action and the lines below it would no longer parse as dialogue.",
       "declared": "packages/scriptedit/src/lineops.ts"
+    },
+    {
+      "id"      : "script.outfitInherited",
+      "rule": "`outfitFor` alone resolves what a subject wears, in order: the shot subject's own `outfit`, then the scene's `[[outfit: id=outfit]]` marker, then the character's `default_outfit`. An absent field defers to the next level.",
+      "prevents": "The prompt builders, the planner and the desktop resolving an outfit in different orders, so a shot is drawn in one outfit while its reference sheet, or the surface describing it, names another.",
+      "subjects": [
+        "module:packages/model/src/outfits.ts",
+        "function:packages/model/src/outfits.ts#outfitFor",
+        "function:packages/model/src/outfits.ts#outfitText",
+        "function:packages/model/src/used.ts#usedOutfits",
+        "function:packages/stills/src/storyboard.ts#deterministicShots"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#outfits-at-scene-and-shot-level"],
+      "detail": "A `ShotSubject` with no `outfit` inherits, which is why `deterministicShots` and the decomposer emit shots without one. `ResolvedOutfit.origin` names the level that answered, so a surface can say which rather than \"inherited\". `outfitText` falls back to the outfit id when nothing describes the outfit, so a wardrobe can be named before it is described and an undescribed project keeps its prompts. An outfit edit re-renders, unlike other scene edits: the outfit is in `buildShotPrompt`, so a change re-keys exactly the shots it reaches. The sheet fan-out follows from the same function: `usedOutfits` is the character's default plus every scene marker and shot override over reachable scenes, which is `outfitFor`'s range, so a character no reachable scene casts plans no sheets and a shot cannot depend on a sheet nothing planned. A subject out of its default takes that outfit's front sheet as a reference (a frame needs the clothes, not a turnaround), which reaches the planner a wave later, the way a shot waits on its plate.",
+      "declared": "packages/model/src/outfits.ts"
+    },
+    {
+      "id"      : "script.sceneOneFile",
+      "rule": "A scene is one `scenes/<id>.md` file whose front matter is `scene: <id>` and nothing else and whose body is one complete Fountain scene with its own heading. The id comes from the filename and the front matter, and the body cannot override it.",
+      "prevents": "Renaming a scene by editing its prose, and a key such as `next` or `location` stated both in front matter and in the body, so an edit written to one is read from the other.",
+      "subjects": [
+        "module:packages/model/src/entities.ts",
+        "function:packages/model/src/entities.ts#sceneFromDoc",
+        "function:packages/model/src/serialize.ts#sceneToDoc",
+        "function:packages/store/src/scenes.ts#readSceneChunks",
+        "file:scenes"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#scene-chunk-files",
+        "docs/reference/fountain.md#where-the-fountain-lives-project-specific"
+      ],
+      "detail": "The front-matter schema is closed, so a key the body owns is a `scene_frontmatter` error; a filename and `scene:` key that disagree are `scene_id`; a body with no heading or with two is `scene_body`. A `[[scene:]]` marker in a chunk is ignored with a warning. A directory has no document order, so `start:` in `project.yaml` names the entry scene rather than whichever file sorts first. Which files hold scenes, and what a writer patches, is `script.sceneSourcesOneLoad` in `@vn/scriptedit`.",
+      "declared": "packages/model/src/entities.ts"
+    },
+    {
+      "id"      : "script.sceneRoundTrip",
+      "rule": "Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field the model carries except `shots`. `sceneToFountain` writes from `Scene.lines` and the heading fields.",
+      "prevents": "A prose edit that re-serializes a scene silently changing it, such as turning `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`, which also changes the location variant the plate is drawn from.",
+      "subjects": [
+        "module:packages/model/src/serialize.ts",
+        "function:packages/model/src/serialize.ts#sceneToFountain",
+        "function:packages/model/src/serialize.ts#sceneToDoc",
+        "function:packages/scriptedit/src/apply.ts#proveScenes"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#lossless-scene-serialization"],
+      "detail": "It is the scene counterpart of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and a property test over the `@vn/testkit` scripts and hand-built scenes pins it. `Scene.body` was removed because flattened prose cannot be split back into its parts: `NAME:` and an action paragraph containing a colon are the same string. The model keeps what Fountain says, including the heading's prefix, its time-of-day variant and `transition`/`lyric`/`centered` lines; `section`, `page_break` and dual dialogue are dropped deliberately. Blank lines are structural: a `[[…]]` marker line is not blank, so a cue always gets a blank line above it, nothing but a `[[line:]]` mark goes between a cue and its first dialogue line, and anything that could be read as another element is written in its forced form (`!`, `@`, `>`, `~`). `needsForcedAction` tests every alternative reading the parser has. Byte-exactness is not a goal: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle files the author wrote, because their formatting is the author's.",
+      "declared": "packages/model/src/serialize.ts"
     },
     {
       "id"      : "storage.manifestQueue",
@@ -86,30 +146,51 @@
     }
   ],
   "bySubject": {
-    "command:asset.adopt"                                     : ["log.doneWriters"],
-    "command:story.assignLineIds"                             : ["script.lineIdsAllocated"],
+    "command:asset.adopt"                                          : ["log.doneWriters"],
+    "command:story.assignLineIds"                                  : ["script.lineIdsAllocated"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
-    "file:state/tasks.jsonl"                                  : ["log.doneWriters"],
+    "file:scenes"                                                  : ["script.sceneOneFile"],
+    "file:state/tasks.jsonl"                                       : ["log.doneWriters"],
     "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
-    "function:packages/artgen/src/adoptslot.ts#adoptSlot"     : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#fileGraphDraw" : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#holdPortrait"  : ["log.doneWriters"],
-    "function:packages/artgen/src/adoptslot.ts#repinAdoption" : ["log.doneWriters"],
-    "function:packages/model/src/lineids.ts#assignLineIds"    : ["script.lineIdsAllocated"],
-    "function:packages/model/src/scenes.ts#splitScenes"       : ["script.lineIdsAllocated"],
-    "function:packages/scriptedit/src/lineops.ts#nextIdOf"    : ["script.lineIdsAllocated"],
-    "function:packages/store/src/assetstore.ts#AssetRoot"     : ["storage.manifestQueue"],
-    "function:packages/store/src/assetstore.ts#AssetStore"    : ["storage.twoRoots"],
-    "function:packages/store/src/assetstore.ts#isBaseKind"    : ["storage.twoRoots"],
-    "function:packages/store/src/entities.ts#discoverEntities": ["script.entityByTag"],
-    "function:packages/store/src/entities.ts#entityFile"      : ["script.entityByTag"],
-    "function:packages/store/src/entities.ts#entityIdentity"  : ["script.entityByTag"],
-    "module:packages/artgen/src/adopt.ts"                     : ["log.doneWriters"],
-    "module:packages/scriptedit/src/lineops.ts"               : ["script.lineIdsAllocated"],
+    "function:packages/artgen/src/adoptslot.ts#adoptSlot"          : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#fileGraphDraw"      : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#holdPortrait"       : ["log.doneWriters"],
+    "function:packages/artgen/src/adoptslot.ts#repinAdoption"      : ["log.doneWriters"],
+    "function:packages/model/src/build.ts#buildModel"              : ["script.entityIdMatchesFile"],
+    "function:packages/model/src/entities.ts#sceneFromDoc"         : ["script.sceneOneFile"],
+    "function:packages/model/src/lineids.ts#assignLineIds"         : ["script.lineIdsAllocated"],
+    "function:packages/model/src/outfits.ts#outfitFor"             : ["script.outfitInherited"],
+    "function:packages/model/src/outfits.ts#outfitText"            : ["script.outfitInherited"],
+    "function:packages/model/src/scenes.ts#splitScenes"            : ["script.lineIdsAllocated"],
+    "function:packages/model/src/serialize.ts#sceneToDoc": [
+      "script.sceneOneFile",
+      "script.sceneRoundTrip"
+    ],
+    "function:packages/model/src/serialize.ts#sceneToFountain"     : ["script.sceneRoundTrip"],
+    "function:packages/model/src/used.ts#usedOutfits"              : ["script.outfitInherited"],
+    "function:packages/scriptedit/src/apply.ts#proveScenes"        : ["script.sceneRoundTrip"],
+    "function:packages/scriptedit/src/lineops.ts#nextIdOf"         : ["script.lineIdsAllocated"],
+    "function:packages/stills/src/storyboard.ts#deterministicShots": ["script.outfitInherited"],
+    "function:packages/store/src/assetstore.ts#AssetRoot"          : ["storage.manifestQueue"],
+    "function:packages/store/src/assetstore.ts#AssetStore"         : ["storage.twoRoots"],
+    "function:packages/store/src/assetstore.ts#isBaseKind"         : ["storage.twoRoots"],
+    "function:packages/store/src/entities.ts#discoverEntities": [
+      "script.entityByTag",
+      "script.entityIdMatchesFile"
+    ],
+    "function:packages/store/src/entities.ts#entityFile"           : ["script.entityByTag"],
+    "function:packages/store/src/entities.ts#entityIdentity"       : ["script.entityByTag"],
+    "function:packages/store/src/scenes.ts#readSceneChunks"        : ["script.sceneOneFile"],
+    "module:packages/artgen/src/adopt.ts"                          : ["log.doneWriters"],
+    "module:packages/model/src/build.ts"                           : ["script.entityIdMatchesFile"],
+    "module:packages/model/src/entities.ts"                        : ["script.sceneOneFile"],
+    "module:packages/model/src/outfits.ts"                         : ["script.outfitInherited"],
+    "module:packages/model/src/serialize.ts"                       : ["script.sceneRoundTrip"],
+    "module:packages/scriptedit/src/lineops.ts"                    : ["script.lineIdsAllocated"],
     "module:packages/store/src/assetstore.ts": ["storage.manifestQueue", "storage.twoRoots"],
-    "module:packages/store/src/entities.ts"                   : ["script.entityByTag"],
-    "module:packages/taskgraph/src/maintain.ts"               : ["log.doneWriters"],
-    "module:packages/taskgraph/src/write.ts"                  : ["log.doneWriters"],
-    "tool:edit_scene"                                         : ["script.lineIdsAllocated"]
+    "module:packages/store/src/entities.ts"                        : ["script.entityByTag"],
+    "module:packages/taskgraph/src/maintain.ts"                    : ["log.doneWriters"],
+    "module:packages/taskgraph/src/write.ts"                       : ["log.doneWriters"],
+    "tool:edit_scene"                                              : ["script.lineIdsAllocated"]
   }
 }

@@ -12,6 +12,7 @@ import {
   type Outfit,
   type Scene,
 } from '@vn/types';
+import { contract } from '@vn/contracts';
 import { parseFountain, parseFrontMatter, type FrontMatterDoc } from '@vn/parse';
 import { splitScenes, type MinedLocation } from './scenes.js';
 
@@ -96,11 +97,35 @@ export interface LoadedScene {
   diagnostics: Diagnostic[];
 }
 
+export const scriptSceneOneFile = contract({
+  id      : 'script.sceneOneFile',
+  rule: 'A scene is one `scenes/<id>.md` file whose front matter is `scene: <id>` and nothing else and whose body is one complete Fountain scene with its own heading. The id comes from the filename and the front matter, and the body cannot override it.',
+  prevents:
+    'Renaming a scene by editing its prose, and a key such as `next` or `location` stated both in front matter and in the body, so an edit written to one is read from the other.',
+  subjects: [
+    'module:packages/model/src/entities.ts',
+    'function:packages/model/src/entities.ts#sceneFromDoc',
+    'function:packages/model/src/serialize.ts#sceneToDoc',
+    'function:packages/store/src/scenes.ts#readSceneChunks',
+    'file:scenes',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#scene-chunk-files',
+    'docs/reference/fountain.md#where-the-fountain-lives-project-specific',
+  ],
+  detail:
+    'The front-matter schema is closed, so a key the body owns is a `scene_frontmatter` error; a ' +
+    'filename and `scene:` key that disagree are `scene_id`; a body with no heading or with two is ' +
+    '`scene_body`. A `[[scene:]]` marker in a chunk is ignored with a warning. A directory has no ' +
+    'document order, so `start:` in `project.yaml` names the entry scene rather than whichever ' +
+    'file sorts first. Which files hold scenes, and what a writer patches, is ' +
+    '`script.sceneSourcesOneLoad` in `@vn/scriptedit`.',
+});
+
 /**
- * Build a Scene from a parsed `scenes/<id>.md` doc, where `id` is the filename stem and is the
- * authority on the scene's identity. The body goes through the same `parseFountain` +
- * `splitScenes` the single-file form does, with the id forced, so line ids come out
- * `${id}:L<n>` and one parser stays responsible for both formats.
+ * Build a Scene from a parsed `scenes/<id>.md` doc, where `id` is the filename stem. The body goes
+ * through the same `parseFountain` + `splitScenes` the single-file form does, with the id forced,
+ * so line ids come out `${id}:L<n>` and one parser stays responsible for both formats.
  */
 export function sceneFromDoc(doc: FrontMatterDoc, id: string): EntityResult<LoadedScene> {
   const parsed = sceneFrontMatter.safeParse(doc.data);

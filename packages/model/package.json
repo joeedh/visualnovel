@@ -9,6 +9,7 @@
   "dependencies": {
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",
-    "@vn/parse": "workspace:*"
+    "@vn/parse": "workspace:*",
+    "@vn/contracts": "workspace:*"
   }
 }

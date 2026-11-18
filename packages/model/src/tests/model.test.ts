@@ -1,4 +1,6 @@
+import { pins } from '@vn/contracts';
 import { parseFountain, parseFrontMatter, type EntityDoc, type SceneChunkDoc } from '@vn/parse';
+import { scriptEntityIdMatchesFile } from '../build.js';
 import { buildModel, errors, isValid, toMermaid, type BuildInputs } from '../index.js';
 
 /** A discovered character sheet, as `loadInputs` would hand one over. */
@@ -159,7 +161,7 @@ describe('buildModel — validation', () => {
 // Before discovery carried the file, `id:` was the only id there was, so `characters/ada/` holding
 // `id: ren` silently produced a character named by neither — and every path built from that id
 // pointed at a sheet that was not the one loaded.
-describe('buildModel — an entity id must agree with the file that holds it', () => {
+describe(pins(scriptEntityIdMatchesFile), () => {
   const build = (docs: EntityDoc[]) =>
     buildModel({ title: 'Test', characterDocs: docs, locationDocs: [], script: parseFountain('') });
 

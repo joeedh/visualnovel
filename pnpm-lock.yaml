@@ -415,6 +415,9 @@ importers:
 
   packages/model:
     dependencies:
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/parse':
         specifier: workspace:*
         version: link:../parse

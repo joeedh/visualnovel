@@ -20,9 +20,37 @@ import {
   type PromptOverrideFrontMatter,
   type Scene,
 } from '@vn/types';
+import { contract } from '@vn/contracts';
 import { stringifyFrontMatter, type FrontMatterDoc } from '@vn/parse';
 import { characterFromDoc, locationFromDoc, type EntityResult } from './entities.js';
 import { slug } from './slug.js';
+
+export const scriptSceneRoundTrip = contract({
+  id      : 'script.sceneRoundTrip',
+  rule: 'Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field the model carries except `shots`. `sceneToFountain` writes from `Scene.lines` and the heading fields.',
+  prevents:
+    'A prose edit that re-serializes a scene silently changing it, such as turning `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`, which also changes the location variant the plate is drawn from.',
+  subjects: [
+    'module:packages/model/src/serialize.ts',
+    'function:packages/model/src/serialize.ts#sceneToFountain',
+    'function:packages/model/src/serialize.ts#sceneToDoc',
+    'function:packages/scriptedit/src/apply.ts#proveScenes',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#lossless-scene-serialization'],
+  detail:
+    'It is the scene counterpart of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and a ' +
+    'property test over the `@vn/testkit` scripts and hand-built scenes pins it. `Scene.body` was ' +
+    'removed because flattened prose cannot be split back into its parts: `NAME:` and an action ' +
+    'paragraph containing a colon are the same string. The model keeps what Fountain says, ' +
+    "including the heading's prefix, its time-of-day variant and `transition`/`lyric`/`centered` " +
+    'lines; `section`, `page_break` and dual dialogue are dropped deliberately. Blank lines are ' +
+    'structural: a `[[…]]` marker line is not blank, so a cue always gets a blank line above it, ' +
+    'nothing but a `[[line:]]` mark goes between a cue and its first dialogue line, and anything ' +
+    'that could be read as another element is written in its forced form (`!`, `@`, `>`, `~`). ' +
+    '`needsForcedAction` tests every alternative reading the parser has. Byte-exactness is not a ' +
+    'goal: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle files the author ' +
+    "wrote, because their formatting is the author's.",
+});
 
 /** Drop `undefined` values so they never reach the YAML serializer as `null`. */
 function compact(data: Record<string, unknown>): Record<string, unknown> {
@@ -231,10 +259,8 @@ export function headingOf(scene: Scene): string {
 }
 
 /**
- * Serialize a Scene back into a Fountain block, losslessly: `parse(write(scene)) ≡ scene` for
- * every field the model carries except `shots`, which is not serialized. The heading comes from
- * the scene's own heading fields — a heading reconstructed from the location slug alone is
- * wrong about the variant, and the variant is what the location plate is generated from.
+ * Serialize a Scene back into a Fountain block, the heading from the scene's own heading fields
+ * and the body from its lines. `shots` is not serialized.
  *
  * Line ids are written as `[[line:]]` marks and the allocator as `[[nextline:]]`, the same
  * placement `assignLineIds` uses, so a scene this wrote and a scene an author marked by hand

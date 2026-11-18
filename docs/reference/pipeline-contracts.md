@@ -361,37 +361,6 @@ package.
 
 ## Scenes, shots, and lines
 
-- An entity is found by its tag, and the file it was found in accompanies it.
-    - A character or set-location is any file whose front-matter declares
-      `type: character` or `type: location`. Exactly three places are searched:
-      `characters/<id>/character.md`, `locations/<id>.md`, and a walk of `wiki/**/*.md`.
-    - In the two conventional directories the tag is implied by the directory and may be
-      stated redundantly. Stating the tag for the other kind there raises an
-      `entity_tag_conflict` error rather than overriding the directory, because a document
-      changes kind only when the file moves.
-    - In the wiki, a file is an entity only if it carries the tag. An untagged file
-      belongs to the story bible and the walk skips it silently, which keeps the walk from
-      treating every stray markdown file as an input.
-    - Discovery yields an `EntityDoc` (`id`, `file`, parsed `doc`, raw `text`), and that
-      path is the only location used to find the entity: `entityFile(docs, id)` is how
-      `vngen approve`, the desktop session, testkit and `vnauthor`'s edit tools find their
-      target, so a sheet filed in the wiki is edited and approved in the wiki. Rebuilding
-      `characters/<id>/character.md` from an id failed, because it silently wrote a file
-      that was not the one loaded.
-    - `id:` stays in front-matter and must agree with the file's own name (the parent
-      directory for a character sheet, the filename stem elsewhere). A mismatch raises an
-      `entity_id_mismatch` error. Before this, `characters/ada/` could declare `id: ren`,
-      which produced a character that no file on disk named.
-    - When two files claim the same id, discovery emits a `duplicate_entity` warning
-      naming both files, then prefers the conventional file over the wiki file, falling
-      back to the lexicographically first path. The rule is fixed rather than a guess, and
-      discovery reports every conflict it resolves.
-    - Unparseable front-matter produces an `entity_file` diagnostic instead of throwing
-      during the load. The diagnostic is an error under the conventional directories and a
-      warning under the wiki, where the file was never known to be an entity. One
-      hand-edited sheet must not fail the whole project load.
-    - Plan:
-      [`../plans/archive/INDEX.md#entity-discovery-by-meta-tag`](../plans/archive/INDEX.md#entity-discovery-by-meta-tag).
 - **Each scene occupies one file, and the reader alone decides which files hold scenes.**
     - Authored scenes are `scenes/<id>.md`. The front matter is `scene: <id>` and nothing
       else, and the schema is closed, so a key the body owns (such as `next` or
@@ -506,32 +475,6 @@ package.
       re-renders.
     - Plan:
       [`../plans/archive/INDEX.md#shot-ordering-in-scenes`](../plans/archive/INDEX.md#shot-ordering-in-scenes).
-- **A character inherits what it wears, and the inheritance chain is written down once.**
-    - `outfitFor` (`packages/model/src/outfits.ts`) is the only function that resolves an
-      outfit, and it checks three sources in order: a shot subject's own `outfit`, then
-      the scene's `[[outfit: aiko=track]]` marker, then `character.defaultOutfit`.
-    - A rung defers when a field is absent. A `ShotSubject` with no `outfit` inherits,
-      which is why `deterministicShots` emits a shot without an `outfit`.
-    - `ResolvedOutfit.origin` reports which rung answered, so a surface can name that rung
-      instead of saying "inherited". `outfitText` falls back to the outfit id when nothing
-      describes the outfit, so an author can name a wardrobe before writing any
-      description of it.
-    - This edit re-renders, unlike every other scene edit, and that is deliberate. The
-      outfit is part of `buildShotPrompt`, so changing it rehashes exactly the shots it
-      reaches and no others.
-    - The sheet fan-out follows from the same function. `usedOutfits` in the planner is
-      `{defaultOutfit} ∪ {scene markers} ∪ {shot overrides}` over reachable scenes, which
-      is exactly `outfitFor`'s range over the model. A character that no reachable scene
-      casts has no entry, so drawing every authored portrait does not also draw every
-      authored turnaround. Authoring an outfit that nothing wears costs nothing, and a
-      shot cannot depend on a sheet that nothing planned.
-    - A subject out of its default takes that outfit's front sheet as a reference, and
-      that reference depends on the subject's task. Only the front angle is used, because
-      a frame needs the clothes rather than a turnaround. The reference reaches the
-      planner a wave later than the marker did, in the same way that a shot waits on its
-      location plate.
-    - Plan:
-      [`../plans/archive/INDEX.md#outfits-at-scene-and-shot-level`](../plans/archive/INDEX.md#outfits-at-scene-and-shot-level).
 - **Art direction is authored and appended, and the re-render covers exactly what that
   direction reaches.**
     - `artNotes` is an optional free-text field at five rungs — `Character`, `Location`,
@@ -783,31 +726,6 @@ package.
     - Surfaces display the cost rather than asking for confirmation: `story.setHeading` is
       deliberately not `confirm: true`, because a confirm command is never checked, and
       the check is what raises the warning.
-- Writing a scene to text and parsing it back returns the same scene:
-  `parse(write(scene)) ≡ scene`.
-    - `sceneToFountain` (`packages/model/src/serialize.ts`) writes from `Scene.lines`. It
-      holds the same `fromDoc(toDoc(x)) ≡ x` round trip that the character and location
-      serializers already hold, and a property test over the `@vn/testkit` scripts and
-      hand-built scenes pins it the same way.
-    - `Scene.body` was removed. Flattened prose cannot be separated back into its parts,
-      because `NAME:` and an action paragraph containing a colon are the same string.
-      Keeping the field would have encouraged a reconstruction it could not support.
-    - The property holds because the model retains what Fountain says, which includes the
-      heading's prefix, its time-of-day variant, and `transition`/`lyric`/`centered`
-      lines. The location plate is generated from the variant, and reconstructing it
-      turned `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`.
-    - `section`, `page_break` and dual dialogue remain dropped, and that is deliberate.
-    - **Blank lines are structural.** A `[[…]]` marker line is not blank, so a cue always
-      gets a blank line above it, nothing but a `[[line:]]` mark goes between a cue and
-      its first dialogue line, and anything that could be read as another element is
-      written in its forced form (`!`, `@`, `>`, `~`). `needsForcedAction` tests every
-      alternative reading the parser has, not just the ones this writer's own layout would
-      allow.
-    - Byte-exactness is not achievable and is not a goal. The surgical patchers
-      (`branchpatch.ts`, `lineids.ts`) still handle files the author wrote, because the
-      formatting in those files is the author's.
-    - Plan:
-      [`../plans/archive/INDEX.md#lossless-scene-serialization`](../plans/archive/INDEX.md#lossless-scene-serialization).
 - **P5 receives the scene as identified lines rather than prose.**
     - `coversLines` takes line ids, so `decomposeScene` enumerates the scene as
       `[<lineId>] <kind>/<speaker>: <text>` and requires that every line be assigned to

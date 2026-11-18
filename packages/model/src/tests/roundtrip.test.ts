@@ -6,12 +6,13 @@
  * is what makes `sceneToFountain` safe to write with. Comparison is structural — every field
  * the model carries except `shots`, which is never serialized.
  */
+import { pins } from '@vn/contracts';
 import { parseFountain, parseFrontMatter } from '@vn/parse';
 import type { HeadingPrefix, Scene, SceneLine } from '@vn/types';
 import { SCRIPTS } from '@vn/testkit';
-import { sceneFromDoc, sceneTextProblem } from '../entities.js';
+import { sceneFromDoc, sceneTextProblem, scriptSceneOneFile } from '../entities.js';
 import { splitScenes } from '../scenes.js';
-import { docToMarkdown, sceneToDoc, sceneToFountain } from '../serialize.js';
+import { docToMarkdown, sceneToDoc, sceneToFountain, scriptSceneRoundTrip } from '../serialize.js';
 
 /** The scene reduced to what a round-trip has to preserve. */
 function projected(scene: Scene): unknown {
@@ -54,7 +55,7 @@ const survives = (scene: Scene): void => {
   expect(projected(rechunk(scene))).toEqual(projected(scene));
 };
 
-describe('sceneToFountain — round trip over the fixture scripts', () => {
+describe(pins(scriptSceneRoundTrip), () => {
   for (const [name, script] of Object.entries(SCRIPTS)) {
     it(`preserves every scene of '${name}'`, () => {
       const { scenes, diagnostics } = splitScenes(parseFountain(script));
@@ -183,7 +184,7 @@ describe('sceneToFountain — round trip over scene shape', () => {
   });
 });
 
-describe('sceneFromDoc — what a chunk is allowed to be', () => {
+describe(pins(scriptSceneOneFile), () => {
   const chunk = (data: Record<string, unknown>, body: string): ReturnType<typeof sceneFromDoc> =>
     sceneFromDoc({ data, body }, 'arrival');
   const HEADING = 'EXT. SCHOOL GATE - AFTERNOON\n\n[[nextline: 1]]\n';

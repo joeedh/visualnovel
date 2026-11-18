@@ -1,3 +1,4 @@
+import { contract } from '@vn/contracts';
 import type { Character, Diagnostic, Location, ProjectModel, Scene } from '@vn/types';
 import {
   type EntityDoc,
@@ -126,12 +127,26 @@ function mergeMinedLocations(
   return locations;
 }
 
+export const scriptEntityIdMatchesFile = contract({
+  id      : 'script.entityIdMatchesFile',
+  rule: "A character or location sheet's front-matter `id:` must equal the id its file's name implies (the directory for a character sheet, the filename stem elsewhere); a mismatch is an `entity_id_mismatch` error and the entity is dropped.",
+  prevents:
+    'A sheet such as `characters/ada/` declaring `id: ren`, which produces a character no file on disk names, so every path derived from the id points somewhere the entity is not.',
+  subjects: [
+    'module:packages/model/src/build.ts',
+    'function:packages/model/src/build.ts#buildModel',
+    'function:packages/store/src/entities.ts#discoverEntities',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#entity-discovery-by-meta-tag'],
+  detail:
+    'The disagreement is reported and never resolved by picking one side, the way `sceneFromDoc` ' +
+    'treats a scene whose filename and `scene:` key disagree. Discovery itself is ' +
+    '`script.entityByTag`, in `@vn/store`.',
+});
+
 /**
- * The id a file's name implies, against the id it declares. Entities are discovered by tag, so the
- * carried file is where an editor writes and the front-matter id is what the rest of the model
- * refers to; when they disagree, every path derived from the id points somewhere the entity is not.
- * The disagreement is reported and the entity is dropped, never resolved by picking one side,
- * matching how `sceneFromDoc` already treats the same disagreement for scenes.
+ * Whether the id a sheet declares is the one its file's name implies, reporting the disagreement
+ * when it is not.
  */
 function idAgrees(
   kind: 'character' | 'location',
