@@ -4,8 +4,9 @@
  *
  * They live here for the reason the outfit and variant rules do: the desktop's `story.setSubjects`
  * / `story.requireCast`, the timeline's own strip, and any agent tool over them must give the same
- * answer, so the rule can live in none of them. Both are in the shot's prompt, so either re-hashes
- * the shot and the next run draws that frame again.
+ * answer, so the rule can live in none of them. The subjects are in the shot's prompt, so changing
+ * them re-hashes the shot and the next run draws that frame again. `castOptional` is read only by
+ * the reviewer's spec, so changing it redraws nothing.
  */
 import type { Scene, Shot, ShotSubject } from '@vn/types';
 import type { ShotOutfitOp } from './outfits.js';

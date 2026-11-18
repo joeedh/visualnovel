@@ -821,8 +821,8 @@ export const storyRequireCast = define({
     "Say whether the characters a shot frames have to appear in it. Turned off, the shot's cast " +
     'still reaches the generator as reference sheets, but the vision reviewer is told nothing ' +
     'has to be in frame — so an absence stops being a blocking defect and the refine loop stops ' +
-    'spending attempts on a frame it cannot fix. It is in the prompt, so the frame is drawn ' +
-    'again on the next run.',
+    'spending attempts on a frame it cannot fix. It is not in the prompt, so a frame already ' +
+    'drawn is kept; the change applies to the next review.',
   notes:
     "Turn the reviewer's demand that a shot show its cast on or off. Off keeps the reference sheets and only stops an absence counting as a defect, which is how a frame the refine loop cannot satisfy is unstuck.",
   mutating   : true,

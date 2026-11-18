@@ -639,7 +639,7 @@ export const shotsFileSchema = z.object({
         framing       : shotFraming,
         location      : z.string().min(1),
         subjects      : z.array(shotSubject).default([]),
-        /** Authored; in the prompt — see {@link Shot.castOptional}. */
+        /** Authored; read by the reviewer, not the prompt — see {@link Shot.castOptional}. */
         castOptional  : z.boolean().optional(),
         camera        : z.string().optional(),
         /** Authored art direction for this frame; in the prompt, so editing it re-renders it. */
