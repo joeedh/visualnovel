@@ -2,5 +2,10 @@
 import type { Contract } from '@vn/contracts';
 import { storageBaseUnavailable } from './refuse.js';
 import { identitySlotsBeforeTasks } from './solve.js';
+import { takesSuspensionDerived } from './suspend.js';
 
-export const CONTRACTS: readonly Contract[] = [identitySlotsBeforeTasks, storageBaseUnavailable];
+export const CONTRACTS: readonly Contract[] = [
+  identitySlotsBeforeTasks,
+  storageBaseUnavailable,
+  takesSuspensionDerived,
+];

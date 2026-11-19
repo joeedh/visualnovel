@@ -242,18 +242,6 @@ package.
       only when none of them match, because a reviewer's measurement can be off while none
       invents a match for a wrong page; a page no reviewer measured gets no layout
       verdict. The boxes stamped are the matching reviewer's.
-- **Suspension is derived transitively and is never stored.**
-    - When a slot moves, everything pinned to its old hash is suspended, along with
-      everything downstream of that. The downstream walk carries a `visited` guard, so a
-      cycle already on disk is reported rather than hanging. A suspended asset keeps its
-      bytes, the run plans nothing new for it, and `asset.suspended` enumerates the
-      suspended assets in dependency order.
-    - A stored flag would have to be invalidated by every writer, and this design avoids
-      that invalidation. A suspended asset refuses `accept` and `approve` by name, and
-      `prompt.repin` clears the suspension.
-    - `regenerate=false` re-approves. It swaps the pin, computes the newly-keyed task's
-      identity from the state just written, and records the existing bytes as its output.
-      Promotion rests on the same don't-forge-work bound.
 - Editing a scene's prose never invalidates a frame's art, so drift has to be reported.
     - `buildShotPrompt` reads neither `coversLines` nor line text on a frame, because
       prose reaches only the P7 reviewer spec, which never enters a task's `inputs`.

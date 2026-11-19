@@ -5,6 +5,7 @@
  */
 import type { AnyTask, Asset, BaseAssets, TaskInputs, TaskKind } from '@vn/types';
 import type { Contract } from '@vn/contracts';
+import type { DrawnFrom } from './suspend.js';
 
 /** A decision that either carries a plan or names, in a sentence, why there is none. */
 export type Decided<T> = { ok: false; code: string; reason: string } | { ok: true; plan: T };
@@ -101,4 +102,6 @@ export interface Family<F extends SolverFacts> {
   gates(unit: string, facts: F): readonly string[];
   /** Answers the slot a manifest row fills, or `undefined` for a row that fills none. */
   slotOf(row: Asset, facts: F): Slot<F> | undefined;
+  /** Answers what a manifest row was drawn from, and which of its own references has moved. */
+  drawnFrom(row: Asset, facts: F): DrawnFrom;
 }

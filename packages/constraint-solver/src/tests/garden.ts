@@ -7,7 +7,7 @@
  */
 import type { AnyTask, Asset, TaskInputs } from '@vn/types';
 import { taskHash } from '@vn/taskgraph';
-import { slot, type Family, type Slot, type SlotKind, type SolverFacts } from '../index.js';
+import { pick, slot, type Family, type Slot, type SlotKind, type SolverFacts } from '../index.js';
 
 export interface Sprout {
   id: string;
@@ -27,6 +27,8 @@ export interface Garden extends SolverFacts {
   fallow?: string[];
   /** Hashes the gardener's notebook names as a sprout's take. */
   notebook?: string[];
+  /** Per row hash, the takes it was grafted from and the slot each was taken from. */
+  grafts?: Record<string, { pin: string; from: string }[]>;
 }
 
 export const seedInputs = (id: string): TaskInputs['prompt_refine'] => ({
@@ -94,13 +96,23 @@ export const garden: Family<Garden> = {
     for (const s of facts.sprouts) yield slot(sproutKind, { id: s.id }, s.bed);
     yield* facts.again ?? [];
   },
-  owed  : (facts) => facts.fallow ?? [],
-  gates : (bed, facts) => facts.beds?.[bed] ?? [],
+  owed     : (facts) => facts.fallow ?? [],
+  gates    : (bed, facts) => facts.beds?.[bed] ?? [],
   slotOf: (row) => {
     const seed = seedKind.parse(row.sourceTask);
     if (seed) return slot(seedKind, seed);
     const sprout = sproutKind.parse(row.sourceTask);
     return sprout ? slot(sproutKind, sprout) : undefined;
+  },
+  drawnFrom: (row, facts) => {
+    const grafts = facts.grafts?.[row.hash] ?? [];
+    const refs = [...row.refs, ...grafts.map((g) => g.pin)];
+    for (const { pin, from } of grafts) {
+      const now = pick(rowsOf(from, facts));
+      if (now !== undefined && now !== pin)
+        return { refs, moved: `${from} moved from ${pin} to ${now}` };
+    }
+    return { refs };
   },
 };
 

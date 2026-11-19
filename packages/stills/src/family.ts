@@ -15,13 +15,15 @@ import {
   solve,
   unitGates,
   type Decided,
+  type DrawnFrom,
   type Family,
   type Held,
   type Slot,
   type SlotKind,
   type SolverFacts,
 } from '@vn/constraint-solver';
-import { type BindingContext, candidatesFor, sheetAngleOf } from './refs.js';
+import { type BindingContext, candidatesFor, resolveBinding, sheetAngleOf } from './refs.js';
+import { attachedRefs } from './upstream.js';
 import { refsOfSlot, slotOf } from './refcycle.js';
 import { parseSlot, slotKey, slotLabel } from './slotaddr.js';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
@@ -394,6 +396,35 @@ function slotFor(binding: Bound<SlotPrefix>): Slot<StillsFacts> {
   }
 }
 
+const short = (hash: string): string => hash.slice(0, 8);
+
+/** Answers the take a binding names, reading only the rows grouped under its slot's subject. */
+function takeOf(binding: RefBinding, facts: StillsFacts): string | undefined {
+  const ctx = binding.kind === 'asset' ? { ...facts, assets: [] } : bindingCtx(binding, facts);
+  return resolveBinding(binding, ctx);
+}
+
+/**
+ * Answers what a row was drawn from: its task's references, then the pins an author attached on
+ * clauses that are not muted. The first attached pin whose slot now holds another take is named.
+ */
+function drawnFrom(row: Asset, facts: StillsFacts): DrawnFrom {
+  const attached = attachedRefs(row, facts);
+  const refs = [...row.refs, ...attached.map(({ ref }) => ref.pin)];
+  for (const { chunk, ref } of attached) {
+    if (!ref.from) continue;
+    const now = takeOf(ref.from, facts);
+    if (now === undefined || now === ref.pin) continue;
+    return {
+      refs,
+      moved:
+        `its "${chunk}" reference to ${slotLabel(ref.from)} has moved — ` +
+        `pinned ${short(ref.pin)}, now ${short(now)}`,
+    };
+  }
+  return { refs };
+}
+
 /** Answers the slot a row's first binding names; a sheet row's angle may come off its task. */
 function filledBy(row: Asset, facts: StillsFacts): Slot<StillsFacts> | undefined {
   const binding = slotOf(row, sheetAngleOf(row, facts));
@@ -446,6 +477,7 @@ export const stillsFamily: Family<StillsFacts> = {
   owed,
   gates,
   slotOf: filledBy,
+  drawnFrom,
 };
 
 /** The character-approval gate (report §P3): who is still holding a live scene back. */

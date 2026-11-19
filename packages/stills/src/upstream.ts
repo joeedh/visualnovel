@@ -8,8 +8,8 @@
  *
  * This walk is over hashes rather than slots. It answers what these bytes were drawn from, a
  * question about history, so it also answers for a concept and an upload, neither of which fills
- * a slot. Whether the slot has moved since is a separate question, answered in `@vn/artgen`'s
- * `suspend.ts`.
+ * a slot. Whether the slot has moved since is a separate question, which the solver's
+ * `suspensions` answers through the stills family's `drawnFrom`.
  */
 import type { Asset, ChunkRef } from '@vn/types';
 import { overrideAt, rungOf, type RungContext } from './resolve.js';

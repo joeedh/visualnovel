@@ -11,6 +11,7 @@ import { contract } from '@vn/contracts';
 import { taskHash } from '@vn/taskgraph';
 import type { Family, Held, SlotKind, SolverFacts } from './family.js';
 import { projectRefusal } from './refuse.js';
+import { suspensions } from './suspend.js';
 import { newestFirst, pick } from './take.js';
 
 /** What the solver answers for one slot. */
@@ -38,6 +39,8 @@ export interface SlotState {
   /** Every manifest row bound here, newest first ({@link newestFirst}). */
   candidates: readonly string[];
   approved: boolean;
+  /** The take the slot holds is one `suspensions` lists. */
+  suspended: boolean;
   /**
    * True for a slot with an identity whose unit, if it has one, is open, in a project nothing
    * refuses. The planner adds exactly these.
@@ -165,6 +168,7 @@ export function unitGates<F extends SolverFacts>(
 export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solution {
   const slots = new Map<string, SlotState>();
   const enumerated = new Map<string, Enumerated<F>>();
+  const suspended = new Set(suspensions(family, facts).map((s) => s.hash));
   for (const { kind, binding, unit } of family.enumerate(facts)) {
     const key = kind.key(binding);
     if (slots.has(key)) continue;
@@ -188,6 +192,7 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
       ...(held.pick ? { pick: held.pick } : {}),
       candidates: held.rows.map((a) => a.hash),
       approved  : kind.approved(binding, facts, held),
+      suspended : held.pick !== undefined && suspended.has(held.pick),
       ready     : false,
     });
   }
