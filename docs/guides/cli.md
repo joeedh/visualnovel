@@ -189,7 +189,9 @@ A `linear` project reports these diagnostics:
 `start:` is optional under `linear`, since the first listed scene is the entry. A
 `scenes:` list in a `branching` project is the error `scenes_without_linear`, rather than
 being ignored. These diagnostics reach the CLI, the desktop app and `vnauthor` the same
-way every other model diagnostic does.
+way every other model diagnostic does. The rules are declared as the
+`script.livenessFromNarrative` contract in [`build.ts`](../../packages/model/src/build.ts)
+and `script.linearOrderListed` in [`linear.ts`](../../packages/model/src/linear.ts).
 
 ## The sample project
 

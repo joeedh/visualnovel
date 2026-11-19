@@ -337,6 +337,20 @@
       "declared": "packages/scriptedit/src/shotfallout.ts"
     },
     {
+      "id"      : "script.linearOrderListed",
+      "rule": "A linear project's scene order is `project.yaml`'s `scenes:` list and nothing else: never the directory's order, never branch markers. A listed id with no scene file, a repeat, a marker and a `start:` that is not the first listed scene are errors.",
+      "prevents": "A story whose order moves the day a scene file is renamed, because a directory has no document order and sorts by name; and a marker silently reordering a story its author wrote as a list.",
+      "subjects": [
+        "function:packages/model/src/linear.ts#linearNarrative",
+        "function:packages/model/src/build.ts#buildModel"
+      ],
+      "see": [
+        "docs/research/workflows-and-narrative-engines.md#the-narrative-seam",
+        "docs/guides/cli.md#how-the-scenes-make-a-story"
+      ],
+      "declared": "packages/model/src/linear.ts"
+    },
+    {
       "id"      : "script.lineIdsAllocated",
       "rule": "Line ids are allocated and stored, and a read never writes: a new line takes its id from its scene's allocator, never from its position, and loading a project allocates ids in memory only.",
       "prevents": "Re-pointing every shot below an inserted line at a different line, which re-renders that art at cost and reports nothing.",
@@ -351,6 +365,22 @@
       "see"     : ["docs/plans/archive/INDEX.md#allocated-line-ids"],
       "detail": "`Shot.coversLines` binds art to `<sceneId>:L<n>`, so an id derived from position would re-point every shot below an inserted line. `splitScenes` prefers a `[[line: L4]]` note (a Fountain note leading the element it names) and allocates only for unmarked elements, starting from the scene's `[[nextline: 12]]` mark raised past every id in use; a stale allocator is a bug and never justifies reusing an id. Duplicate and dangling marks are `error` diagnostics. Allocation happens in memory, and loading a project never allocates. The `story.assignLineIds` command (undoable, over `assignLineIds` in `packages/model/src/lineids.ts`) persists the ids: it adds only whole marker lines, re-parses its own output, and discards the patch unless the re-parse reproduces the same scenes line for line, because a note inserted above a `CHARACTER` cue would turn that cue into action and the lines below it would no longer parse as dialogue.",
       "declared": "packages/scriptedit/src/lineops.ts"
+    },
+    {
+      "id"      : "script.livenessFromNarrative",
+      "rule": "Whether a scene is live comes only from the model's narrative engine (`model.narrative.live`). The builder fills `model.reachable` and `model.entry` from it, and the production readers (planner, decomposition, slot graph, `usedOutfits`, gate) ask it rather than walk markers.",
+      "prevents": "Two readers disagreeing about which scenes the story contains once a project can pick its engine: the planner paying for a scene the gate or the export treats as dead, or a linear project whose scenes reach nothing through markers being drawn as unreachable.",
+      "subjects": [
+        "function:packages/model/src/build.ts#buildModel",
+        "function:packages/model/src/used.ts#liveScenes",
+        "function:packages/stills/src/gate.ts#gateStatus",
+        "module:packages/model/src/branching.ts",
+        "module:packages/model/src/linear.ts",
+        "module:packages/types/src/script/narrative.ts"
+      ],
+      "see"     : ["docs/research/workflows-and-narrative-engines.md#the-narrative-seam"],
+      "detail": "`project.yaml`'s `narrative:` selects the engine and defaults to `branching`, where live means reachable from `start:` through the markers. Under `linear` the scenes listed under `scenes:` are live. Readers that only list scenes, such as the document tree, take the order from `narrative.scenes()`, and the playable takes each scene's edges from `narrative.exits`.",
+      "declared": "packages/model/src/build.ts"
     },
     {
       "id"      : "script.outfitInherited",
@@ -540,8 +570,13 @@
     "function:packages/gengraph/src/nodekey.ts#nodeKey"                  : ["graphs.groupNodeKey"],
     "function:packages/gengraph/src/nodekey.ts#resolveNodeKey"           : ["graphs.groupNodeKey"],
     "function:packages/gengraph/src/registry.ts#registerGenNode": ["graphs.socketRenameMigrates"],
-    "function:packages/model/src/build.ts#buildModel": ["script.entityIdMatchesFile"],
+    "function:packages/model/src/build.ts#buildModel": [
+      "script.entityIdMatchesFile",
+      "script.linearOrderListed",
+      "script.livenessFromNarrative"
+    ],
     "function:packages/model/src/entities.ts#sceneFromDoc"               : ["script.sceneOneFile"],
+    "function:packages/model/src/linear.ts#linearNarrative": ["script.linearOrderListed"],
     "function:packages/model/src/lineids.ts#assignLineIds": ["script.lineIdsAllocated"],
     "function:packages/model/src/outfits.ts#outfitFor": ["script.outfitInherited"],
     "function:packages/model/src/outfits.ts#outfitText": ["script.outfitInherited"],
@@ -551,6 +586,7 @@
       "script.sceneRoundTrip"
     ],
     "function:packages/model/src/serialize.ts#sceneToFountain": ["script.sceneRoundTrip"],
+    "function:packages/model/src/used.ts#liveScenes": ["script.livenessFromNarrative"],
     "function:packages/model/src/used.ts#usedOutfits": ["script.outfitInherited"],
     "function:packages/pipeline/src/decompose.ts#decomposeAll": ["planning.storyboardOnRequest"],
     "function:packages/pipeline/src/decompose.ts#decomposeAllPreview": [
@@ -587,6 +623,7 @@
     "function:packages/stills/src/chunks.ts#composePrompt"               : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#effectiveChunks"             : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#renderPrompt"                : ["prompts.clauseList"],
+    "function:packages/stills/src/gate.ts#gateStatus": ["script.livenessFromNarrative"],
     "function:packages/stills/src/prompts.ts#artClause": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildLocationChunks": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildModelSheetChunks": ["prompts.artNotesAppended"],
@@ -653,8 +690,10 @@
     "module:packages/gengraph/src/edit.ts": ["graphs.instanceEditsOverride"],
     "module:packages/gengraph/src/migrate.ts": ["graphs.socketRenameMigrates"],
     "module:packages/gengraph/src/nodekey.ts"                            : ["graphs.groupNodeKey"],
+    "module:packages/model/src/branching.ts": ["script.livenessFromNarrative"],
     "module:packages/model/src/build.ts": ["script.entityIdMatchesFile"],
     "module:packages/model/src/entities.ts"                              : ["script.sceneOneFile"],
+    "module:packages/model/src/linear.ts": ["script.livenessFromNarrative"],
     "module:packages/model/src/outfits.ts": ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts": ["script.sceneRoundTrip"],
     "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
@@ -674,6 +713,7 @@
     "module:packages/taskgraph/src/maintain.ts"                          : ["log.doneWriters"],
     "module:packages/taskgraph/src/write.ts"                             : ["log.doneWriters"],
     "module:packages/types/src/prompt.ts": ["prompts.clauseList", "prompts.refOnClause"],
+    "module:packages/types/src/script/narrative.ts": ["script.livenessFromNarrative"],
     "package:packages/scheduler": ["providers.modelIdRoutes"],
     "slot:shot": ["identity.stagingSheet"],
     "task:shot_image": [

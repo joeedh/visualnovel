@@ -1,8 +1,10 @@
+import { pins } from '@vn/contracts';
 import type { Scene } from '@vn/types';
 import { parseFountain } from '@vn/parse';
 import { branchingNarrative } from '../branching.js';
-import { buildModel, errors, type BuildInputs } from '../build.js';
-import { linearNarrative } from '../linear.js';
+import { buildModel, errors, scriptLivenessFromNarrative, type BuildInputs } from '../build.js';
+import { linearNarrative, scriptLinearOrderListed } from '../linear.js';
+import { liveScenes } from '../used.js';
 import { scriptFromScenes } from '../screenplay.js';
 
 const scene = (id: string, edges: { next?: string; choices?: string[] } = {}): Scene => ({
@@ -66,7 +68,7 @@ describe('branchingNarrative', () => {
   });
 });
 
-describe('linearNarrative', () => {
+describe(pins(scriptLinearOrderListed), () => {
   // Map order is the directory's, by id; the list is the story's
   const story = scenesOf(scene('dusk'), scene('lunch'), scene('morning'));
 
@@ -138,7 +140,7 @@ describe('linearNarrative', () => {
   });
 });
 
-describe('buildModel — the engine project.yaml selects', () => {
+describe(pins(scriptLivenessFromNarrative), () => {
   const SCRIPT = `INT. DORM - MORNING
 
 [[scene: morning]]
@@ -171,11 +173,13 @@ Dusk.
     expect([...model.reachable]).toEqual(['morning']);
   });
 
-  it('fills reachable and entry from a linear structure', () => {
+  it('fills reachable and entry from a linear structure, and production asks the same', () => {
     const model = buildModel(inputs({ narrative: 'linear', sceneOrder: ['lunch', 'morning'] }));
     expect(model.narrative.engine).toBe('linear');
     expect(model.entry).toBe('lunch');
     expect(model.reachable).toEqual(new Set(['lunch', 'morning']));
+    // In the order the model holds them, which for a screenplay is the document's
+    expect(liveScenes(model).map((s) => s.id)).toEqual(['morning', 'lunch']);
     expect(model.diagnostics.map((d) => [d.code, d.where])).toEqual([['unlisted_scene', 'dusk']]);
   });
 

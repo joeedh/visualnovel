@@ -2,8 +2,24 @@
  * The `linear` narrative engine: the story is the scenes `project.yaml`'s `scenes:` lists, played
  * in that order. Every listed scene is live and continues to the next one.
  */
+import { contract } from '@vn/contracts';
 import type { Diagnostic, NarrativeStructure, Scene, SceneExits } from '@vn/types';
 import { successors } from './branching.js';
+
+export const scriptLinearOrderListed = contract({
+  id      : 'script.linearOrderListed',
+  rule: "A linear project's scene order is `project.yaml`'s `scenes:` list and nothing else: never the directory's order, never branch markers. A listed id with no scene file, a repeat, a marker and a `start:` that is not the first listed scene are errors.",
+  prevents:
+    'A story whose order moves the day a scene file is renamed, because a directory has no document order and sorts by name; and a marker silently reordering a story its author wrote as a list.',
+  subjects: [
+    'function:packages/model/src/linear.ts#linearNarrative',
+    'function:packages/model/src/build.ts#buildModel',
+  ],
+  see: [
+    'docs/research/workflows-and-narrative-engines.md#the-narrative-seam',
+    'docs/guides/cli.md#how-the-scenes-make-a-story',
+  ],
+});
 
 /** What a linear project says about its order. */
 export interface LinearOrder {

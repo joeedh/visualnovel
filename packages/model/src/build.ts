@@ -256,6 +256,28 @@ function validateSceneOutfits(scene: Scene, characters: Map<string, Character>):
   return diagnostics;
 }
 
+export const scriptLivenessFromNarrative = contract({
+  id      : 'script.livenessFromNarrative',
+  rule: "Whether a scene is live comes only from the model's narrative engine (`model.narrative.live`). The builder fills `model.reachable` and `model.entry` from it, and the production readers (planner, decomposition, slot graph, `usedOutfits`, gate) ask it rather than walk markers.",
+  prevents:
+    'Two readers disagreeing about which scenes the story contains once a project can pick its engine: the planner paying for a scene the gate or the export treats as dead, or a linear project whose scenes reach nothing through markers being drawn as unreachable.',
+  subjects: [
+    'function:packages/model/src/build.ts#buildModel',
+    'function:packages/model/src/used.ts#liveScenes',
+    'function:packages/stills/src/gate.ts#gateStatus',
+    'module:packages/model/src/branching.ts',
+    'module:packages/model/src/linear.ts',
+    'module:packages/types/src/script/narrative.ts',
+  ],
+  see     : ['docs/research/workflows-and-narrative-engines.md#the-narrative-seam'],
+  detail:
+    "`project.yaml`'s `narrative:` selects the engine and defaults to `branching`, where live " +
+    'means reachable from `start:` through the markers. Under `linear` the scenes listed under ' +
+    '`scenes:` are live. Readers that only list scenes, such as the document tree, take the ' +
+    "order from `narrative.scenes()`, and the playable takes each scene's edges from " +
+    '`narrative.exits`.',
+});
+
 /**
  * The structure the selected engine reads from the scenes. A `scenes:` list under `branching`
  * is reported rather than ignored, because an author who wrote one expects it to order the story.
