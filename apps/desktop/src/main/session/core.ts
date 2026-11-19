@@ -53,9 +53,17 @@ import {
 import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { driftOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
-import { suspensionMap, type AdoptVia, type ProjectFinding, type Suspension } from '@vn/artgen';
-import { angleOfTask, slotLabel, type PlanFacts, type PromptRung } from '@vn/stills';
+import { repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
+import { type AdoptVia, type ProjectFinding } from '@vn/artgen';
+import { suspensions, type Suspension } from '@vn/constraint-solver';
+import {
+  angleOfTask,
+  driftOf,
+  slotLabel,
+  stillsFamily,
+  type PlanFacts,
+  type PromptRung,
+} from '@vn/stills';
 import {
   chatBackendFor,
   chatRoute,
@@ -180,7 +188,6 @@ import { type GraphSlug } from '../doctree/graphs.js';
 import { notify } from '../notify/notifications.js';
 import { builtinSkillsDir, UX_DOCS_PATH, uxDocsDir } from '../distribution/resources.js';
 import { type UpdateCheck } from '../distribution/updates.js';
-import { labelContext } from '../assets/assetlabel.js';
 import { type SkillEntry } from '../doctree/doctree.js';
 import { confirmDetail } from '../agent/toolconfirm.js';
 import { appSections, showMeTool } from '../agent/showme.js';
@@ -355,10 +362,7 @@ export function suspensionsOf(
   project: LoadedProject,
   model: ProjectModel,
 ): Map<string, Suspension> {
-  return suspensionMap({
-    ...labelContext(model, project.graph),
-    assets: project.store.manifest(),
-  });
+  return new Map(suspensions(stillsFamily, sessionFacts(project, model)).map((s) => [s.hash, s]));
 }
 
 /**

@@ -8,10 +8,9 @@ import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, shotsOf, type Asset, type AssetKind, type ProjectModel } from '@vn/types';
 import { isBaseKind } from '@vn/store';
-import { assetApproved, sheetAngleOf, slotKey, slotOf } from '@vn/stills';
+import { assetApproved, driftOf, sheetAngleOf, slotKey, slotOf } from '@vn/stills';
 import type { SlotState } from '@vn/constraint-solver';
 import { allLocationVariants, usedOutfits } from '@vn/model';
-import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
 import type { DocNode, DocTree, EntityLinks, SkillEntry } from '../../shared/ipc.js';
 

@@ -15,7 +15,7 @@ import type { AssetRef } from '@vn/types';
 import type { AssetStore } from '@vn/store';
 import { isPlaceholderImage } from '@vn/providers';
 import { hashParts, sha256, VnError } from '@vn/util';
-import { baseRefusal } from './base.js';
+import { baseRefusal } from '@vn/constraint-solver';
 
 /** How much of a filename becomes the asset's name when the author gave none. */
 const TITLE_CHARS = 48;

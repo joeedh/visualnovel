@@ -1,6 +1,6 @@
 /**
  * How the strip says a frame no longer illustrates the words beside it. Main derives the drift
- * itself (`@vn/pipeline`'s `driftOf`, surfaced on `CoverageShot.drift`); this module holds only the
+ * itself (`@vn/stills`' `driftOf`, surfaced on `CoverageShot.drift`); this module holds only the
  * wording, kept pure so it can be tested and so the task list can reuse the same sentences later.
  */
 import type { Drift } from '@vn/types';

@@ -35,7 +35,9 @@ import {
   priceSlots,
   readProjectGraphs,
   reportGraphs,
-  suspendedAssets,
+  stillsFamily,
+  suspensions,
+  waveFacts,
   type GraphDoc,
   type GraphRuntime,
 } from '@vn/pipeline';
@@ -302,14 +304,19 @@ export async function cmdStatus(args: Args): Promise<number> {
   }
   // Suspension is derived, so this is a walk over the manifest rather than a stored count. The
   // desktop app's `asset.suspended` lists them; this prints a count and where to look
-  const suspended = suspendedAssets({
-    model  : await withSceneShots(project.paths, project.model),
-    assets : project.store.manifest(),
-    angleOf: (task) => {
-      const node = task ? project.graph.get(task) : undefined;
-      return node && 'angle' in node.inputs ? node.inputs.angle : undefined;
-    },
-  });
+  const suspended = suspensions(
+    stillsFamily,
+    waveFacts({
+      model  : await withSceneShots(project.paths, project.model),
+      config : project.config,
+      tasks  : project.graph,
+      assets : project.store.manifest(),
+      angleOf: (task) => {
+        const node = task ? project.graph.get(task) : undefined;
+        return node && 'angle' in node.inputs ? node.inputs.angle : undefined;
+      },
+    }),
+  );
   if (suspended.length)
     ok(`  suspended: ${suspended.length} (a reference they were drawn from moved)`);
   ok('Tasks:');

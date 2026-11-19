@@ -50,9 +50,8 @@ import {
   slotTaskHash,
   angleOfTask,
 } from '@vn/stills';
-import { loggedTake } from '@vn/constraint-solver';
+import { baseRefusal, loggedTake } from '@vn/constraint-solver';
 import { adopt, adoptionOf, type AdoptContext } from './adopt.js';
-import { baseRefusal } from './base.js';
 
 export interface AdoptSlotDeps {
   config: ProjectConfig;

@@ -4,7 +4,6 @@
  * re-export names each symbol rather than using `*`, so this module still exports exactly the
  * prompt builders.
  */
-export { suspendedAssets, type Suspension } from '@vn/artgen';
 export {
   MODEL_SHEET_ANGLES,
   SHEET_FRONT,

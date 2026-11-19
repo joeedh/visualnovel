@@ -544,7 +544,7 @@
         "function:packages/stills/src/drift.ts#proseHash",
         "function:packages/stills/src/family.ts#shotKind",
         "function:packages/stills/src/prompts.ts#buildShotPrompt",
-        "module:packages/pipeline/src/drift.ts",
+        "module:apps/desktop/src/main/session/story.ts",
         "command:story.setLineText",
         "slot:shot"
       ],
@@ -552,7 +552,7 @@
         "docs/plans/archive/INDEX.md#line-editing-in-floor",
         "docs/reference/desktop-app-editors-story.md#shot-coverage"
       ],
-      "detail": "`buildShotPrompt` reads neither `coversLines` nor line text on a frame, because prose reaches only the P7 reviewer spec, which never enters a task's `inputs`. Retyping a covered line therefore rehashes nothing and re-renders nothing, and the frame still illustrates words the scene no longer contains, so it is checked against the words it covers. A page under `lettering: model` is the one exception: its lettered lines are in its prompt, so retyping one, or moving one between panels, re-keys the page. Drift on a page therefore only ever means a line that changed without changing the prompt, which under `lettering: runner` is every line. `Shot.proseHash` records a hash of the covered lines' text at the moment the image was produced. It is persisted under `shotData`, is written only beside an image, and is stamped only when the bytes are new, so a rerun that reports the same image cannot re-baseline the prose beneath it or clear a drift nobody acted on. `driftOf` re-derives the comparison on every read and returns `unrendered`, `current`, `drifted` or `unknown`; a shot rendered before the field existed returns `unknown`, so it never reads as `current` or as `drifted`. `@vn/pipeline`'s `drift.ts` re-exports it. The value is derived rather than stored because `shotData` is rewritten wholesale each pass, and it is not the task hash, which is the hash prose cannot move. The hash walks `scene.lines`, so reordering `coversLines` does not count as an edit while extending coverage does, since the question is whether this frame illustrates the words it is against. Every surface that can change prose shows the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it. A bound generation graph is the opposite case: editing one does invalidate the slot (`graphs.editInvalidates`).",
+      "detail": "`buildShotPrompt` reads neither `coversLines` nor line text on a frame, because prose reaches only the P7 reviewer spec, which never enters a task's `inputs`. Retyping a covered line therefore rehashes nothing and re-renders nothing, and the frame still illustrates words the scene no longer contains, so it is checked against the words it covers. A page under `lettering: model` is the one exception: its lettered lines are in its prompt, so retyping one, or moving one between panels, re-keys the page. Drift on a page therefore only ever means a line that changed without changing the prompt, which under `lettering: runner` is every line. `Shot.proseHash` records a hash of the covered lines' text at the moment the image was produced. It is persisted under `shotData`, is written only beside an image, and is stamped only when the bytes are new, so a rerun that reports the same image cannot re-baseline the prose beneath it or clear a drift nobody acted on. `driftOf` re-derives the comparison on every read and returns `unrendered`, `current`, `drifted` or `unknown`; a shot rendered before the field existed returns `unknown`, so it never reads as `current` or as `drifted`. Shot Coverage, the Stale branch and the approval queue call `driftOf` over every scene, keyed by a frame's image; `SlotState.drift` answers only for the shot slots of live scenes. The value is derived rather than stored because `shotData` is rewritten wholesale each pass, and it is not the task hash, which is the hash prose cannot move. The hash walks `scene.lines`, so reordering `coversLines` does not count as an edit while extending coverage does, since the question is whether this frame illustrates the words it is against. Every surface that can change prose shows the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it. A bound generation graph is the opposite case: editing one does invalidate the slot (`graphs.editInvalidates`).",
       "declared": "packages/stills/src/drift.ts"
     },
     {
@@ -646,7 +646,7 @@
         "function:packages/constraint-solver/src/solve.ts#solve",
         "function:packages/pipeline/src/planner.ts#planTasks",
         "module:packages/scheduler/src/scheduler.ts",
-        "module:packages/artgen/src/base.ts"
+        "module:packages/artgen/src/adoptslot.ts"
       ],
       "see": [
         "docs/plans/archive/INDEX.md#base-and-project-asset-stores",
@@ -753,7 +753,6 @@
       "subjects": [
         "function:packages/constraint-solver/src/suspend.ts#suspensions",
         "function:packages/constraint-solver/src/solve.ts#solve",
-        "module:packages/artgen/src/suspend.ts",
         "function:packages/stills/src/upstream.ts#attachedRefs",
         "command:asset.suspended",
         "command:prompt.repin",
@@ -998,11 +997,11 @@
     "function:packages/types/src/prompt.ts#RefBinding"                   : ["prompts.refOnClause"],
     "module:apps/desktop/renderer/pathux/doctree/sheetform.ts": ["prompts.artRungsShared"],
     "module:apps/desktop/src/main/session/prompt.ts"                     : ["prompts.refsAcyclic"],
+    "module:apps/desktop/src/main/session/story.ts": ["script.proseDriftReported"],
     "module:packages/artgen/src/adopt.ts"                                : ["log.doneWriters"],
-    "module:packages/artgen/src/base.ts": ["storage.baseUnavailable"],
+    "module:packages/artgen/src/adoptslot.ts": ["storage.baseUnavailable"],
     "module:packages/artgen/src/concept.ts": ["identity.conceptNoNode"],
     "module:packages/artgen/src/setnotes.ts": ["prompts.artRungsShared"],
-    "module:packages/artgen/src/suspend.ts": ["takes.suspensionDerived"],
     "module:packages/constraint-solver/src/solve.ts": ["identity.slotsBeforeTasks"],
     "module:packages/gengraph/src/edit.ts": ["graphs.instanceEditsOverride"],
     "module:packages/gengraph/src/migrate.ts": ["graphs.socketRenameMigrates"],
@@ -1014,7 +1013,6 @@
     "module:packages/model/src/outfits.ts": ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts": ["script.sceneRoundTrip"],
     "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
-    "module:packages/pipeline/src/drift.ts": ["script.proseDriftReported"],
     "module:packages/pipeline/src/planner.ts": [
       "planning.incremental",
       "planning.sheetsOnlyWhenWorn"

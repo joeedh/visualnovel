@@ -14,7 +14,6 @@ export const takesSuspensionDerived = contract({
   subjects: [
     'function:packages/constraint-solver/src/suspend.ts#suspensions',
     'function:packages/constraint-solver/src/solve.ts#solve',
-    'module:packages/artgen/src/suspend.ts',
     'function:packages/stills/src/upstream.ts#attachedRefs',
     'command:asset.suspended',
     'command:prompt.repin',

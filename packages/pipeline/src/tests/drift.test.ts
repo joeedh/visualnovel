@@ -9,9 +9,8 @@ import { SCRIPTS, makeProject } from '@vn/testkit';
 import type { Scene, SceneLine, Shot, ShotsFile } from '@vn/types';
 import { pins } from '@vn/contracts';
 import { solve } from '@vn/constraint-solver';
-import { scriptProseDriftReported, stillsFamily } from '@vn/stills';
+import { driftOf, proseHash, scriptProseDriftReported, stillsFamily } from '@vn/stills';
 import { character, location, model } from '@vn/testkit';
-import { driftOf, proseHash } from '../drift.js';
 
 const line = (id: string, text: string): SceneLine => ({ id, kind: 'narration', text });
 

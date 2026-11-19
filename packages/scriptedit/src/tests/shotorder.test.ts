@@ -65,8 +65,8 @@ const refusal = (op: LineOp): string => {
 };
 
 /**
- * A shot's covered line texts in scene order — exactly what `@vn/pipeline`'s `proseHash` hashes.
- * Computed here rather than imported because `@vn/scriptedit` may not reach the pipeline.
+ * A shot's covered line texts in scene order — exactly what `@vn/stills`' `proseHash` hashes.
+ * Computed here rather than imported because `@vn/scriptedit` may not import `@vn/stills`.
  */
 const coveredTexts = (scene: Scene, s: Shot): string[] => {
   const covered = new Set(s.coversLines);

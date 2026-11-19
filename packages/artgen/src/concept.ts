@@ -12,7 +12,7 @@ import {
   subjectEntity,
   type ConceptSubject,
 } from '@vn/stills';
-import { baseRefusal } from './base.js';
+import { baseRefusal } from '@vn/constraint-solver';
 
 /** How many existing images of a subject are fed back as identity references. */
 const MAX_REFS = 2;

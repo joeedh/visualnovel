@@ -69,8 +69,10 @@ state (the document tree, the gate pane, the Task Graph pane, takes and the gen-
 loader) solves over its host's one facts builder
 ([`../plans/contracts-into-code-and-workflows.md`](../plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family),
 stages 6b and 6e). Since stage 6d the take, suspension, the keep set, the base-root
-refusal and graph drift are solver rules too; `@vn/artgen` keeps `suspendedAssets` and
-`baseRefusal` as wrappers, and `@vn/pipeline` re-exports `driftOf` from `@vn/stills`.
+refusal and graph drift are solver rules too, and every host calls them from the solver.
+The CLI and the scheduler may import neither the solver nor `@vn/stills`, so
+`@vn/pipeline`'s barrel re-exports `baseRefusal`, `suspensions` and `stillsFamily` for
+them by name.
 
 Inside `@vn/types` the same rule keeps script apart from production. The script types
 (characters, locations, scenes) are the `types-script` element,

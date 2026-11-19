@@ -5,7 +5,8 @@ import { activeOutputs, type GraphJournalRecord } from '@vn/gengraph';
 import { appendGraphJournal, graphJournalFile, invalidateGenGraph } from '@vn/gengraph/state';
 import { logRequeue } from '@vn/taskgraph/maintain';
 import { sha256 } from '@vn/util';
-import { approvedPortraitOf, basePromptOf, baseRefusal, slotOfTask } from '@vn/pipeline';
+import { approvedPortraitOf, basePromptOf, slotOfTask } from '@vn/pipeline';
+import { baseRefusal } from '@vn/constraint-solver';
 import {
   adoptSlot,
   adoptionForSlot,

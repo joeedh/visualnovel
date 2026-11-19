@@ -18,7 +18,7 @@ export const scriptProseDriftReported = contract({
     'function:packages/stills/src/drift.ts#proseHash',
     'function:packages/stills/src/family.ts#shotKind',
     'function:packages/stills/src/prompts.ts#buildShotPrompt',
-    'module:packages/pipeline/src/drift.ts',
+    'module:apps/desktop/src/main/session/story.ts',
     'command:story.setLineText',
   ],
   see: [
@@ -39,7 +39,9 @@ export const scriptProseDriftReported = contract({
     'the same image cannot re-baseline the prose beneath it or clear a drift nobody acted on. ' +
     '`driftOf` re-derives the comparison on every read and returns `unrendered`, `current`, ' +
     '`drifted` or `unknown`; a shot rendered before the field existed returns `unknown`, so it ' +
-    "never reads as `current` or as `drifted`. `@vn/pipeline`'s `drift.ts` re-exports it. The " +
+    'never reads as `current` or as `drifted`. Shot Coverage, the Stale branch and the approval ' +
+    "queue call `driftOf` over every scene, keyed by a frame's image; `SlotState.drift` answers " +
+    'only for the shot slots of live scenes. The ' +
     'value is derived rather than stored because `shotData` is rewritten wholesale each pass, ' +
     'and it is not the task hash, which is the hash prose cannot move. The hash walks ' +
     '`scene.lines`, so reordering `coversLines` does not count as an edit while extending ' +

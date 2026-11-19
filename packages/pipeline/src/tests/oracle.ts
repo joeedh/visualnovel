@@ -30,11 +30,12 @@ import type { Providers } from '@vn/types';
 import { outfitFor, liveScenes, allCharacters, allLocationVariants, usedOutfits } from '@vn/model';
 import { type ProjectPaths, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
-import { baseRefusal } from '@vn/artgen';
+import { baseRefusal } from '@vn/constraint-solver';
 import {
   cycleRefusal,
   firstCycle,
   layoutDefect,
+  proseHash,
   sheetGroups,
   sheetKey,
   sheetSeeds,
@@ -51,7 +52,6 @@ import {
   SHEET_FRONT,
 } from '../prompts.js';
 import { decomposeScene, storyboardStyle, type StoryboardStyle } from '../p5.js';
-import { proseHash } from '../drift.js';
 
 const PNG = 'png';
 

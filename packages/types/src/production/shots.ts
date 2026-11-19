@@ -3,7 +3,7 @@ import type { PromptOverride } from '../prompt.js';
 
 /**
  * Whether a shot's rendered frame still illustrates the words it covers. Derived on every read
- * by `@vn/pipeline`'s `driftOf` and never persisted — a stored flag can be stale, a hash cannot.
+ * by `@vn/stills`' `driftOf` and never persisted — a stored flag can be stale, a hash cannot.
  * The shape lives here because the timeline, the task list and the inspector all name it.
  */
 export type Drift =
@@ -120,7 +120,7 @@ export interface Shot {
   /**
    * Hash of the text of the lines this shot covered at the moment {@link image} was produced.
    * A shot has drifted when that disagrees with the same hash computed from the scene now; see
-   * `@vn/pipeline`'s `driftOf`. Absent on a shot rendered before the field existed, which
+   * `@vn/stills`' `driftOf`. Absent on a shot rendered before the field existed, which
    * reads as unknown and never as drifted.
    */
   proseHash?: string;

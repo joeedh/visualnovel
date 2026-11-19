@@ -1,8 +1,8 @@
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { entityFile, setCharacterLocked } from '@vn/store';
 import { isApproved } from '@vn/pipeline';
-import { holdPortrait, type Suspension } from '@vn/artgen';
-import { solve } from '@vn/constraint-solver';
+import { holdPortrait } from '@vn/artgen';
+import { solve, type Suspension } from '@vn/constraint-solver';
 import {
   assetApproved,
   assetPrereqs,

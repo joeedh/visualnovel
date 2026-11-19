@@ -160,10 +160,11 @@ directory without the index, and that is the evidence that distinguishes the two
 
 The refusal covers all work rather than only the four base kinds, and that is deliberate:
 every shot references a location plate and a portrait, so an unreadable base root leaves
-no plannable work at all. `baseRefusal(base)` in `@vn/pipeline` produces the one sentence,
-`planTasks` returns nothing, and `RunSummary.refused` carries the sentence to the
-surfaces. `vngen run`, `vngen cost` and `vngen run --mock` all print it and exit non-zero,
-because a zero-work summary is otherwise indistinguishable from a finished project.
+no plannable work at all. `baseRefusal(base)` in `@vn/constraint-solver` produces the one
+sentence, `planTasks` returns nothing, and `RunSummary.refused` carries the sentence to
+the surfaces. `vngen run`, `vngen cost` and `vngen run --mock` all print it and exit
+non-zero, because a zero-work summary is otherwise indistinguishable from a finished
+project.
 
 ## Surfaces
 

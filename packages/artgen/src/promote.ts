@@ -5,7 +5,7 @@ import { applyLocationEdit, docToMarkdown, modelFromInputs, type LocationEdit } 
 import { entityFile, loadInputs, type AssetStore, type ProjectPaths } from '@vn/store';
 import { VnError, writeFileAtomic } from '@vn/util';
 import { adoptSlot } from './adoptslot.js';
-import { baseRefusal } from './base.js';
+import { baseRefusal } from '@vn/constraint-solver';
 
 /** A variant id an author can type: the same shape `- night` already has in a sheet. */
 const VARIANT_ID = /^[a-z0-9][a-z0-9_-]*$/i;

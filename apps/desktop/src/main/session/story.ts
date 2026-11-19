@@ -26,13 +26,13 @@ import { exists, hasConflictMarkers, readText, sha256 } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
 import {
   aspectFor,
+  driftOf,
   imageParams,
   layoutDefect,
   priceShotChanges,
   resolveSlot,
   slotTaskHash,
 } from '@vn/stills';
-import { driftOf } from '@vn/pipeline';
 import {
   applyCoverage,
   deleteShot as planDeleteShot,

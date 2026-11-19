@@ -4,10 +4,11 @@
  */
 import type { Asset, AssetKind, Location, ProjectModel, Shot } from '@vn/types';
 import { pins } from '@vn/contracts';
-import { solve, takesSuspensionDerived } from '@vn/constraint-solver';
-import { stillsFamily } from '@vn/stills';
+import { solve, suspensions, takesSuspensionDerived } from '@vn/constraint-solver';
+import { stillsFamily, type StillsFacts } from '@vn/stills';
 import { character, location, model, scene } from '@vn/testkit';
-import { suspendedAssets, suspensionMap, type SuspendContext } from '../index.js';
+
+const suspended = (facts: StillsFacts) => suspensions(stillsFamily, facts);
 
 function asset(
   hash: string,
@@ -70,7 +71,7 @@ const SHOT: Shot = {
  * `night` currently resolves to `newnightplate`; `dawn` was drawn against whatever `pin` says, and
  * the frame was drawn from `dawn`. So a stale pin should suspend two assets, not one.
  */
-function ctx(pin: string | undefined, mute = false): SuspendContext {
+function ctx(pin: string | undefined, mute = false): StillsFacts {
   const m: ProjectModel = model(
     [character('aiko', 'approved', 'portrait-hash')],
     [scene('arrival', [], 'cafe')],
@@ -89,17 +90,18 @@ function ctx(pin: string | undefined, mute = false): SuspendContext {
       asset('frame', 'shot_image', [{ sceneId: 'arrival', shotId: 'arrival__a' }], ['plate-dawn']),
     ],
     angleOf: () => undefined,
+    tasks  : { get: () => undefined },
   };
 }
 
 describe(pins(takesSuspensionDerived), () => {
-  describe('suspendedAssets', () => {
+  describe('suspensions', () => {
     it('says nothing about a project whose references still hold', () => {
-      expect(suspendedAssets(ctx('newnightplate'))).toEqual([]);
+      expect(suspended(ctx('newnightplate'))).toEqual([]);
     });
 
     it('carries a moved reference downstream, upstream entry first', () => {
-      const found = suspendedAssets(ctx('oldnightplate'));
+      const found = suspended(ctx('oldnightplate'));
       expect(found.map((s) => s.hash)).toEqual(['plate-dawn', 'frame']);
       expect(found[0]!.reason).toBe(
         'its "variant" reference to cafe — night plate has moved — pinned oldnight, now newnight',
@@ -110,13 +112,13 @@ describe(pins(takesSuspensionDerived), () => {
     });
 
     it('clears once the reference is repinned to what the slot holds now', () => {
-      expect(suspensionMap(ctx('newnightplate')).size).toBe(0);
+      expect(suspended(ctx('newnightplate')).length).toBe(0);
     });
 
     it('clears when the chunk that carried the reference is muted', () => {
       // A muted chunk's references are not sent to the model, so a stale pin inside one leaves
       // nothing downstream out of date
-      expect(suspendedAssets(ctx('oldnightplate', true))).toEqual([]);
+      expect(suspended(ctx('oldnightplate', true))).toEqual([]);
     });
 
     it('reports a reference loop already on disk instead of hanging on it', () => {
@@ -136,16 +138,13 @@ describe(pins(takesSuspensionDerived), () => {
           ],
         },
       };
-      const found = suspendedAssets(c).map((s) => s.hash);
+      const found = suspended(c).map((s) => s.hash);
       expect(found).toContain('plate-dawn');
       expect(found).toContain('frame');
     });
 
     it('marks the slots whose take is suspended', () => {
-      const slots = solve(stillsFamily, {
-        ...ctx('oldnightplate'),
-        tasks: { get: () => undefined },
-      }).slots;
+      const slots = solve(stillsFamily, ctx('oldnightplate')).slots;
       expect(slots.get('plate:cafe/dawn')!.suspended).toBe(true);
       expect(slots.get('shot:arrival/arrival__a')!.suspended).toBe(true);
       expect(slots.get('plate:cafe/night')!.suspended).toBe(false);

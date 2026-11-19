@@ -17,7 +17,7 @@ export const storageBaseUnavailable = contract({
     'function:packages/constraint-solver/src/solve.ts#solve',
     'function:packages/pipeline/src/planner.ts#planTasks',
     'module:packages/scheduler/src/scheduler.ts',
-    'module:packages/artgen/src/base.ts',
+    'module:packages/artgen/src/adoptslot.ts',
   ],
   see: [
     'docs/plans/archive/INDEX.md#base-and-project-asset-stores',

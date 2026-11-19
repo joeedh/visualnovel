@@ -226,13 +226,11 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 
 | module                                     | purpose                                                                          |
 | ------------------------------------------ | -------------------------------------------------------------------------------- |
-| `suspend.ts`                               | `suspendedAssets`: the solver's suspension over the stills family                |
 | `adopt.ts` / `adoptslot.ts` / `promote.ts` | adoption and concept promotion; `adopt.ts` is `@vn/artgen/adopt`, off the barrel |
 | `concept.ts`                               | concept image generation                                                         |
 | `describe.ts`                              | asset description                                                                |
 | `setnotes.ts`                              | art notes / seed setters                                                         |
 | `artnotes.ts`                              | art-target rung queries                                                          |
-| `base.ts`                                  | re-exports the solver's `baseRefusal`                                            |
 | `upload.ts`                                | reference image upload                                                           |
 | `takes.ts`                                 | the `current` repair and migration, and accepting a take                         |
 | `collect.ts`                               | which rows, files and task records a collection removes                          |
@@ -290,19 +288,18 @@ and `pending` requeues).
 
 ### @vn/pipeline — the P-phases (`packages/pipeline`)
 
-| module                         | purpose                                                   |
-| ------------------------------ | --------------------------------------------------------- |
-| `pipeline.ts`                  | the run driver                                            |
-| `p1.ts`                        | P1: planning inputs / character sheets                    |
-| `planner.ts`                   | task planning over the model                              |
-| `decompose.ts`                 | explicit decomposition                                    |
-| `p5.ts` / `p6.ts`              | later phases (see pipeline-contracts.md)                  |
-| `runners.ts`                   | task runners                                              |
-| `genservices.ts`               | generation services wiring                                |
-| `graphrun.ts` / `graphload.ts` | bound generation-graph runs                               |
-| `drift.ts`                     | re-exports `driftOf` and `proseHash` from `@vn/stills`    |
-| `prompts.ts`                   | pipeline LLM prompts                                      |
-| `index.ts`                     | barrel (re-exports the P3 gate from `@vn/stills` by name) |
+| module                         | purpose                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------------- |
+| `pipeline.ts`                  | the run driver                                                                           |
+| `p1.ts`                        | P1: planning inputs / character sheets                                                   |
+| `planner.ts`                   | task planning over the model                                                             |
+| `decompose.ts`                 | explicit decomposition                                                                   |
+| `p5.ts` / `p6.ts`              | later phases (see pipeline-contracts.md)                                                 |
+| `runners.ts`                   | task runners                                                                             |
+| `genservices.ts`               | generation services wiring                                                               |
+| `graphrun.ts` / `graphload.ts` | bound generation-graph runs                                                              |
+| `prompts.ts`                   | pipeline LLM prompts                                                                     |
+| `index.ts`                     | barrel (re-exports the P3 gate, `stillsFamily`, `baseRefusal` and `suspensions` by name) |
 
 ### @vn/scheduler — resumable run loop (`packages/scheduler`)
 

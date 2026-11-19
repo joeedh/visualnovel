@@ -21,12 +21,11 @@ import { liveScenes } from '@vn/model';
 import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
 import { projectRefusal, solve, unitGates } from '@vn/constraint-solver';
-import { cycleRefusal, firstCycle, layoutDefect, stillsFamily } from '@vn/stills';
+import { cycleRefusal, firstCycle, layoutDefect, proseHash, stillsFamily } from '@vn/stills';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 import { decomposeScene, storyboardStyle, type StoryboardStyle } from './p5.js';
-import { proseHash } from './drift.js';
 import { waveFacts } from './facts.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
@@ -147,10 +146,6 @@ function observedBoxes(
   const matched = panels && measured.find((boxes) => layoutDefect(panels, boxes) === undefined);
   return matched ?? measured[0];
 }
-
-// Re-exported by name so the CLI and the scheduler, which may not import the solver, reach the
-// sentence the planner refuses with (`storage.baseUnavailable`)
-export { baseRefusal } from '@vn/constraint-solver';
 
 type ShotSlot = Extract<RefBinding, { kind: 'shot' }>;
 
