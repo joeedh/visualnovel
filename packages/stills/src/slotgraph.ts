@@ -37,13 +37,7 @@ import type {
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { shotsOf } from '@vn/types';
-import {
-  allCharacters,
-  allLocationVariants,
-  outfitFor,
-  reachableScenes,
-  usedOutfits,
-} from '@vn/model';
+import { allCharacters, allLocationVariants, outfitFor, liveScenes, usedOutfits } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
 import { type BindingContext, candidatesFor, resolveBinding, sheetAngleOf } from './refs.js';
 import { refsOfSlot, slotsOf } from './refcycle.js';
@@ -351,7 +345,7 @@ export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
       for (const angle of MODEL_SHEET_ANGLES)
         bindings.push({ kind: 'sheet', characterId, outfit, angle });
 
-  for (const scene of reachableScenes(ctx.model))
+  for (const scene of liveScenes(ctx.model))
     for (const shot of shotsOf(ctx.model, scene.id))
       bindings.push({ kind: 'shot', sceneId: scene.id, shotId: shot.id });
 

@@ -5,8 +5,8 @@
  * shape of graph can have.
  */
 import type { Shot } from '@vn/types';
-import { character, location, model, scene } from '@vn/testkit';
-import { allCharacters, allLocationVariants, reachableScenes, usedOutfits } from '../used.js';
+import { character, liveOnly, location, model, scene } from '@vn/testkit';
+import { allCharacters, allLocationVariants, liveScenes, usedOutfits } from '../used.js';
 
 const shot = (id: string, sceneId: string, subjects: Shot['subjects']): Shot => ({
   id,
@@ -17,11 +17,11 @@ const shot = (id: string, sceneId: string, subjects: Shot['subjects']): Shot => 
   coversLines: [],
 });
 
-describe('reachableScenes', () => {
-  it('drops what no branch reaches', () => {
+describe('liveScenes', () => {
+  it('drops what the narrative does not report live', () => {
     const m = model([], [scene('a'), scene('b'), scene('orphan')], []);
-    m.reachable = new Set(['a', 'b']);
-    expect(reachableScenes(m).map((s) => s.id)).toEqual(['a', 'b']);
+    m.narrative = liveOnly(['a', 'b'], ['orphan']);
+    expect(liveScenes(m).map((s) => s.id)).toEqual(['a', 'b']);
   });
 });
 
@@ -32,7 +32,7 @@ describe('allCharacters', () => {
       [scene('a', ['aiko'], 'cafe'), scene('dead', ['ren'], 'cafe')],
       [location('cafe')],
     );
-    m.reachable = new Set(['a']);
+    m.narrative = liveOnly(['a'], ['dead']);
     expect(allCharacters(m).map((c) => c.id)).toEqual(['aiko', 'ren', 'uncast']);
   });
 
@@ -81,11 +81,11 @@ describe('usedOutfits', () => {
     expect([...(usedOutfits(m).get('aiko') ?? [])]).toEqual(['default', 'gala']);
   });
 
-  it('ignores unreachable scenes entirely', () => {
+  it('ignores scenes that are not live', () => {
     const dead = scene('dead', ['aiko'], 'cafe');
     dead.outfits = { aiko: 'gala' };
     const m = model([character('aiko')], [scene('a', ['aiko'], 'cafe'), dead], [location('cafe')]);
-    m.reachable = new Set(['a']);
+    m.narrative = liveOnly(['a'], ['dead']);
     expect([...(usedOutfits(m).get('aiko') ?? [])]).toEqual(['default']);
   });
 });
@@ -108,13 +108,13 @@ describe('allLocationVariants', () => {
     expect([...(allLocationVariants(m).get('cafe') ?? [])]).toEqual(['day']);
   });
 
-  it('plates a location no reachable scene sits in, and invents none the model lacks', () => {
+  it('plates a location no live scene sits in, and invents none the model lacks', () => {
     const m = model(
       [],
       [scene('a', [], 'cafe'), scene('dead', [], 'roof'), scene('b', [], 'nowhere')],
       [location('cafe'), location('roof')],
     );
-    m.reachable = new Set(['a', 'b']);
+    m.narrative = liveOnly(['a', 'b'], ['dead']);
     expect([...allLocationVariants(m).keys()]).toEqual(['cafe', 'roof']);
   });
 });

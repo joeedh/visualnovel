@@ -5,6 +5,7 @@
  * these cases are about the ids the model returns, not about the shots it chooses.
  */
 import type { Character, ProjectModel, Providers, Scene } from '@vn/types';
+import { liveOnly } from '@vn/testkit';
 import { decomposeScene } from '../p5.js';
 
 const character = (id: string): Character => ({
@@ -47,6 +48,7 @@ const MODEL: ProjectModel = {
     ],
   ]),
   scenes     : new Map([['epilogue', SCENE]]),
+  narrative  : liveOnly(['epilogue']),
   reachable  : new Set(['epilogue']),
   entry      : 'epilogue',
   diagnostics: [],

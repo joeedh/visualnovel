@@ -15,9 +15,12 @@
 import type { Character, ProjectModel, Scene } from '@vn/types';
 import { shotsOf } from '@vn/types';
 
-/** Reachable scenes only — never spend generation on unreachable branches. */
-export function reachableScenes(model: ProjectModel): Scene[] {
-  return [...model.scenes.values()].filter((s) => model.reachable.has(s.id));
+/**
+ * The scenes the narrative engine reports live, in the order the model holds them. Generation is
+ * never spent on a scene that is not part of the story.
+ */
+export function liveScenes(model: ProjectModel): Scene[] {
+  return [...model.scenes.values()].filter((s) => model.narrative.live(s.id));
 }
 
 /**
@@ -25,7 +28,7 @@ export function reachableScenes(model: ProjectModel): Scene[] {
  * portrait is owed to whoever has one — an author draws the cast, then writes scenes for the cast
  * they have, and a character invisible until a scene names them has that backwards.
  *
- * Deliberately not the question the P3 gate asks. `gateStatus` keeps its own reachable-scene walk
+ * Deliberately not the question the P3 gate asks. `gateStatus` keeps its own live-scene walk
  * so an uncast character's unapproved portrait halts nothing.
  */
 export function allCharacters(model: ProjectModel): Character[] {
@@ -35,7 +38,7 @@ export function allCharacters(model: ProjectModel): Character[] {
 /**
  * The outfits a run actually needs, character id → outfit ids in the order they were found: the
  * character's default first (anything with no opinion inherits it), then every `[[outfit:]]` marker
- * and shot override over reachable scenes. Authoring a wardrobe therefore costs nothing until
+ * and shot override over live scenes. Authoring a wardrobe therefore costs nothing until
  * something puts a character in it — a sheet is three image calls per outfit.
  *
  * The set is exactly the range of `outfitFor` over this model, an id it does not author included:
@@ -60,7 +63,7 @@ export function usedOutfits(model: ProjectModel): Map<string, Set<string>> {
     if (outfit) set.add(outfit);
   };
 
-  for (const scene of reachableScenes(model)) {
+  for (const scene of liveScenes(model)) {
     const marks = scene.outfits ?? {};
     // The cast, plus anyone a marker names who is not in it — a marker for someone the scene
     // forgot to list is still an outfit something asked for.

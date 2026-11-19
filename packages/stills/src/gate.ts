@@ -62,18 +62,18 @@ export interface GateStatus {
   pending: string[];
   /** Characters whose look is approved/locked. */
   approved: string[];
-  /** True when every character used by a reachable scene is approved. */
+  /** True when every character used by a live scene is approved. */
   cleared: boolean;
 }
 
 /**
  * Summarize the character gate (report §P3, §10). Only characters that actually appear in
- * a reachable scene matter — an unused character never blocks the run.
+ * a live scene matter — an unused character never blocks the run.
  */
 export function gateStatus(model: ProjectModel, assets?: readonly Asset[]): GateStatus {
   const used = new Set<string>();
   for (const scene of model.scenes.values()) {
-    if (!model.reachable.has(scene.id)) continue;
+    if (!model.narrative.live(scene.id)) continue;
     for (const id of scene.characters) used.add(id);
   }
   const pending: string[] = [];

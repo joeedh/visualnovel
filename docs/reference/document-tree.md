@@ -61,15 +61,15 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
 - **Story** lists every scene in model order, or — after _Sort in topological order_ on
   its heading's right-click menu — by `DocTree.storyOrder`: each scene after every scene
   that leads to it, from the entry scene, with the unreachable ones last in model order
-  (`topologicalOrder` in `@vn/model`). The choice is per pane and remembered with the
-  layout, like the pane's file mode. Each scene shows its `scenes/<id>.md` path and holds
-  its persisted shots as children. A scene with no `work/shots/<id>.json` has no children
-  rather than an empty list, because a scene that has not been decomposed differs from a
-  scene decomposed into no shots. If a storyboard does not parse, that scene is badged
-  `unreadable` and the sidebar does not fail. A shot row is badged with its framing; a
-  page — a shot with `panels` — is badged `page · N` instead, the same head the Shot
-  Coverage strip gives it, and carries `DocNode.panels: true`, which is the one thing the
-  Page editor's claim reads.
+  (the narrative engine's `scenes()`; for `branching`, `topologicalOrder` in `@vn/model`).
+  The choice is per pane and remembered with the layout, like the pane's file mode. Each
+  scene shows its `scenes/<id>.md` path and holds its persisted shots as children. A scene
+  with no `work/shots/<id>.json` has no children rather than an empty list, because a
+  scene that has not been decomposed differs from a scene decomposed into no shots. If a
+  storyboard does not parse, that scene is badged `unreadable` and the sidebar does not
+  fail. A shot row is badged with its framing; a page — a shot with `panels` — is badged
+  `page · N` instead, the same head the Shot Coverage strip gives it, and carries
+  `DocNode.panels: true`, which is the one thing the Page editor's claim reads.
 - Characters and Locations come from the built model. Each is labelled by name and carries
   the path of the file the `type:` tag was found in, such as
   `characters/aiko/character.md` (or `wiki/cast/aiko.md` if that is where the author filed

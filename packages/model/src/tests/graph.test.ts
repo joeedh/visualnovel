@@ -1,5 +1,5 @@
 import type { Scene } from '@vn/types';
-import { topologicalOrder } from '../graph.js';
+import { topologicalOrder } from '../branching.js';
 
 /** A scene with only its edges: `next`, then the choices' targets. */
 function scene(id: string, next?: string, ...gotos: string[]): [string, Scene] {

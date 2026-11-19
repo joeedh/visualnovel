@@ -5,7 +5,7 @@
  * baseline answer for an empty shot list.
  */
 import type { ProjectModel, Scene } from '@vn/types';
-import { character } from '@vn/testkit';
+import { character, liveOnly } from '@vn/testkit';
 import { realizeDecomposition } from '../storyboard.js';
 
 const SCENE: Scene = {
@@ -33,6 +33,7 @@ const MODEL: ProjectModel = {
     ],
   ]),
   scenes     : new Map([['epilogue', SCENE]]),
+  narrative  : liveOnly(['epilogue']),
   reachable  : new Set(['epilogue']),
   entry      : 'epilogue',
   diagnostics: [],

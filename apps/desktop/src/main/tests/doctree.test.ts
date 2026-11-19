@@ -4,7 +4,7 @@
  */
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { SCRIPTS, makeProject, type TestProject } from '@vn/testkit';
+import { SCRIPTS, liveOnly, makeProject, type TestProject } from '@vn/testkit';
 import { BUILTIN_SKILL_IDS } from '@vn/types';
 import { userSkillsDir } from '@vn/config';
 import type { SlotGraph, SlotNode } from '@vn/stills';
@@ -99,6 +99,7 @@ function makeInput(
       ],
       ['orphan', { id: 'orphan', location: 'gate', characters: [], lines: [], choices: [] }],
     ]),
+    narrative  : liveOnly(['arrival'], ['orphan']),
     reachable  : new Set(['arrival']),
     entry      : 'arrival',
     diagnostics: [],

@@ -124,7 +124,7 @@
     },
     {
       "id"      : "planning.storyboardOnRequest",
-      "rule": "A batch decomposition writes a storyboard only for a reachable scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.",
+      "rule": "A batch decomposition writes a storyboard only for a live scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.",
       "prevents": "One bad key permanently baselining a whole project, because an absent file is the only signal meaning \"decompose this scene\", and re-decomposing a kept scene changing its shot ids and so re-rendering art already paid for.",
       "subjects": [
         "module:packages/pipeline/src/decompose.ts",
@@ -364,7 +364,7 @@
         "function:packages/stills/src/storyboard.ts#deterministicShots"
       ],
       "see"     : ["docs/plans/archive/INDEX.md#outfits-at-scene-and-shot-level"],
-      "detail": "A `ShotSubject` with no `outfit` inherits, which is why `deterministicShots` and the decomposer emit shots without one. `ResolvedOutfit.origin` names the level that answered, so a surface can say which rather than \"inherited\". `outfitText` falls back to the outfit id when nothing describes the outfit, so a wardrobe can be named before it is described and an undescribed project keeps its prompts. An outfit edit re-renders, unlike other scene edits: the outfit is in `buildShotPrompt`, so a change re-keys exactly the shots it reaches. The sheet fan-out follows from the same function: `usedOutfits` is the character's default plus every scene marker and shot override over reachable scenes, which is `outfitFor`'s range, so a character no reachable scene casts plans no sheets and a shot cannot depend on a sheet nothing planned. A subject out of its default takes that outfit's front sheet as a reference (a frame needs the clothes, not a turnaround), which reaches the planner a wave later, the way a shot waits on its plate.",
+      "detail": "A `ShotSubject` with no `outfit` inherits, which is why `deterministicShots` and the decomposer emit shots without one. `ResolvedOutfit.origin` names the level that answered, so a surface can say which rather than \"inherited\". `outfitText` falls back to the outfit id when nothing describes the outfit, so a wardrobe can be named before it is described and an undescribed project keeps its prompts. An outfit edit re-renders, unlike other scene edits: the outfit is in `buildShotPrompt`, so a change re-keys exactly the shots it reaches. The sheet fan-out follows from the same function: `usedOutfits` is the character's default plus every scene marker and shot override over live scenes, which is `outfitFor`'s range, so a character no live scene casts plans no sheets and a shot cannot depend on a sheet nothing planned. A subject out of its default takes that outfit's front sheet as a reference (a frame needs the clothes, not a turnaround), which reaches the planner a wave later, the way a shot waits on its plate.",
       "declared": "packages/model/src/outfits.ts"
     },
     {

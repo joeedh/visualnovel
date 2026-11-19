@@ -1,6 +1,6 @@
 /** Domain/validation tools: schema conformance, the fountain parse, the branch graph, entities. */
 import { z } from 'zod';
-import { computeReachable, successors, toMermaid } from '@vn/model';
+import { successors, toMermaid } from '@vn/model';
 import { describeFindings } from '@vn/artgen';
 import { validateProject } from '@vn/gengraph/state';
 import { ok, formatDiagnostics, type Tool } from './core.js';
@@ -52,8 +52,7 @@ const storyGraphTool: Tool<Record<string, never>> = {
   args       : z.object({}).strict(),
   async run(_a, ctx) {
     const { model } = await ctx.workspace.load();
-    const reachable = computeReachable(model.scenes, model.entry);
-    const unreachable = [...model.scenes.keys()].filter((id) => !reachable.has(id));
+    const unreachable = [...model.scenes.keys()].filter((id) => !model.reachable.has(id));
     const dangling: string[] = [];
     for (const scene of model.scenes.values()) {
       for (const next of successors(scene)) {

@@ -4,8 +4,10 @@
  * truth for these shapes so every other package depends only on this one.
  */
 import type { Asset, AssetBinding, AssetKind, AssetRef, TakeEdit, TakeStamp } from './assets.js';
+import type { Diagnostic } from './diagnostic.js';
 import type { Character } from './script/characters.js';
 import type { Location } from './script/locations.js';
+import type { NarrativeStructure } from './script/narrative.js';
 import type { Scene } from './script/scenes.js';
 import type { Shot } from './production/shots.js';
 import type { ProductionData } from './production/storyboard.js';
@@ -13,24 +15,20 @@ import type { AnyTask, Task, TaskKind } from './tasks.js';
 import type { Providers } from './providers.js';
 import type { Transport } from './textmodels.js';
 
-/** A validation diagnostic produced while building the project model (report §P0). */
-export interface Diagnostic {
-  severity: 'error' | 'warning';
-  code: string;
-  message: string;
-  /** Entity id the diagnostic concerns, when applicable. */
-  where?: string;
-}
-
 /** The in-memory project model built from parsed input files (report §P0, §6). */
 export interface ProjectModel {
   title: string;
   characters: Map<string, Character>;
   locations: Map<string, Location>;
   scenes: Map<string, Scene>;
-  /** Scene ids reachable from the entry scene. */
+  /**
+   * The story's structure, from the engine `project.yaml`'s `narrative:` selects. A scene's
+   * liveness comes from here and nowhere else.
+   */
+  narrative: NarrativeStructure;
+  /** The ids of the scenes {@link narrative} reports live, filled by the builder from it. */
   reachable: Set<string>;
-  /** Entry scene id: `project.yaml`'s `start:`, or the screenplay's first scene without one. */
+  /** The entry scene, {@link narrative}'s `entry`. */
   entry?: string;
   diagnostics: Diagnostic[];
   /**

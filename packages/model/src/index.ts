@@ -8,6 +8,7 @@ export * from './screenplay.js';
 export * from './branchpatch.js';
 export * from './lineids.js';
 export * from './graph.js';
+export * from './branching.js';
 export * from './used.js';
 export * from './build.js';
 export * from './resolution.js';

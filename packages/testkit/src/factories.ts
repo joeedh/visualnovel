@@ -1,4 +1,4 @@
-import type { Character, Location, ProjectModel, Scene } from '@vn/types';
+import type { Character, Location, NarrativeStructure, ProjectModel, Scene } from '@vn/types';
 
 /**
  * In-memory entity factories for unit tests of the pure planners, where building a project
@@ -46,18 +46,43 @@ export function scene(id: string, characters: string[] = [], loc = 'classroom'):
   return { id, location: loc, characters, lines: [], choices: [] };
 }
 
-/** Assemble a model in which every scene is reachable and the first one is the entry. */
+/**
+ * A stand-in narrative for a model assembled by hand: `live` plays in that order, the first being
+ * the entry, and `rest` are scenes the model holds outside the story.
+ */
+export function liveOnly(
+  live: readonly string[],
+  rest: readonly string[] = [],
+): NarrativeStructure {
+  const set = new Set(live);
+  const order = [...live, ...rest];
+  return {
+    engine     : 'linear',
+    entry      : live[0],
+    scenes     : () => order,
+    live       : (id) => set.has(id),
+    exits: (id) => {
+      const next = set.has(id) ? live[live.indexOf(id) + 1] : undefined;
+      return { choices: [], ...(next === undefined ? {} : { next }) };
+    },
+    diagnostics: () => [],
+  };
+}
+
+/** Assemble a model in which every scene is live and the first one is the entry. */
 export function model(
   characters: Character[],
   scenes: Scene[],
   locations: Location[],
 ): ProjectModel {
+  const ids = scenes.map((s) => s.id);
   return {
     title      : 'Test',
     characters : new Map(characters.map((c) => [c.id, c])),
     locations  : new Map(locations.map((l) => [l.id, l])),
     scenes     : new Map(scenes.map((s) => [s.id, s])),
-    reachable  : new Set(scenes.map((s) => s.id)),
+    narrative  : liveOnly(ids),
+    reachable  : new Set(ids),
     entry      : scenes[0]?.id,
     diagnostics: [],
     production : new Map(),

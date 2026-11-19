@@ -1,4 +1,5 @@
 export * from './assets.js';
+export * from './diagnostic.js';
 export * from './script/index.js';
 export * from './production/index.js';
 export * from './prompt.js';

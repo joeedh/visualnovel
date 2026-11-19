@@ -17,13 +17,7 @@ import type {
 import { defectReportSchema, shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
-import {
-  outfitFor,
-  reachableScenes,
-  allCharacters,
-  allLocationVariants,
-  usedOutfits,
-} from '@vn/model';
+import { outfitFor, liveScenes, allCharacters, allLocationVariants, usedOutfits } from '@vn/model';
 import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
 import { baseRefusal } from '@vn/artgen';
@@ -289,7 +283,7 @@ export async function planTasks(opts: {
   }
 
   // P5–P7: shots, but only for scenes that have fully cleared the character gate.
-  for (const scene of reachableScenes(model)) {
+  for (const scene of liveScenes(model)) {
     if (!sceneUnblocked(model, scene.id, opts.assets)) continue;
     if (shotsOf(model, scene.id).length === 0) {
       const storyboard = await shotsFor(

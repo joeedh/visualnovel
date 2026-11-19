@@ -1,5 +1,5 @@
 import type { Logger, ProjectConfig, ProjectModel, Providers } from '@vn/types';
-import { reachableScenes } from '@vn/model';
+import { liveScenes } from '@vn/model';
 import { readShots, writeShots, type ProjectPaths } from '@vn/store';
 import { contract } from '@vn/contracts';
 import { decomposeScene, storyboardStyle } from './p5.js';
@@ -35,7 +35,7 @@ export interface DecomposeAllOptions {
 
 export const planningStoryboardOnRequest = contract({
   id      : 'planning.storyboardOnRequest',
-  rule: 'A batch decomposition writes a storyboard only for a reachable scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.',
+  rule: 'A batch decomposition writes a storyboard only for a live scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.',
   prevents:
     'One bad key permanently baselining a whole project, because an absent file is the only signal meaning "decompose this scene", and re-decomposing a kept scene changing its shot ids and so re-rendering art already paid for.',
   subjects: [
@@ -58,10 +58,10 @@ export const planningStoryboardOnRequest = contract({
 });
 
 /**
- * Decompose every reachable scene that has no storyboard yet, so the project can see the whole
+ * Decompose every live scene that has no storyboard yet, so the project can see the whole
  * graph instead of one wave of it.
  *
- * - Reachable scenes only. A dead branch costs a model call and renders nothing.
+ * - Live scenes only. A scene outside the story costs a model call and renders nothing.
  * - One bad file does not stop the batch. `readShots` throws on a malformed file rather than
  *   re-decomposing over a hand-edit, so the throw is caught per scene and the scene is named.
  *
@@ -73,7 +73,7 @@ export async function decomposeAll(opts: DecomposeAllOptions): Promise<Decompose
   const style = storyboardStyle(opts.config);
   const out: DecomposeAllResult = { decomposed: [], kept: [], fellBack: [], unreadable: [] };
 
-  for (const scene of reachableScenes(model)) {
+  for (const scene of liveScenes(model)) {
     try {
       // Unfiltered on purpose: this asks only whether a storyboard exists, and dropping stale
       // `coversLines` here would hide nothing and repair nothing.
@@ -124,7 +124,7 @@ export async function decomposeAllPreview(
     model.diagnostics.filter((d) => d.code === 'unknown_character').map((d) => d.where),
   );
 
-  for (const scene of reachableScenes(model)) {
+  for (const scene of liveScenes(model)) {
     try {
       if (await readShots(paths, scene.id)) kept.push(scene.id);
       else pending.push(scene.id);

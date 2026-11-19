@@ -102,7 +102,8 @@ the file; the authoritative package responsibilities and import rules are in
 | `branchpatch.ts` | branch-marker patching                                                    |
 | `lineids.ts`     | stable line ids                                                           |
 | `outfits.ts`     | outfit/variant inheritance                                                |
-| `graph.ts`       | model-level graph queries                                                 |
+| `graph.ts`       | `toMermaid`: the story's structure as a Mermaid flowchart                 |
+| `branching.ts`   | the `branching` narrative engine: marker edges, entry, reachability       |
 | `serialize.ts`   | model ⇄ text round-trip serializers (vnauthor edits go through these)     |
 | `slug.ts`        | slugify helpers                                                           |
 | `used.ts`        | enumerate every picture the model implies (planner + slot graph share it) |

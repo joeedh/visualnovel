@@ -9,7 +9,7 @@ import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, shotsOf, type Asset, type AssetKind, type ProjectModel } from '@vn/types';
 import { isBaseKind } from '@vn/store';
 import { assetApproved, sheetAngleOf, slotKey, slotOf, type SlotGraph } from '@vn/stills';
-import { allLocationVariants, topologicalOrder, usedOutfits } from '@vn/model';
+import { allLocationVariants, usedOutfits } from '@vn/model';
 import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
 import type { DocNode, DocTree, EntityLinks, SkillEntry } from '../../shared/ipc.js';
@@ -729,13 +729,7 @@ export function buildDocTree(input: DocTreeInput): DocTree {
     backlinks[`scene:${s.id}`] = linksFor(input, { sceneId: s.id }, sheet, planned);
     claim(sheet, `scene:${s.id}`);
   }
-  // Unreachable scenes keep their stored order at the end, the way the exported screenplay files
-  // them under `# Unreachable`
-  const reached = topologicalOrder(input.model.scenes, input.model.entry);
-  const storyOrder = [
-    ...reached,
-    ...[...input.model.scenes.keys()].filter((id) => !input.model.reachable.has(id)),
-  ];
+  const storyOrder = [...input.model.narrative.scenes()];
   return { roots, backlinks, pathIndex, storyOrder };
 }
 

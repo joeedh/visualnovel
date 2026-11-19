@@ -8,7 +8,7 @@ import {
 } from '@vn/parse';
 import { characterFromDoc, locationFromDoc, sceneFromDoc } from './entities.js';
 import { splitScenes, type MinedLocation } from './scenes.js';
-import { computeReachable, successors } from './graph.js';
+import { branchingNarrative } from './branching.js';
 import { slug } from './slug.js';
 
 /** Parsed input documents that the project model is assembled from (report §P0). */
@@ -58,40 +58,6 @@ function readScenes(inputs: BuildInputs): {
     diagnostics.push(...res.value.diagnostics);
   }
   return { scenes, mined, diagnostics };
-}
-
-/**
- * The entry scene. A chunk project has no document order to fall back on, so a missing `start:`
- * is an error naming the fix rather than the scene whose filename sorts first, because an entry
- * chosen alphabetically moves silently the day a scene is renamed.
- */
-function entryOf(
-  inputs: BuildInputs,
-  scenes: Map<string, Scene>,
-  first: string | undefined,
-  diagnostics: Diagnostic[],
-): string | undefined {
-  if (inputs.start === undefined) {
-    if (!inputs.sceneDocs?.length) return first;
-    if (scenes.size > 0) {
-      diagnostics.push({
-        severity: 'error',
-        code    : 'missing_start',
-        message: `project.yaml has no start:, and scenes/ has no order to take an entry scene from; add start: <scene id>`,
-      });
-    }
-    return undefined;
-  }
-  if (!scenes.has(inputs.start)) {
-    diagnostics.push({
-      severity: 'error',
-      code    : 'unknown_start',
-      message : `project.yaml start: names unknown scene "${inputs.start}"`,
-      where   : inputs.start,
-    });
-    return undefined;
-  }
-  return inputs.start;
 }
 
 function mergeMinedLocations(
@@ -356,34 +322,18 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     scenes.set(scene.id, scene);
   }
 
-  const entry = entryOf(inputs, scenes, sceneList[0]?.id, diagnostics);
-  const reachable = computeReachable(scenes, entry);
+  const narrative = branchingNarrative(scenes, {
+    ...(inputs.start === undefined ? {} : { start: inputs.start }),
+    ordered: !inputs.sceneDocs?.length,
+  });
+  diagnostics.push(...narrative.diagnostics());
 
-  // Validate edges and reachability.
   for (const scene of scenes.values()) {
-    for (const next of successors(scene)) {
-      if (!scenes.has(next)) {
-        diagnostics.push({
-          severity: 'error',
-          code    : 'dangling_goto',
-          message : `scene "${scene.id}" points to unknown scene "${next}"`,
-          where   : scene.id,
-        });
-      }
-    }
     if (!locations.has(scene.location)) {
       diagnostics.push({
         severity: 'error',
         code    : 'unknown_location',
         message : `scene "${scene.id}" references unknown location "${scene.location}"`,
-        where   : scene.id,
-      });
-    }
-    if (!reachable.has(scene.id)) {
-      diagnostics.push({
-        severity: 'warning',
-        code    : 'unreachable_scene',
-        message : `scene "${scene.id}" is unreachable from the entry scene`,
         where   : scene.id,
       });
     }
@@ -394,8 +344,9 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     characters,
     locations,
     scenes,
-    reachable,
-    entry,
+    narrative,
+    reachable: new Set(narrative.scenes().filter((id) => narrative.live(id))),
+    entry    : narrative.entry,
     diagnostics,
     production: new Map(),
   };

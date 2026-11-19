@@ -1,6 +1,7 @@
 import { storyGraphOf } from '../../../../src/main/doctree/storygraph.js';
 import { edgeTarget, scenesOf } from '../../../../src/shared/interactions.js';
 import { branchGraph, CARD, STUB } from '../graph.js';
+import { branchingNarrative } from '@vn/model';
 import type { ProjectModel, Scene } from '@vn/types';
 import type { StoryEdge } from '../../../../src/shared/ipc';
 
@@ -18,16 +19,21 @@ const wired = (id: string, choices: Scene['choices'], next?: string): Scene => (
 
 const scene = (id: string): Scene => wired(id, []);
 
-const model = (scenes: Scene[]): ProjectModel => ({
-  title      : 'Test',
-  characters : new Map(),
-  locations  : new Map(),
-  scenes     : new Map(scenes.map((s) => [s.id, s])),
-  reachable  : new Set(scenes.map((s) => s.id)),
-  entry      : scenes[0]?.id,
-  diagnostics: [],
-  production : new Map(),
-});
+const model = (scenes: Scene[]): ProjectModel => {
+  const byId = new Map(scenes.map((s) => [s.id, s]));
+  const narrative = branchingNarrative(byId, { start: scenes[0]?.id });
+  return {
+    title     : 'Test',
+    characters: new Map(),
+    locations : new Map(),
+    scenes    : byId,
+    narrative,
+    reachable  : new Set(narrative.scenes().filter((id) => narrative.live(id))),
+    entry      : narrative.entry,
+    diagnostics: [],
+    production : new Map(),
+  };
+};
 
 /** greet forks two ways; rooftop continues linearly; ending goes nowhere. */
 const sample = () =>

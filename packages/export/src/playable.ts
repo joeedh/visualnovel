@@ -4,8 +4,8 @@
  *
  * `buildPlayable` is pure and in-memory. It flattens each scene's structured `lines` into an
  * ordered beat list: a `show` beat whenever the covering shot changes, then `say` (attributed
- * dialogue/parenthetical) or `narrate` (narration/action). Branch edges come straight from the
- * scene's `choices`/`next`, and the entry from the model.
+ * dialogue/parenthetical) or `narrate` (narration/action). Each scene's edges are the narrative
+ * engine's exits for it, and the entry is the model's.
  *
  * Assets are referenced by `{hash, ext}` and resolved from the manifest, never inlined. An
  * absent asset is omitted, so a partially-generated (or entirely un-generated) project still
@@ -214,10 +214,11 @@ export function buildPlayable(
 
   const scenes: Record<string, PlayableScene> = {};
   for (const scene of model.scenes.values()) {
+    const exits = model.narrative.exits(scene.id);
     scenes[scene.id] = {
       beats  : sceneBeats(scene, assets, shotsOf(model, scene.id), bubbles),
-      choices: scene.choices.map((c) => ({ label: c.label, goto: c.goto })),
-      ...(scene.next ? { next: scene.next } : {}),
+      choices: exits.choices.map((c) => ({ label: c.label, goto: c.goto })),
+      ...(exits.next ? { next: exits.next } : {}),
     };
   }
 

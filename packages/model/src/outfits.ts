@@ -23,8 +23,8 @@ export const scriptOutfitInherited = contract({
     'undescribed project keeps its prompts. An outfit edit re-renders, unlike other scene edits: ' +
     'the outfit is in `buildShotPrompt`, so a change re-keys exactly the shots it reaches. The sheet ' +
     "fan-out follows from the same function: `usedOutfits` is the character's default plus every " +
-    "scene marker and shot override over reachable scenes, which is `outfitFor`'s range, so a " +
-    'character no reachable scene casts plans no sheets and a shot cannot depend on a sheet nothing ' +
+    "scene marker and shot override over live scenes, which is `outfitFor`'s range, so a " +
+    'character no live scene casts plans no sheets and a shot cannot depend on a sheet nothing ' +
     "planned. A subject out of its default takes that outfit's front sheet as a reference (a frame " +
     'needs the clothes, not a turnaround), which reaches the planner a wave later, the way a shot ' +
     'waits on its plate.',

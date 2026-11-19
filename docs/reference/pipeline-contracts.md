@@ -165,9 +165,9 @@ package.
       `refsOfSlot` supplies the edge rule. The planner attaches a real task identity only
       to the slots the project can currently state a task identity for.
     - `buildSlotGraph` and the planner must enumerate the same set. That is why
-      `reachableScenes`/`allCharacters`/`usedOutfits`/`allLocationVariants` were lifted
-      into `@vn/model`'s `used.ts`, and both sides call them. A test plans a mock project
-      to exhaustion and asserts the two agree in both directions.
+      `liveScenes`/`allCharacters`/`usedOutfits`/`allLocationVariants` were lifted into
+      `@vn/model`'s `used.ts`, and both sides call them. A test plans a mock project to
+      exhaustion and asserts the two agree in both directions.
     - `SlotGraph.order` is topological, upstream first. Approval has to happen in that
       same order.
     - Never derive edges from `Task.deps`, which is documented as incomplete and is not
@@ -181,9 +181,9 @@ package.
     - P4 still fans out over `usedOutfits`, so an uncast character plans no sheets even
       once approved. A portrait takes one image call and a sheet takes three per outfit,
       and a sheet exists to be referenced by a shot that does not exist yet.
-    - The gate is unchanged. `gateStatus` keeps its own reachable-scene walk, so an
-      unapproved portrait for an uncast character halts nothing, and that portrait appears
-      instead in the tree's _Awaiting approval_ branch.
+    - The gate is unchanged. `gateStatus` keeps its own live-scene walk, so an unapproved
+      portrait for an uncast character halts nothing, and that portrait appears instead in
+      the tree's _Awaiting approval_ branch.
     - Plan:
       [`../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them`](../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them).
 - `SlotNode.approved` means one thing for every slot kind: the take the slot holds is
