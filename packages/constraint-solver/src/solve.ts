@@ -9,7 +9,7 @@
 import type { TaskInputs, TaskKind, TaskStatus } from '@vn/types';
 import { contract } from '@vn/contracts';
 import { taskHash } from '@vn/taskgraph';
-import type { Family, SolverFacts } from './family.js';
+import type { Family, Held, SlotKind, SolverFacts } from './family.js';
 
 /** What the solver answers for one slot. */
 export interface SlotState {
@@ -36,6 +36,18 @@ export interface SlotState {
   /** Every manifest row bound here, in the kind's order. */
   candidates: readonly string[];
   approved: boolean;
+  /** Has an identity, and its unit, if it has one, is open. The planner adds exactly these. */
+  ready: boolean;
+}
+
+/** What one unit waits on, from the family's `gates`. */
+export interface UnitGate {
+  /** The addresses of the slots the unit waits on, as the family listed them. */
+  gates: readonly string[];
+  /** The addresses in `gates` whose slot has not cleared, in the same order. */
+  holding: readonly string[];
+  /** No slot is holding the unit. */
+  open: boolean;
 }
 
 /** Every slot, keyed by address, with its edges inverted and an upstream-first order. */
@@ -45,6 +57,8 @@ export interface Solution {
   dependents: Map<string, string[]>;
   /** Upstream before downstream: the order approval has to happen in. */
   order: string[];
+  /** Every unit a slot names or the family owes, with what it waits on. */
+  units: Map<string, UnitGate>;
 }
 
 export const identitySlotsBeforeTasks = contract({
@@ -68,17 +82,90 @@ export const identitySlotsBeforeTasks = contract({
     'kind that carries this contract adds its `slot:` prefix to the subjects in the index.',
 });
 
+/** An enumerated slot as the gate reads it, with its take when the caller already asked for it. */
+interface Enumerated<F extends SolverFacts> {
+  kind: SlotKind<F>;
+  binding: unknown;
+  held?: Held;
+}
+
+/** Asks a kind for the take a slot holds. */
+function heldBy<F extends SolverFacts>(kind: SlotKind<F>, binding: unknown, facts: F): Held {
+  const rows = kind.candidates(binding, facts);
+  const pick = kind.pick(binding, facts, rows);
+  return pick ? { pick, rows } : { rows };
+}
+
+/**
+ * Answers what each unit waits on. A gate naming an address the family does not enumerate holds
+ * the unit, and each address is asked once.
+ */
+function gateUnits<F extends SolverFacts>(
+  family: Family<F>,
+  facts: F,
+  enumerated: ReadonlyMap<string, Enumerated<F>>,
+  units: Iterable<string>,
+): Map<string, UnitGate> {
+  const cleared = new Map<string, boolean>();
+  const clears = (key: string): boolean => {
+    let answer = cleared.get(key);
+    if (answer === undefined) {
+      const at = enumerated.get(key);
+      if (!at) answer = false;
+      else {
+        const held = at.held ?? heldBy(at.kind, at.binding, facts);
+        answer = at.kind.clears
+          ? at.kind.clears(at.binding, facts, held)
+          : at.kind.approved(at.binding, facts, held);
+      }
+      cleared.set(key, answer);
+    }
+    return answer;
+  };
+
+  const out = new Map<string, UnitGate>();
+  for (const unit of units) {
+    if (out.has(unit)) continue;
+    const gates = [...new Set(family.gates(unit, facts))];
+    const holding = gates.filter((key) => !clears(key));
+    out.set(unit, { gates, holding, open: holding.length === 0 });
+  }
+  return out;
+}
+
+/**
+ * Answers what each unit waits on, for every unit a slot names or the family owes, without
+ * stating any slot's identity. A caller that only needs the gate, or needs it before it can
+ * solve, asks here.
+ */
+export function unitGates<F extends SolverFacts>(
+  family: Family<F>,
+  facts: F,
+): Map<string, UnitGate> {
+  const enumerated = new Map<string, Enumerated<F>>();
+  const units: string[] = [];
+  for (const { kind, binding, unit } of family.enumerate(facts)) {
+    const key = kind.key(binding);
+    if (enumerated.has(key)) continue;
+    enumerated.set(key, { kind, binding });
+    if (unit !== undefined) units.push(unit);
+  }
+  units.push(...family.owed(facts));
+  return gateUnits(family, facts, enumerated, units);
+}
+
 /** Runs the family's slot kinds over every slot it enumerates. */
 export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solution {
   const slots = new Map<string, SlotState>();
+  const enumerated = new Map<string, Enumerated<F>>();
   for (const { kind, binding, unit } of family.enumerate(facts)) {
     const key = kind.key(binding);
     if (slots.has(key)) continue;
-    const rows = kind.candidates(binding, facts);
-    const pick = kind.pick(binding, facts, rows);
+    const held = heldBy(kind, binding, facts);
     const decided = kind.resolve(binding, facts);
     const hash = decided.ok ? taskHash(kind.task, decided.plan) : undefined;
     const status = hash === undefined ? undefined : facts.tasks.get(hash)?.status;
+    enumerated.set(key, { kind, binding, held });
 
     slots.set(key, {
       key,
@@ -91,10 +178,20 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
       ...(decided.ok ? { taskHash: hash, inputs: decided.plan } : { blocked: decided.reason }),
       deps: decided.ok ? (kind.deps?.(binding, facts) ?? []) : [],
       ...(status ? { status } : {}),
-      ...(pick ? { pick } : {}),
-      candidates: rows.map((a) => a.hash),
-      approved  : kind.approved(binding, facts, pick ? { pick, rows } : { rows }),
+      ...(held.pick ? { pick: held.pick } : {}),
+      candidates: held.rows.map((a) => a.hash),
+      approved  : kind.approved(binding, facts, held),
+      ready     : false,
     });
+  }
+
+  const named: string[] = [];
+  for (const state of slots.values()) if (state.unit !== undefined) named.push(state.unit);
+  const units = gateUnits(family, facts, enumerated, [...named, ...family.owed(facts)]);
+  for (const state of slots.values()) {
+    state.ready =
+      state.taskHash !== undefined &&
+      (state.unit === undefined || units.get(state.unit)?.open === true);
   }
 
   const dependents = new Map<string, string[]>();
@@ -116,5 +213,5 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
   };
   for (const key of slots.keys()) walk(key);
 
-  return { slots, dependents, order };
+  return { slots, dependents, order, units };
 }

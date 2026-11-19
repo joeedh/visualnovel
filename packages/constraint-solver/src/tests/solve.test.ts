@@ -3,6 +3,7 @@
  * tested without a family package. A `seed` is drawn from nothing; a `sprout` is drawn from its
  * seed's output, so it has no identity until that seed's task is done, and it may lean on other
  * sprouts. Manifest rows are matched to a slot by `sourceTask`, which the toy sets to the address.
+ * A bed is a sprout's unit, and waits on whichever slots `beds` names for it.
  */
 import type { AnyTask, Asset, TaskInputs } from '@vn/types';
 import { pins } from '@vn/contracts';
@@ -11,6 +12,7 @@ import {
   identitySlotsBeforeTasks,
   slot,
   solve,
+  unitGates,
   type Family,
   type Slot,
   type SlotKind,
@@ -29,6 +31,10 @@ interface Garden extends SolverFacts {
   sprouts: Sprout[];
   /** Enumerated after everything else, to show that the first enumeration of an address wins. */
   again?: Slot<Garden>[];
+  /** The slot addresses each bed waits on. */
+  beds?: Record<string, string[]>;
+  /** Beds with nothing sown in them yet. */
+  fallow?: string[];
 }
 
 const seedInputs = (id: string): TaskInputs['prompt_refine'] => ({
@@ -59,6 +65,8 @@ const seedKind: SlotKind<Garden, { id: string }, 'prompt_refine'> = {
   candidates: (b, facts) => rowsOf(`seed:${b.id}`, facts),
   pick      : (_b, _facts, rows) => current(rows),
   approved  : (_b, _facts, held) => held.rows.some((a) => a.hash === held.pick && a.accepted),
+  // Looser than `approved`: any accepted row clears a bed, held or not
+  clears    : (_b, _facts, held) => held.rows.some((a) => a.accepted),
 };
 
 const sproutOf = (facts: Garden, id: string): Sprout | undefined =>
@@ -100,8 +108,8 @@ const garden: Family<Garden> = {
     for (const s of facts.sprouts) yield slot(sproutKind, { id: s.id }, s.bed);
     yield* facts.again ?? [];
   },
-  // Every bed is planted when the garden is listed, so nothing is owed
-  owed: () => [],
+  owed : (facts) => facts.fallow ?? [],
+  gates: (bed, facts) => facts.beds?.[bed] ?? [],
 };
 
 /** A task log holding exactly `tasks`, by hash. */
@@ -270,5 +278,66 @@ describe(pins(identitySlotsBeforeTasks), () => {
       }
       expect(seedKind.parse('sprout:x')).toBeUndefined();
     });
+  });
+});
+
+describe('the unit gate over a toy family', () => {
+  const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
+  const fern = { ...makeTask('prompt_refine', seedInputs('fern')), status: 'done' as const };
+  /** Both seeds grown, so both sprouts have an identity. */
+  const grown = (over: Partial<Garden> = {}): Garden =>
+    planted({ tasks: log({ ...rose, output: 'petal' }, { ...fern, output: 'frond' }), ...over });
+
+  it('holds a unit until every slot it waits on clears, and names the ones holding it', () => {
+    const solved = solve(garden, grown({ beds: { east: ['seed:rose', 'seed:fern'] } }));
+    expect(solved.units.get('east')).toEqual({
+      gates  : ['seed:rose', 'seed:fern'],
+      holding: ['seed:rose', 'seed:fern'],
+      open   : false,
+    });
+    expect(solved.units.get('west')).toEqual({ gates: [], holding: [], open: true });
+    // The held sprout has a task hash and is still not ready
+    expect(solved.slots.get('sprout:r1')).toMatchObject({ ready: false });
+    expect(solved.slots.get('sprout:r1')!.taskHash).toBeDefined();
+    expect(solved.slots.get('sprout:f1')!.ready).toBe(true);
+    // A slot with no unit waits on nothing
+    expect(solved.slots.get('seed:rose')!.ready).toBe(true);
+  });
+
+  it('opens the unit once its slots clear', () => {
+    const assets = [row('r', 'seed:rose', { accepted: true, current: true })];
+    const solved = solve(garden, grown({ assets, beds: { east: ['seed:rose'] } }));
+    expect(solved.units.get('east')).toMatchObject({ holding: [], open: true });
+    expect(solved.slots.get('sprout:r1')!.ready).toBe(true);
+  });
+
+  it("asks a kind's `clears` rather than its `approved` where it has one", () => {
+    // The held take is not accepted, so the seed is not approved, but an accepted row clears it
+    const assets = [
+      row('old', 'seed:rose', { accepted: true }),
+      row('new', 'seed:rose', { current: true }),
+    ];
+    const solved = solve(garden, grown({ assets, beds: { east: ['seed:rose'] } }));
+    expect(solved.slots.get('seed:rose')!.approved).toBe(false);
+    expect(solved.units.get('east')!.open).toBe(true);
+  });
+
+  it('holds a unit on an address the family does not enumerate', () => {
+    const solved = solve(garden, grown({ beds: { east: ['seed:moss'] } }));
+    expect(solved.units.get('east')).toMatchObject({ holding: ['seed:moss'], open: false });
+  });
+
+  it('never makes a slot with no identity ready, whatever its gate says', () => {
+    const solved = solve(garden, planted());
+    expect(solved.units.get('east')!.open).toBe(true);
+    expect(solved.slots.get('sprout:r1')!.ready).toBe(false);
+  });
+
+  it('reports the units the family owes, and `unitGates` answers what `solve` does', () => {
+    const facts = grown({ fallow: ['north'], beds: { north: ['seed:fern'], east: ['seed:rose'] } });
+    const solved = solve(garden, facts);
+    expect([...solved.units.keys()]).toEqual(['east', 'west', 'north']);
+    expect(solved.units.get('north')).toMatchObject({ holding: ['seed:fern'] });
+    expect(unitGates(garden, facts)).toEqual(solved.units);
   });
 });

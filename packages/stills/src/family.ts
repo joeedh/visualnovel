@@ -1,8 +1,8 @@
 /**
- * The stills family as `@vn/constraint-solver` sees it: four slot kinds and the slots a project
- * implies. Each kind wraps the slot functions the rest of the package shares (`slotKey`,
- * `refsOfSlot`, `planSlot`, `candidatesFor`, `pick`), and `solve(stillsFamily, facts)` is what the
- * planner plans from.
+ * The stills family as `@vn/constraint-solver` sees it: four slot kinds, the slots a project
+ * implies, and the P3 gate each scene waits on. Each kind wraps the slot functions the rest of the
+ * package shares (`slotKey`, `refsOfSlot`, `planSlot`, `candidatesFor`, `pick`), and
+ * `solve(stillsFamily, facts)` is what the planner plans from.
  */
 import type { Asset, RefBinding, TaskInputs, TaskKind } from '@vn/types';
 import { shotsOf } from '@vn/types';
@@ -23,6 +23,7 @@ import { type BindingContext, candidatesFor, pick } from './refs.js';
 import { refsOfSlot } from './refcycle.js';
 import { parseSlot, slotKey, slotLabel } from './slotaddr.js';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
+import { approvedPortraitOf } from './gate.js';
 import {
   newestFirst,
   planSlot,
@@ -194,11 +195,26 @@ function stillsKind<P extends SlotPrefix, K extends TaskKind>(
   };
 }
 
+/**
+ * Says whether a character's portrait opens the scenes that cast them, by the gate's own reading:
+ * `approvedPortraitOf` over the rows that name the character, or over the sheet's mirror when the
+ * facts carry no manifest.
+ */
+function portraitClears(binding: Bound<'portrait'>, facts: StillsFacts): boolean {
+  const character = facts.model.characters.get(binding.characterId);
+  if (!character) return false;
+  const rows = facts.assets && bindingCtx(binding, facts).assets;
+  return approvedPortraitOf(character, rows) !== undefined;
+}
+
 const EVERY_KIND = [identitySlotsBeforeTasks, takesApprovedMeansAccepted];
 const AUTHORED = [...EVERY_KIND, planningSheetsOnlyWhenWorn];
 
 export const plateKind = stillsKind('plate', 'location_ref', AUTHORED);
-export const portraitKind = stillsKind('portrait', 'portrait', AUTHORED);
+export const portraitKind: SlotKind<StillsFacts, Bound<'portrait'>, 'portrait'> = {
+  ...stillsKind('portrait', 'portrait', AUTHORED),
+  clears: portraitClears,
+};
 export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
 export const shotKind = stillsKind('shot', 'shot_image', EVERY_KIND);
 
@@ -235,11 +251,18 @@ function owed(facts: StillsFacts): string[] {
     .map((scene) => scene.id);
 }
 
+/** Lists the portraits a scene waits on: one per member of its cast, shown in a shot or not. */
+function gates(sceneId: string, facts: StillsFacts): string[] {
+  const scene = facts.model.scenes.get(sceneId);
+  return (scene?.characters ?? []).map((characterId) => slotKey({ kind: 'portrait', characterId }));
+}
+
 export const stillsFamily: Family<StillsFacts> = {
   id   : 'stills',
   kinds: [plateKind, portraitKind, sheetKind, shotKind],
   enumerate,
   owed,
+  gates,
 };
 
 /**

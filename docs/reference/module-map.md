@@ -182,11 +182,11 @@ it ([`history-pane.md`](history-pane.md)).
 
 Pure, and names nothing a family defines; `@vn/stills` is its first family.
 
-| module      | purpose                                                                        |
-| ----------- | ------------------------------------------------------------------------------ |
-| `family.ts` | `SolverFacts`, `SlotKind`, `Family`, `Slot` and `slot`, and `Decided`          |
-| `solve.ts`  | `solve`: every enumerated slot's identity or refusal, its edges, and the order |
-| `index.ts`  | barrel                                                                         |
+| module      | purpose                                                                      |
+| ----------- | ---------------------------------------------------------------------------- |
+| `family.ts` | `SolverFacts`, `SlotKind`, `Family`, `Slot` and `slot`, and `Decided`        |
+| `solve.ts`  | `solve` and `unitGates`: each slot's identity or refusal, edges, order, gate |
+| `index.ts`  | barrel                                                                       |
 
 ### @vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)
 

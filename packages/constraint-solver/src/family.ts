@@ -58,6 +58,11 @@ export interface SlotKind<F extends SolverFacts, B = unknown, K extends TaskKind
   pick(binding: B, facts: F, rows: readonly Asset[]): string | undefined;
   /** Says whether a person has approved what fills this slot. */
   approved(binding: B, facts: F, held: Held): boolean;
+  /**
+   * Says whether the slot lets a unit that waits on it go ahead. A kind without it answers with
+   * `approved`; a kind whose gate reads approval its own way answers here.
+   */
+  clears?(binding: B, facts: F, held: Held): boolean;
   /** Contracts that apply to every slot of this kind; the index adds `slot:<prefix>` to each. */
   readonly contracts?: readonly Contract[];
 }
@@ -87,4 +92,9 @@ export interface Family<F extends SolverFacts> {
   enumerate(facts: F): Iterable<Slot<F>>;
   /** Lists the live units that have no slots yet, because nothing has decomposed them. */
   owed(facts: F): readonly string[];
+  /**
+   * Lists the addresses of the slots a unit waits on. Until every one of them clears, the unit is
+   * not decomposed and none of its slots is ready.
+   */
+  gates(unit: string, facts: F): readonly string[];
 }
