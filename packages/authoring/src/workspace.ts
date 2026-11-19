@@ -38,7 +38,7 @@ import {
   type SceneSource,
 } from '@vn/scriptedit/write';
 import { storyboardStyle, type StoryboardStyle } from '@vn/stills';
-import { loadConfig } from '@vn/config';
+import { loadConfig, type ProjectConfig } from '@vn/config';
 import { RepoResolver } from '@vn/git';
 import { exists, readText, samePath, VnError, writeFileAtomic } from '@vn/util';
 import { join, relative, resolve, sep } from 'node:path';
@@ -221,19 +221,19 @@ export class Workspace {
   async load(): Promise<LoadedWorkspace> {
     const inputs = await loadInputs(this.paths);
     let title = 'Untitled';
-    let start: string | undefined;
+    let order: Pick<ProjectConfig, 'start' | 'narrative' | 'scenes'> = { narrative: 'branching' };
     let style: StoryboardStyle = { artStyle: '', storyboardNotes: '', shotForm: 'frames' };
     let lettering: Lettering = 'model';
     try {
       const config = await loadConfig(this.root);
       title = config.title;
-      start = config.start;
+      order = config;
       style = storyboardStyle(config);
       lettering = config.lettering;
     } catch {
       // No (or invalid) project.yaml: the agent still operates, title is a placeholder
     }
-    const model = modelFromInputs(inputs, { title, start });
+    const model = modelFromInputs(inputs, { ...order, title });
     return { title, style, lettering, model, inputs };
   }
 

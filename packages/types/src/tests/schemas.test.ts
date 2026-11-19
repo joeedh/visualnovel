@@ -79,6 +79,24 @@ describe('sceneFrontMatter', () => {
   );
 });
 
+describe('projectConfig narrative', () => {
+  it('defaults to the branching engine with no scene list', () => {
+    const config = projectConfig.parse({ title: 'T' });
+    expect(config.narrative).toBe('branching');
+    expect(config.scenes).toBeUndefined();
+  });
+
+  it('reads a linear engine and its order', () => {
+    const config = projectConfig.parse({ title: 'T', narrative: 'linear', scenes: ['a', 'b'] });
+    expect(config).toMatchObject({ narrative: 'linear', scenes: ['a', 'b'] });
+  });
+
+  it('rejects an engine it does not know, and an empty scene id', () => {
+    expect(projectConfig.safeParse({ title: 'T', narrative: 'storylet' }).success).toBe(false);
+    expect(projectConfig.safeParse({ title: 'T', scenes: [''] }).success).toBe(false);
+  });
+});
+
 describe('projectConfig start', () => {
   it('reads the entry scene when given', () => {
     expect(projectConfig.parse({ title: 'T', start: 'arrival' }).start).toBe('arrival');

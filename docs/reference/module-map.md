@@ -104,6 +104,7 @@ the file; the authoritative package responsibilities and import rules are in
 | `outfits.ts`     | outfit/variant inheritance                                                |
 | `graph.ts`       | `toMermaid`: the story's structure as a Mermaid flowchart                 |
 | `branching.ts`   | the `branching` narrative engine: marker edges, entry, reachability       |
+| `linear.ts`      | the `linear` narrative engine: `project.yaml`'s `scenes:` order           |
 | `serialize.ts`   | model ⇄ text round-trip serializers (vnauthor edits go through these)     |
 | `slug.ts`        | slugify helpers                                                           |
 | `used.ts`        | enumerate every picture the model implies (planner + slot graph share it) |

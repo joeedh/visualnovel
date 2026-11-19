@@ -402,7 +402,9 @@ These rules make that body predictable:
 - Line-id marks are optional. A hand-authored scene usually has none. Reading a scene
   allocates the marks in memory, and `story.assignLineIds` writes them.
 
-A directory has no document order, so `start:` in `project.yaml` names the entry scene.
+A directory has no document order, so `start:` in `project.yaml` names the entry scene. A
+project with `narrative: linear` lists the whole order under `scenes:` instead and uses no
+branch markers; see [`../guides/cli.md`](../guides/cli.md#how-the-scenes-make-a-story).
 
 The older form is no longer read. That form held every scene in one
 `screenplay/*.fountain` file, separated by `[[scene: id]]` markers, and the entry scene
@@ -459,8 +461,10 @@ The city hums somewhere below.
 ```
 
 -   - **Ordering follows the graph rather than the directory**: nodes are emitted
-      breadth-first from `start:`, taking `next` before `choices`. Nodes that `start:`
-      cannot reach are appended under a `# Unreachable` section rather than dropped.
+      breadth-first from the entry scene along the narrative engine's edges, taking `next`
+      before `choices`. Under `branching` those are the markers, from `start:`; under
+      `linear`, the `scenes:` order. Nodes the entry cannot reach are appended under a
+      `# Unreachable` section rather than dropped.
 - Markers are kept by default, so the output is valid input to `vngen import`. `--clean`
   drops every marker for a human reader or a screenwriting tool. Cleaned output cannot be
   imported again, because dropping the markers drops the branch structure.

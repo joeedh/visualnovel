@@ -204,7 +204,7 @@ export class TestProject {
   async reload(): Promise<ProjectState> {
     const config = await loadConfig(this.dir);
     const inputs = await loadInputs(this.paths);
-    const model = modelFromInputs(inputs, { title: config.title, start: config.start });
+    const model = modelFromInputs(inputs, config);
     const store = await AssetStore.open(this.paths);
     const graph = await loadGraph(this.paths);
     this.state = { config, model, store, graph };

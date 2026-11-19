@@ -1,5 +1,13 @@
 import { contract } from '@vn/contracts';
-import type { Character, Diagnostic, Location, ProjectModel, Scene } from '@vn/types';
+import type {
+  Character,
+  Diagnostic,
+  Location,
+  NarrativeEngine,
+  NarrativeStructure,
+  ProjectModel,
+  Scene,
+} from '@vn/types';
 import {
   type EntityDoc,
   type FountainScript,
@@ -9,6 +17,7 @@ import {
 import { characterFromDoc, locationFromDoc, sceneFromDoc } from './entities.js';
 import { splitScenes, type MinedLocation } from './scenes.js';
 import { branchingNarrative } from './branching.js';
+import { linearNarrative } from './linear.js';
 import { slug } from './slug.js';
 
 /** Parsed input documents that the project model is assembled from (report §P0). */
@@ -26,10 +35,15 @@ export interface BuildInputs {
    */
   script?: FountainScript;
   /**
-   * The entry scene from `project.yaml`'s `start:`. Required with `sceneDocs`, which have no
-   * document order to fall back on; with `script` the first scene is the fallback.
+   * The entry scene from `project.yaml`'s `start:`. A `branching` project needs it with
+   * `sceneDocs`, which have no document order to fall back on; with `script` the first scene is
+   * the fallback. A `linear` project starts at its first listed scene.
    */
   start?: string;
+  /** `project.yaml`'s `narrative:`; absent means `branching`. */
+  narrative?: NarrativeEngine;
+  /** `project.yaml`'s `scenes:`, the order a `linear` project plays its scenes in. */
+  sceneOrder?: readonly string[];
   /** Diagnostics from reading the inputs, carried through so they are reported with the rest. */
   diagnostics?: Diagnostic[];
 }
@@ -243,6 +257,34 @@ function validateSceneOutfits(scene: Scene, characters: Map<string, Character>):
 }
 
 /**
+ * The structure the selected engine reads from the scenes. A `scenes:` list under `branching`
+ * is reported rather than ignored, because an author who wrote one expects it to order the story.
+ */
+function narrativeOf(
+  inputs: BuildInputs,
+  scenes: ReadonlyMap<string, Scene>,
+  diagnostics: Diagnostic[],
+): NarrativeStructure {
+  const start = inputs.start === undefined ? {} : { start: inputs.start };
+  if (inputs.narrative === 'linear') {
+    return linearNarrative(scenes, {
+      ...start,
+      ...(inputs.sceneOrder === undefined ? {} : { scenes: inputs.sceneOrder }),
+    });
+  }
+  if (inputs.sceneOrder !== undefined) {
+    diagnostics.push({
+      severity: 'error',
+      code    : 'scenes_without_linear',
+      message:
+        'project.yaml lists scenes:, which only narrative: linear reads; add narrative: linear, ' +
+        'or remove scenes: and let the branch markers order the story',
+    });
+  }
+  return branchingNarrative(scenes, { ...start, ordered: !inputs.sceneDocs?.length });
+}
+
+/**
  * Build and validate the in-memory project model (report §P0, §6). Validation never
  * throws — every problem is recorded as a `Diagnostic` so the caller can report all of
  * them before any money is spent on generation.
@@ -322,10 +364,7 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
     scenes.set(scene.id, scene);
   }
 
-  const narrative = branchingNarrative(scenes, {
-    ...(inputs.start === undefined ? {} : { start: inputs.start }),
-    ordered: !inputs.sceneDocs?.length,
-  });
+  const narrative = narrativeOf(inputs, scenes, diagnostics);
   diagnostics.push(...narrative.diagnostics());
 
   for (const scene of scenes.values()) {
@@ -352,19 +391,26 @@ export function buildModel(inputs: BuildInputs): ProjectModel {
   };
 }
 
+/** The `project.yaml` fields the model is built with; a `ProjectConfig` satisfies it. */
+export interface ModelConfig {
+  title: string;
+  start?: string;
+  narrative?: NarrativeEngine;
+  scenes?: readonly string[];
+}
+
 /**
  * Build the model from documents as read off disk. Every caller that loads a project (CLI,
  * desktop session, authoring workspace, testkit) goes through here, so a change to how authored
  * input becomes a model is one edit rather than four. Takes the config fields it needs, not a
  * `ProjectConfig`: `@vn/model` does not depend on `@vn/config`.
  */
-export function modelFromInputs(
-  inputs: LoadedInputs,
-  opts: { title: string; start?: string },
-): ProjectModel {
+export function modelFromInputs(inputs: LoadedInputs, opts: ModelConfig): ProjectModel {
   return buildModel({
     title        : opts.title,
     start        : opts.start,
+    narrative    : opts.narrative,
+    sceneOrder   : opts.scenes,
     characterDocs: inputs.characterDocs,
     locationDocs : inputs.locationDocs,
     sceneDocs    : inputs.sceneDocs,

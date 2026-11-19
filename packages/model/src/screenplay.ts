@@ -10,7 +10,7 @@
  * projection with no such duty — it claims nothing about being re-importable, though the default
  * form is.
  */
-import type { Diagnostic, Scene } from '@vn/types';
+import type { Diagnostic, NarrativeStructure, Scene } from '@vn/types';
 import type { FountainScript, FrontMatterDoc } from '@vn/parse';
 import { canonicalScenes } from './canonical.js';
 import { sceneFromDoc } from './entities.js';
@@ -198,6 +198,8 @@ export function sceneChunksFromScript(
 export interface SceneGraph {
   scenes: Map<string, Scene>;
   entry?: string | undefined;
+  /** Where play goes from each scene; without one, the scenes' own branch markers. */
+  narrative?: Pick<NarrativeStructure, 'exits'>;
 }
 
 /** Options for {@link scriptFromScenes}. */
@@ -228,8 +230,8 @@ function stripMarkers(text: string): string {
 }
 
 /**
- * Order the scenes breadth-first from the entry, `next` before `choices` — the order a playthrough
- * tends to meet them in. Deliberately not the order the scenes are stored in: a directory sorts
+ * Order the scenes breadth-first from the entry along the narrative's exits, `next` before
+ * `choices` — the order a playthrough tends to meet them in. Deliberately not the order the scenes are stored in: a directory sorts
  * alphabetically, which produces a screenplay nobody can read.
  */
 function readingOrder(graph: SceneGraph): { ordered: Scene[]; unreachable: Scene[] } {
@@ -244,8 +246,9 @@ function readingOrder(graph: SceneGraph): { ordered: Scene[]; unreachable: Scene
     if (!scene) continue;
     seen.add(id);
     ordered.push(scene);
-    if (scene.next) queue.push(scene.next);
-    for (const choice of scene.choices) queue.push(choice.goto);
+    const exits = graph.narrative?.exits(id) ?? scene;
+    if (exits.next) queue.push(exits.next);
+    for (const choice of exits.choices) queue.push(choice.goto);
   }
   return { ordered, unreachable: [...graph.scenes.values()].filter((s) => !seen.has(s.id)) };
 }

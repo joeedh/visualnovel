@@ -82,6 +82,10 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
 
 ## Contracts
 
+- **A scene's edges are the narrative engine's.** `buildPlayable` writes `choices` and
+  `next` from `model.narrative.exits`. Under `branching` they are the scene's own markers.
+  Under `linear`, `choices` is empty and `next` names the following scene in `scenes:`, so
+  a linear story needs nothing the format did not already have.
 - **Per-line art uses real line ids.** Scenes contain structured `lines` (`SceneLine`,
   derived from the screenplay at model build with stable `${sceneId}:L<n>` ids), and
   `Shot.coversLines` binds shots to exact lines. The exporter walks `scene.lines`,

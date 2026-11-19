@@ -13,6 +13,7 @@ after `pnpm build`.
 - [`--mock`, and what a real run needs](#--mock-and-what-a-real-run-needs)
 - [Project layout on disk](#project-layout-on-disk)
     - [A scene is one file](#a-scene-is-one-file)
+    - [How the scenes make a story](#how-the-scenes-make-a-story)
 - [The sample project](#the-sample-project)
 
 <!-- tocstop -->
@@ -150,6 +151,45 @@ a warning to delete or rename it `.fountain.imported`. For what a body may conta
 [`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific).
 For why the reader alone decides, see the `script.sceneSourcesOneLoad` contract in
 [`sources.ts`](../../packages/scriptedit/src/sources.ts).
+
+### How the scenes make a story
+
+`narrative:` in `project.yaml` picks the engine that reads the story's structure from the
+scenes. Which scenes it calls live decides what a run draws: a scene that is not live gets
+no storyboard and no shots.
+
+- **`branching`** is the default, and what a project without the key gets. Each scene's
+  `[[choice: … -> id]]` and `[[next: id]]` markers are its edges, play starts at `start:`,
+  and a scene is live when `start:` reaches it. A scene nothing reaches is reported as
+  `unreachable_scene` (a warning), and a marker naming no scene as `dangling_goto` (an
+  error).
+- **`linear`** plays the scenes listed under `scenes:`, in that order, and every listed
+  scene is live. The list is the only source of the order, because the directory has none.
+  The playable gives each scene a `next` edge to the one after it.
+
+```yaml
+narrative: linear
+scenes:
+    - morning
+    - lunch
+    - dusk
+```
+
+A `linear` project reports these diagnostics:
+
+| Code                     | Severity | When                                                          |
+| ------------------------ | -------- | ------------------------------------------------------------- |
+| `missing_scene_list`     | error    | there are scenes, and `scenes:` is absent or empty            |
+| `unknown_listed_scene`   | error    | `scenes:` names an id that has no `scenes/<id>.md`            |
+| `duplicate_listed_scene` | error    | `scenes:` names an id twice; the second is ignored            |
+| `linear_branch_marker`   | error    | a scene has a `[[choice:]]` or `[[next:]]` marker, not obeyed |
+| `linear_start`           | error    | `start:` is set to anything but the first listed scene        |
+| `unlisted_scene`         | warning  | a scene file is not in `scenes:`, so it is not live           |
+
+`start:` is optional under `linear`, since the first listed scene is the entry. A
+`scenes:` list in a `branching` project is the error `scenes_without_linear`, rather than
+being ignored. These diagnostics reach the CLI, the desktop app and `vnauthor` the same
+way every other model diagnostic does.
 
 ## The sample project
 

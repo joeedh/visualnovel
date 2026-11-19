@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import type { SheetGroup } from './production/storyboard.js';
 import type { ChunkEdit, ChunkRef, PromptOverride } from './prompt.js';
+import { NARRATIVE_ENGINES } from './script/narrative.js';
 import { ANTHROPIC_DEFAULTS } from './textmodels.js';
 
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'expected hex color');
@@ -387,6 +388,17 @@ export const projectConfig = z.object({
    * this schema cannot. A project that has not been imported yet has no scene ids to choose from.
    */
   start              : z.string().min(1).optional(),
+  /**
+   * Which narrative engine reads the story: `branching` follows each scene's markers from
+   * `start:`, and `linear` plays the scenes {@link scenes} lists. Absent means `branching`.
+   */
+  narrative          : z.enum(NARRATIVE_ENGINES).default('branching'),
+  /**
+   * The order a `linear` project plays its scenes in, by id. A directory has no document order,
+   * so this list is the only place a linear order can come from. The model checks it against the
+   * scenes, as it checks `start:`, and reports a list under `branching` as an error.
+   */
+  scenes             : z.array(z.string().min(1)).optional(),
   /**
    * A random id, written the first time the project claims a picture in a shared `assets/`
    * repository. It names this project's claims there; a hand-copied folder keeps it.

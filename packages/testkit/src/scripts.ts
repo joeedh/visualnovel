@@ -1,6 +1,6 @@
 /**
  * Named screenplay topologies. A test names the shape it needs — a fork, a rejoin, a dead
- * branch — instead of inlining Fountain, so the same four scripts back every fixture and a
+ * branch — instead of inlining Fountain, so the same five scripts back every fixture and a
  * change to one is visible everywhere it is used.
  */
 
@@ -121,7 +121,38 @@ INT. HALL - NIGHT
 Nobody ever comes down here.
 `;
 
-export const SCRIPTS = { linear, branching, diamond, orphan } as const;
+/**
+ * Three scenes with no branch markers, for a `narrative: linear` project; play them in
+ * {@link LISTED_ORDER}. Their ids sort differently from that order, so the directory cannot
+ * supply it. Not to be confused with {@link SCRIPTS}' `linear`, which is a branching script.
+ */
+const listed = `INT. DORM ROOM - MORNING
+
+[[scene: morning]]
+
+Aiko's alarm goes off twice before she moves.
+
+AIKO
+Five more minutes.
+
+INT. CAFETERIA - DAY
+
+[[scene: lunch]]
+
+HARUKI
+You're late again.
+
+EXT. RIVERBANK - EVENING
+
+[[scene: dusk]]
+
+The two of them walk home along the water.
+`;
+
+/** The `scenes:` list `SCRIPTS.listed` is meant to be played in. */
+export const LISTED_ORDER = ['morning', 'lunch', 'dusk'] as const;
+
+export const SCRIPTS = { linear, branching, diamond, orphan, listed } as const;
 
 /** Name of a script in {@link SCRIPTS}. */
 export type ScriptName = keyof typeof SCRIPTS;

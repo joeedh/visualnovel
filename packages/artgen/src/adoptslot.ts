@@ -164,10 +164,7 @@ async function resolve(
   graph: TaskGraph,
 ): Promise<Decided<Resolved>> {
   const inputs = await loadInputs(deps.paths);
-  const model = modelFromInputs(inputs, {
-    title: deps.config.title,
-    ...(deps.config.start ? { start: deps.config.start } : {}),
-  });
+  const model = modelFromInputs(inputs, deps.config);
 
   // A shot's frame is stamped where the scene was decomposed, so this loads the storyboard into
   // the model too, where `resolveSlot` reads the same shots to compute the frame's identity

@@ -7,7 +7,6 @@
  * before writing rather than trusting that a check ran.
  */
 import type { LocationVariant, Outfit, ProductionData, ProjectModel, Shot } from '@vn/types';
-import type { ProjectConfig } from '@vn/config';
 import {
   applyCharacterEdit,
   applyLocationEdit,
@@ -17,6 +16,7 @@ import {
   wardrobeEntries,
   type CharacterEdit,
   type LocationEdit,
+  type ModelConfig,
 } from '@vn/model';
 import type { EntityDoc } from '@vn/parse';
 import {
@@ -76,9 +76,9 @@ export const promptsArtRungsShared = contract({
 export interface SetNotesDeps {
   /**
    * Only what the model is built with. An agent may hold a project whose `project.yaml` will not
-   * load, and neither field reaches a prompt — a full `ProjectConfig` satisfies this.
+   * load, and none of these fields reaches a prompt — a full `ProjectConfig` satisfies this.
    */
-  config: Pick<ProjectConfig, 'title' | 'start'>;
+  config: ModelConfig;
   paths: ProjectPaths;
 }
 
@@ -467,10 +467,7 @@ async function loadFor(
   target: ArtTarget,
 ): Promise<{ model: ProjectModel; docs: EntityDoc[] }> {
   const inputs = await loadInputs(deps.paths);
-  const model = modelFromInputs(inputs, {
-    title: deps.config.title,
-    ...(deps.config.start ? { start: deps.config.start } : {}),
-  });
+  const model = modelFromInputs(inputs, deps.config);
   const docs = target.kind === 'location' ? inputs.locationDocs : inputs.characterDocs;
   return { model, docs };
 }

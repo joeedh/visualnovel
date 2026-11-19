@@ -32,7 +32,14 @@ try {
 
 In-memory factories (`character`, `location`, `scene`, `model`) are also exported. Unit
 tests of the "pure" (side-effect-free) planners use them instead of building fixtures on
-disk, which would add noise.
+disk, which would add noise. A factory model's scenes are all live; `liveOnly(live, rest)`
+is the stand-in narrative a test assigns to `model.narrative` to make only some of them
+live.
+
+`SCRIPTS.listed` is the one script for a `narrative: linear` project, played in
+`LISTED_ORDER`:
+`makeProject({ script: SCRIPTS.listed, config: { narrative: 'linear', scenes: [...LISTED_ORDER] } })`.
+`SCRIPTS.linear`, despite its name, is a two-scene branching script joined by `[[next:]]`.
 
 ## Contracts
 

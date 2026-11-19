@@ -85,10 +85,7 @@ export function workspaceArtGen(workspace: Workspace, opts: { mock?: boolean } =
   /** The project as it is right now, plus the ref loader handed to the providers. */
   async function open() {
     const config = await loadConfig(workspace.root);
-    const model = modelFromInputs(await loadInputs(workspace.paths), {
-      title: config.title,
-      start: config.start,
-    });
+    const model = modelFromInputs(await loadInputs(workspace.paths), config);
     const store = await AssetStore.open(workspace.paths);
     const loadRef = async (ref: { hash: string; ext: string }) => ({
       bytes: await store.read(ref),

@@ -475,10 +475,7 @@ describe('createWorkspace', () => {
     expect(config).toMatchObject({ title: 'My Story', start: START_SCENE });
 
     // The skeleton exists so an author's first sight of a new project is not a red count.
-    const model = modelFromInputs(await loadInputs(new ProjectPaths(dir)), {
-      title: config.title,
-      start: config.start,
-    });
+    const model = modelFromInputs(await loadInputs(new ProjectPaths(dir)), config);
     expect(model.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect([...model.scenes.keys()]).toEqual([START_SCENE]);
     expect(model.entry).toBe(START_SCENE);

@@ -652,7 +652,7 @@ export async function readProject(dir: string, timing?: PhaseTimer): Promise<Loa
   const inputs = timing
     ? await timing.measure('inputsReadMs', () => loadInputs(paths))
     : await loadInputs(paths);
-  const build = () => modelFromInputs(inputs, { title: config.title, start: config.start });
+  const build = () => modelFromInputs(inputs, config);
   const model = timing ? timing.measureSync('modelBuildMs', build) : build();
   const store = timing
     ? await timing.measure('assetsReadMs', () => AssetStore.open(paths))

@@ -47,12 +47,9 @@ export interface PromoteResult {
   file?: string;
 }
 
-/** The model, off one load, with the title/entry the config names. */
+/** The model, off one load, with the title and story structure the config names. */
 function modelOf(config: ProjectConfig, inputs: LoadedInputs): ProjectModel {
-  return modelFromInputs(inputs, {
-    title: config.title,
-    ...(config.start ? { start: config.start } : {}),
-  });
+  return modelFromInputs(inputs, config);
 }
 
 /**
