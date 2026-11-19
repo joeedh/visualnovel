@@ -1007,6 +1007,125 @@ that adds this note.** As built:
     - `solveagreement.test.ts` goes with `buildSlotGraph` and `slotagreement.test.ts`. Its
       testkit-script half can be pointed at the planner instead.
 
+**6b landed 2026-11-18 on the `planner` branch, as `d4a8ad8e` and `11f651be` and the
+commit that adds this note.** As built:
+
+- **The planner.** `planTasks` decomposes the scenes `stillsFamily.owed` lists that the P3
+  gate has cleared, then adds the task of every slot `solve(stillsFamily, facts)` gives an
+  identity, skipping a shot whose scene the gate holds. It stamps `prompt`, `image`,
+  `proseHash` and the panel boxes on the model's own shots, found by id, and writes the
+  shots file of every cleared live scene after the loop. The base refusal and the cycle
+  check are unchanged. It builds its facts twice per wave, before and after decomposing,
+  because the kinds memoise on the facts object.
+- **Solver additions.**
+    - `SlotKind.deps` (optional) and `SlotState.deps`: the task hashes a slot's task runs
+      after, asked only of a slot that resolved.
+    - `Family.owed`: the live units with no slots yet. `Solution` carries no `owed`,
+      because the planner has to decompose before it solves, so it asks the family
+      directly.
+    - `SlotKind.pick` takes the rows `candidates` listed, so the manifest is not scanned
+      twice per slot.
+    - No `ready` field and no `Family.gates`; see the gate decision below.
+- **Stills additions.**
+    - `planSlot` answers a slot's resolved task and its deps from one walk, and
+      `resolveSlot` is `planSlot` without the deps.
+    - `StillsFacts.assets` is optional. With no manifest, `planSlot` reads each sheet's
+      mirror for approval, and no slot holds a row.
+    - `resolveSlot` used to refuse two slots the planner plans: the `day` plate of a
+      location that declares no variants, and the sheet of an outfit a shot names that the
+      character sheet does not author. Both now resolve, through `variantIds` (new in
+      `@vn/model`'s `used.ts`) and `usedOutfits`.
+    - The kinds memoise each slot's plan on the facts object (a `WeakMap`), and group the
+      manifest once per facts object by the character, location or scene each row names,
+      so `candidatesFor` filters a few rows instead of the whole manifest. Facts are
+      therefore a snapshot, and `StillsFacts`'s doc comment says so.
+    - `slotGraph` in `family.ts` answers `solve` in the `SlotGraph` shape, for the readers
+      6e moves. `buildSlotGraph` is deleted.
+- **Readers moved to `slotGraph`.** The document tree
+  (`apps/desktop/src/main/session/docs.ts`), the gate pane (two calls in
+  `session/gate.ts`), the Task Graph pane (`session/pipeline.ts`), takes (three calls in
+  `packages/artgen/src/takes.ts`) and the gen-graph loader (`unrenderedBoundSlots` in
+  `packages/pipeline/src/graphload.ts`). `validateProject` and the agent tools did not
+  call `buildSlotGraph` directly.
+- **Tests.**
+    - `plannerwaves.test.ts` holds the planner equal to the oracle wave by wave, comparing
+      each wave's `kind hash deps` lines and the shots both stamp. It covers the oracle's
+      six fixtures, three of its own (a location with no variants, an outfit only a shot
+      names, two characters cast in the reverse of the model's order), and every testkit
+      script before and after approval, with and without `paths`. Reverting either
+      `resolveSlot` change fails the matching fixture.
+    - `slotplan.test.ts` replaces `slotagreement.test.ts` and `solveagreement.test.ts`. It
+      keeps the agreement cases and stage 0's staging-sheet cases, against `solve`, and
+      its testkit half checks that a reader's facts promise what the planner plans that
+      wave, at four points per script.
+    - The `buildSlotGraph` describe in `slotgraph.test.ts` is rewritten against `solve`,
+      with one test holding `slotGraph` equal to it. The toy family gains `deps` and
+      `owed`.
+- **Setup.** `pipeline` may import `constraint-solver` (lintrix allow-list,
+  `package.json`, `pnpm-lock.yaml` by hand; `pnpm install --offline --frozen-lockfile`
+  accepts it).
+- **Decisions.**
+    - **The gate stays the planner's `sceneUnblocked` check.** Keeping it cost nothing:
+      the planner filters a slot's `unit` through a per-wave memo of `sceneUnblocked`, and
+      the same check gates decomposition. Adding `Family.gates` in 6b would have widened
+      the stage without changing a hash.
+    - **Deps come from `planSlot`, not from refs.** A shot's refs include the slots of
+      references an author attached, which `Task.deps` has never held, and a slot address
+      can lose its slot while its task is still done (a removed variant). `planSlot`
+      computes the plate and sheet task hashes in the same walk that finds their outputs,
+      as the planner did.
+    - **The P2–P7 enumeration left `planner.ts` in the first commit.** `planTasks`'s body
+      was that enumeration, so replacing it removed it; a dead copy would have been
+      unreferenced code, and the oracle already holds the frozen copy for a revert. The
+      second commit deleted `buildSlotGraph` and the agreement tests.
+    - **The graph's insertion order changed.** The planner used to add each character's
+      portrait and then its sheets; it now adds slots in the solver's order, so every
+      portrait precedes every sheet, and sheets follow `usedOutfits`' order rather than
+      `allCharacters`'. `graph.ready()` and so the pool's start order follow insertion
+      order. Hashes, deps and stamps are unchanged, and no test depended on the order.
+    - **Shots files are written after the loop.** The planner used to write each scene's
+      file before decomposing the next scene, so a stop during a later decomposition no
+      longer rewrites the earlier scenes' files that wave. The next pass writes them.
+- **Timing.** Per wave, median of 51 runs, from a throwaway scratchpad script, on the
+  largest testkit project (`branching`, approved and drawn, then from an empty graph) and
+  a copy of `examples/mySampleRepo` (149 manifest rows). Before `pick` took the rows and
+  the kinds memoised plans and grouped the manifest, the solver-based planner took 2.0x to
+  2.4x master's time on the sample and 1.6x to 2.05x on `branching`. After them:
+
+    | Project             | Wave | Tasks | Master  | 6b      | Ratio |
+    | ------------------- | ---- | ----- | ------- | ------- | ----- |
+    | branching, drawn    | 0    | 19    | 0.21 ms | 0.34 ms | 1.62  |
+    | branching, drawn    | 1    | 19    | 0.20 ms | 0.32 ms | 1.60  |
+    | branching, fresh    | 0    | 12    | 0.15 ms | 0.24 ms | 1.60  |
+    | branching, fresh    | 1    | 19    | 0.20 ms | 0.33 ms | 1.65  |
+    | branching, fresh    | 2    | 19    | 0.19 ms | 0.31 ms | 1.63  |
+    | mySampleRepo, drawn | 0    | 27    | 0.62 ms | 0.95 ms | 1.53  |
+    | mySampleRepo, drawn | 1    | 27    | 0.61 ms | 1.14 ms | 1.87  |
+    | mySampleRepo, fresh | 0    | 17    | 0.40 ms | 0.62 ms | 1.55  |
+    | mySampleRepo, fresh | 1    | 27    | 0.50 ms | 0.80 ms | 1.60  |
+    | mySampleRepo, fresh | 2    | 27    | 0.51 ms | 0.76 ms | 1.49  |
+
+    The other four testkit scripts land between 1.4x and 1.9x, except `orphan` (5 tasks,
+    about 0.05 ms), where fixed per-wave cost puts it at 2.4x. The remaining cost is
+    per-slot work the readers need and the planner discards: candidates, refs, labels and
+    approval.
+
+- **Contracts.** One, so the index holds 36 and `contracts.json` is 73 KB:
+  `planning.incremental` in `packages/pipeline/src/planner.ts`, pinned by
+  `plannerwaves.test.ts`. Its `detail` carries the `vngen cost` undercount and the deps
+  rule. The `detail` of `takes.approvedMeansAccepted` and `planning.sheetsOnlyWhenWorn`,
+  which named `buildSlotGraph`, is reworded.
+- **For 6c:**
+    - The gate to replace is `cleared` in `planTasks`: it filters decomposition and every
+      slot with a `unit`. `plannerwaves.test.ts`'s "a gate held by a non-subject" fixture
+      covers the case where a shot resolves while its scene is still gated.
+    - Facts are snapshots. A builder that mutates the model or the task log between solves
+      must build new facts, or the kinds answer from their memo.
+    - `slotGraph` is a 6e wrapper. Its eight call sites, in five files, are listed above.
+    - `SlotKind.pick` now takes the candidate rows; 6d replaces `pick` with the solver's
+      own rule.
+    - `oracle.ts` and `oracle.test.ts` still run, beside `plannerwaves.test.ts`, until 6e.
+
 The plan as written before 6a landed:
 
 The core of the plan. It runs as five commits, each green.
