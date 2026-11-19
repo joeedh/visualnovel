@@ -12,6 +12,7 @@ import {
   takesCurrencyExclusive,
 } from './family.js';
 import { promptsRefsAcyclic } from './refcycle.js';
+import { scriptProseDriftReported } from './drift.js';
 import { identityStagingSheet } from './sheet.js';
 import { promptsDecomposeByLineId, providersTextFallback } from './storyboard.js';
 
@@ -27,4 +28,5 @@ export const CONTRACTS: readonly Contract[] = [
   takesApprovedMeansAccepted,
   takesCurrencyExclusive,
   gatePerUnit,
+  scriptProseDriftReported,
 ];

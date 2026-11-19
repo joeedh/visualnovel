@@ -63,6 +63,27 @@
       "declared": "packages/stills/src/family.ts"
     },
     {
+      "id"      : "graphs.editInvalidates",
+      "rule": "Editing a generation graph bound to a slot moves no task hash, so it is reported as drift: the output node's authored hash differs from its last completed run's, or the node never ran and the graph is not the default one. A run redraws a drifted planned task once.",
+      "prevents": "A `done` record keeping a picture the edited graph would no longer draw for the life of the project, or a slot redrawn on every run whether or not anyone edited its graph.",
+      "subjects": [
+        "function:packages/constraint-solver/src/drift.ts#boundDrift",
+        "function:packages/constraint-solver/src/solve.ts#solve",
+        "function:packages/pipeline/src/graphrun.ts#graphFacts",
+        "function:packages/pipeline/src/graphrun.ts#driftedTasks",
+        "function:packages/scheduler/src/scheduler.ts#requeueDrifted",
+        "function:packages/gengraph/src/drift.ts#graphDrift",
+        "function:packages/gengraph/src/drift.ts#isDefaultGraph"
+      ],
+      "see": [
+        "docs/reference/gen-graphs.md#identity-the-journal-and-drift",
+        "docs/plans/node-based-asset-generation.md",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+      ],
+      "detail": "A bound graph runs the slot, and the graph is the slot's runner rather than part of what the slot is, so editing it never moves the task hash; the difference shows as drift. `graphFacts` summarises each bound slot as a `BoundGraphFact`, and `boundDrift` decides it; `solve` reports it on `SlotState.drift` when the facts carry `graphs`. `graphDrift` recomputes each Output node's authored hash and compares it against the journal's last `done` record for that node, for the report. `requeueDrifted` (`@vn/scheduler`, through `driftedTasks`) returns every planned `done` or `needs_human` task whose bound graph has drifted to `pending`. It runs once per run, before the wave loop, and `RunSummary.redrawn` names the tasks it requeued. A graph bound to a slot the built-in runner already drew has no `done` record for its output, so `graphDrift` reports nothing for it, but the slot is still drifted unless `isDefaultGraph` finds the graph equivalent to `defaultSlotGraph` for the slot, which draws what the built-in runner drew. That comparison uses authored hashes, so a default graph whose nodes were only moved or joined by unconnected nodes still counts as the default. The redraw writes the output's first `done` record, so it is asked for once. Drift is measured on `authoredHashes`, which reads each host-seeded input (the derived prompt, the task refs) as though nothing had been seeded onto it, and not on the task's own `nodeHash`, which includes the seeding and would report drift after every run. A successful redraw writes the graph's new authored hash into the journal, which clears the drift; that holds for a redraw the executor resumed from a cached answer too, because a node that resumes while its latest `done` record carries stale hashes writes a fresh `done` record under the current ones. Without that record an edit that leaves the output unchanged (an empty `{varC}` added to a template) would keep the slot drifted and requeue it on every run. A failed redraw writes no such record, so the failure goes to `requeueFailed` and its own attempt budget rather than being requeued here forever. The requeue happens at run time rather than at the graph write, because undo excludes `vngen/state/`: undoing a graph edit restores the authored hash, so the drift disappears before anything is redrawn. Editing prose is the opposite case; see `script.proseDriftReported`.",
+      "declared": "packages/constraint-solver/src/drift.ts"
+    },
+    {
       "id"      : "graphs.groupNodeKey",
       "rule": "A node in a generation graph is addressed by its key, the chain of ids from the root (`3/7` for node 7 inside instance 3), never by its id alone. The hashes, the journal, the executor's targets, the cost walk and every `gengraph.*` command's `node` prop use it.",
       "prevents": "A node inside a group instance sharing its id with a root node, since every graph's ids start at zero, so the two would share a hash, a journal record or a command target.",
@@ -515,6 +536,26 @@
       "declared": "packages/model/src/outfits.ts"
     },
     {
+      "id"      : "script.proseDriftReported",
+      "rule": "Editing a scene's prose never invalidates a frame's art, so drift is reported: `driftOf` compares the hash of a frame's covered lines, stamped with its image, against the same hash now, and a drifted frame's shot slot says so on `SlotState.drift`.",
+      "prevents": "A frame silently illustrating words the scene no longer contains, or a stored flag that goes stale, comes back from an old commit, or misses an edit that took another path.",
+      "subjects": [
+        "function:packages/stills/src/drift.ts#driftOf",
+        "function:packages/stills/src/drift.ts#proseHash",
+        "function:packages/stills/src/family.ts#shotKind",
+        "function:packages/stills/src/prompts.ts#buildShotPrompt",
+        "module:packages/pipeline/src/drift.ts",
+        "command:story.setLineText",
+        "slot:shot"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#line-editing-in-floor",
+        "docs/reference/desktop-app-editors-story.md#shot-coverage"
+      ],
+      "detail": "`buildShotPrompt` reads neither `coversLines` nor line text on a frame, because prose reaches only the P7 reviewer spec, which never enters a task's `inputs`. Retyping a covered line therefore rehashes nothing and re-renders nothing, and the frame still illustrates words the scene no longer contains, so it is checked against the words it covers. A page under `lettering: model` is the one exception: its lettered lines are in its prompt, so retyping one, or moving one between panels, re-keys the page. Drift on a page therefore only ever means a line that changed without changing the prompt, which under `lettering: runner` is every line. `Shot.proseHash` records a hash of the covered lines' text at the moment the image was produced. It is persisted under `shotData`, is written only beside an image, and is stamped only when the bytes are new, so a rerun that reports the same image cannot re-baseline the prose beneath it or clear a drift nobody acted on. `driftOf` re-derives the comparison on every read and returns `unrendered`, `current`, `drifted` or `unknown`; a shot rendered before the field existed returns `unknown`, so it never reads as `current` or as `drifted`. `@vn/pipeline`'s `drift.ts` re-exports it. The value is derived rather than stored because `shotData` is rewritten wholesale each pass, and it is not the task hash, which is the hash prose cannot move. The hash walks `scene.lines`, so reordering `coversLines` does not count as an edit while extending coverage does, since the question is whether this frame illustrates the words it is against. Every surface that can change prose shows the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it. A bound generation graph is the opposite case: editing one does invalidate the slot (`graphs.editInvalidates`).",
+      "declared": "packages/stills/src/drift.ts"
+    },
+    {
       "id"      : "script.sceneEditAllOrNothing",
       "rule": "A scene edit that spans several chunk files is computed and proved in full before any file is written, and an existing chunk keeps its front-matter block byte for byte; only the body is rewritten.",
       "prevents": "A splice refused on the third file leaving the first two already changed, and a re-serialized YAML block silently dropping the comments the author wrote in it.",
@@ -751,6 +792,7 @@
     "command:story.newShot": ["planning.storyboardOnRequest"],
     "command:story.requireCast"                                          : ["prompts.reviewerSpec"],
     "command:story.setHeading": ["identity.headingRekeysShots", "script.headingRestagesShots"],
+    "command:story.setLineText": ["script.proseDriftReported"],
     "command:story.setSheetGroup": ["identity.stagingSheet"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:scenes": ["script.sceneOneFile", "script.sceneSourcesOneLoad"],
@@ -778,10 +820,12 @@
     "function:packages/artgen/src/setnotes.ts#setArtSeed": ["prompts.artRungsShared"],
     "function:packages/artgen/src/takes.ts#migrateCurrent": ["takes.currencyExclusive"],
     "function:packages/artgen/src/takes.ts#repairCurrent": ["takes.currencyExclusive"],
+    "function:packages/constraint-solver/src/drift.ts#boundDrift": ["graphs.editInvalidates"],
     "function:packages/constraint-solver/src/keep.ts#keepSet": ["collect.unusedRemoved"],
     "function:packages/constraint-solver/src/refuse.ts#baseRefusal": ["storage.baseUnavailable"],
     "function:packages/constraint-solver/src/refuse.ts#projectRefusal": ["storage.baseUnavailable"],
     "function:packages/constraint-solver/src/solve.ts#solve": [
+      "graphs.editInvalidates",
       "identity.slotsBeforeTasks",
       "planning.incremental",
       "storage.baseUnavailable",
@@ -798,6 +842,8 @@
     ],
     "function:packages/gengraph/src/collect.ts#applyCollection"          : ["collect.applyOrder"],
     "function:packages/gengraph/src/collect.ts#collectProject": ["collect.unusedRemoved"],
+    "function:packages/gengraph/src/drift.ts#graphDrift": ["graphs.editInvalidates"],
+    "function:packages/gengraph/src/drift.ts#isDefaultGraph": ["graphs.editInvalidates"],
     "function:packages/gengraph/src/edit.ts#decideGenEdit": ["graphs.instanceEditsOverride"],
     "function:packages/gengraph/src/execute.ts#sharedAncestors": ["identity.stagingSheet"],
     "function:packages/gengraph/src/migrate.ts#migrateGraphJSON": ["graphs.socketRenameMigrates"],
@@ -832,6 +878,8 @@
     "function:packages/pipeline/src/decompose.ts#decomposeAllPreview": [
       "planning.storyboardOnRequest"
     ],
+    "function:packages/pipeline/src/graphrun.ts#driftedTasks": ["graphs.editInvalidates"],
+    "function:packages/pipeline/src/graphrun.ts#graphFacts": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#runBoundGraph": ["identity.stagingSheet"],
     "function:packages/pipeline/src/p1.ts#deterministicBreakdown": ["providers.textFallback"],
     "function:packages/pipeline/src/p1.ts#enrichLocation": ["providers.textFallback"],
@@ -848,6 +896,7 @@
       "providers.modelIdRoutes",
       "providers.textFallback"
     ],
+    "function:packages/scheduler/src/scheduler.ts#requeueDrifted": ["graphs.editInvalidates"],
     "function:packages/scriptedit/src/apply.ts#planSceneEdit": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/apply.ts#proveScenes": [
       "script.sceneEditAllOrNothing",
@@ -868,11 +917,14 @@
     "function:packages/stills/src/chunks.ts#composePrompt"               : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#effectiveChunks"             : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#renderPrompt"                : ["prompts.clauseList"],
+    "function:packages/stills/src/drift.ts#driftOf": ["script.proseDriftReported"],
+    "function:packages/stills/src/drift.ts#proseHash": ["script.proseDriftReported"],
     "function:packages/stills/src/family.ts#gateStatus": [
       "gate.perUnit",
       "script.livenessFromNarrative"
     ],
     "function:packages/stills/src/family.ts#heldAccepted": ["takes.approvedMeansAccepted"],
+    "function:packages/stills/src/family.ts#shotKind": ["script.proseDriftReported"],
     "function:packages/stills/src/family.ts#stillsFamily": [
       "collect.unusedRemoved",
       "gate.perUnit",
@@ -889,6 +941,7 @@
       "identity.headingRekeysShots",
       "prompts.artNotesAppended"
     ],
+    "function:packages/stills/src/prompts.ts#buildShotPrompt": ["script.proseDriftReported"],
     "function:packages/stills/src/prompts.ts#modelFor": ["prompts.artRungsShared"],
     "function:packages/stills/src/prompts.ts#seedFor": ["prompts.artRungsShared"],
     "function:packages/stills/src/prompts.ts#shotInputs": [
@@ -961,6 +1014,7 @@
     "module:packages/model/src/outfits.ts": ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts": ["script.sceneRoundTrip"],
     "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
+    "module:packages/pipeline/src/drift.ts": ["script.proseDriftReported"],
     "module:packages/pipeline/src/planner.ts": [
       "planning.incremental",
       "planning.sheetsOnlyWhenWorn"
@@ -1009,6 +1063,7 @@
       "gate.perUnit",
       "identity.slotsBeforeTasks",
       "identity.stagingSheet",
+      "script.proseDriftReported",
       "takes.approvedMeansAccepted",
       "takes.currencyExclusive"
     ],

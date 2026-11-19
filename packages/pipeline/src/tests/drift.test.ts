@@ -7,6 +7,10 @@
  */
 import { SCRIPTS, makeProject } from '@vn/testkit';
 import type { Scene, SceneLine, Shot, ShotsFile } from '@vn/types';
+import { pins } from '@vn/contracts';
+import { solve } from '@vn/constraint-solver';
+import { scriptProseDriftReported, stillsFamily } from '@vn/stills';
+import { character, location, model } from '@vn/testkit';
 import { driftOf, proseHash } from '../drift.js';
 
 const line = (id: string, text: string): SceneLine => ({ id, kind: 'narration', text });
@@ -40,52 +44,74 @@ function rendered(coversLines: string[], from: Scene = SCENE): Shot {
   };
 }
 
-describe('driftOf', () => {
-  it('is current while the covered lines say what they said', () => {
-    expect(driftOf(SCENE, rendered(['s:L1', 's:L2']))).toBe('current');
-  });
+describe(pins(scriptProseDriftReported), () => {
+  describe('driftOf', () => {
+    it('is current while the covered lines say what they said', () => {
+      expect(driftOf(SCENE, rendered(['s:L1', 's:L2']))).toBe('current');
+    });
 
-  it('drifts when a covered line is retyped', () => {
-    const shot = rendered(['s:L1', 's:L2']);
-    const after = scene([LINES[0]!, line('s:L2', 'She bows, a little too deeply.'), LINES[2]!]);
-    expect(driftOf(after, shot)).toBe('drifted');
-  });
+    it('drifts when a covered line is retyped', () => {
+      const shot = rendered(['s:L1', 's:L2']);
+      const after = scene([LINES[0]!, line('s:L2', 'She bows, a little too deeply.'), LINES[2]!]);
+      expect(driftOf(after, shot)).toBe('drifted');
+    });
 
-  it('does not drift when a line the shot does not cover is retyped', () => {
-    const shot = rendered(['s:L1', 's:L2']);
-    const after = scene([LINES[0]!, LINES[1]!, line('s:L3', 'Rain, then nothing.')]);
-    expect(driftOf(after, shot)).toBe('current');
-  });
+    it('does not drift when a line the shot does not cover is retyped', () => {
+      const shot = rendered(['s:L1', 's:L2']);
+      const after = scene([LINES[0]!, LINES[1]!, line('s:L3', 'Rain, then nothing.')]);
+      expect(driftOf(after, shot)).toBe('current');
+    });
 
-  it('does not drift when only the order of `coversLines` changes', () => {
-    // Coverage is a set; the hash walks the scene, so an array reshuffle is not an edit.
-    const shot = rendered(['s:L1', 's:L2']);
-    shot.coversLines = ['s:L2', 's:L1'];
-    expect(driftOf(SCENE, shot)).toBe('current');
-  });
+    it('does not drift when only the order of `coversLines` changes', () => {
+      // Coverage is a set; the hash walks the scene, so an array reshuffle is not an edit.
+      const shot = rendered(['s:L1', 's:L2']);
+      shot.coversLines = ['s:L2', 's:L1'];
+      expect(driftOf(SCENE, shot)).toBe('current');
+    });
 
-  it('drifts when the shot is extended over a line it was not made from', () => {
-    // The frame does not illustrate s:L3, so extending coverage over it counts as drift
-    const shot = rendered(['s:L1']);
-    shot.coversLines = ['s:L1', 's:L3'];
-    expect(driftOf(SCENE, shot)).toBe('drifted');
-  });
+    it('drifts when the shot is extended over a line it was not made from', () => {
+      // The frame does not illustrate s:L3, so extending coverage over it counts as drift
+      const shot = rendered(['s:L1']);
+      shot.coversLines = ['s:L1', 's:L3'];
+      expect(driftOf(SCENE, shot)).toBe('drifted');
+    });
 
-  it('reads unknown, never drifted, for a shot rendered before the hash existed', () => {
-    const shot = rendered(['s:L1']);
-    delete shot.proseHash;
-    expect(driftOf(SCENE, shot)).toBe('unknown');
-  });
+    it('reads unknown, never drifted, for a shot rendered before the hash existed', () => {
+      const shot = rendered(['s:L1']);
+      delete shot.proseHash;
+      expect(driftOf(SCENE, shot)).toBe('unknown');
+    });
 
-  it('reads unrendered when there is no frame to be stale', () => {
-    const shot = rendered(['s:L1']);
-    delete shot.image;
-    expect(driftOf(SCENE, shot)).toBe('unrendered');
-  });
+    it('reads unrendered when there is no frame to be stale', () => {
+      const shot = rendered(['s:L1']);
+      delete shot.image;
+      expect(driftOf(SCENE, shot)).toBe('unrendered');
+    });
 
-  it('ignores a covered id the scene no longer has', () => {
-    // `readShots` drops these on load, so the hash must agree with the shot as loaded.
-    expect(proseHash(SCENE, ['s:L1', 's:L99'])).toBe(proseHash(SCENE, ['s:L1']));
+    it('ignores a covered id the scene no longer has', () => {
+      // `readShots` drops these on load, so the hash must agree with the shot as loaded.
+      expect(proseHash(SCENE, ['s:L1', 's:L99'])).toBe(proseHash(SCENE, ['s:L1']));
+    });
+
+    describe('on a solved shot slot', () => {
+      /** The scene `s` with one rendered shot over its first two lines, solved after `lines`. */
+      function solved(lines: SceneLine[]) {
+        const m = model([character('aiko')], [scene(lines)], [location('roof')]);
+        m.production.set('s', { shots: [rendered(['s:L1', 's:L2'])] });
+        return solve(stillsFamily, { model: m, tasks: { get: () => undefined } }).slots.get(
+          'shot:s/s__a',
+        )!;
+      }
+
+      it('reports a retyped covered line as prose drift', () => {
+        const after = [LINES[0]!, line('s:L2', 'She bows, a little too deeply.'), LINES[2]!];
+        expect(solved(after).drift.map((d) => d.source)).toEqual(['prose']);
+      });
+
+      it('reports nothing while the covered lines are unchanged', () => {
+        expect(solved(LINES).drift).toEqual([]);
+      });
+    });
   });
 });
 

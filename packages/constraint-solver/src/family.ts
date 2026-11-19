@@ -5,6 +5,7 @@
  */
 import type { AnyTask, Asset, BaseAssets, TaskInputs, TaskKind } from '@vn/types';
 import type { Contract } from '@vn/contracts';
+import type { BoundGraphFact, DriftReason } from './drift.js';
 import type { DrawnFrom } from './suspend.js';
 
 /** A decision that either carries a plan or names, in a sentence, why there is none. */
@@ -18,6 +19,8 @@ export interface SolverFacts {
   readonly tasks: { get(hash: string): AnyTask | undefined };
   /** The base asset root. An `unavailable` one refuses the project; absent means no opinion. */
   readonly base?: BaseAssets;
+  /** The generation graph bound to each slot, by address. Absent means graph drift is not read. */
+  readonly graphs?: ReadonlyMap<string, BoundGraphFact>;
 }
 
 /** The take a slot holds, by the solver's `pick`, which `approved` is decided from. */
@@ -59,6 +62,8 @@ export interface SlotKind<F extends SolverFacts, B = unknown, K extends TaskKind
    * than one current row, the first of them that is current stays current.
    */
   named?(binding: B, facts: F): ReadonlySet<string>;
+  /** Lists why the slot's picture is out of date by the family's own rules, beyond graph drift. */
+  drift?(binding: B, facts: F): readonly DriftReason[];
   /** Says whether a person has approved what fills this slot. */
   approved(binding: B, facts: F, held: Held): boolean;
   /**

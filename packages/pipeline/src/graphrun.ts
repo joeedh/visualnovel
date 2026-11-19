@@ -9,7 +9,6 @@ import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn
 import { shotsOf } from '@vn/types';
 import { slotKey } from '@vn/stills';
 import {
-  activeOutputs,
   applyRecord,
   bindSlots,
   genNodeSpec,
@@ -26,7 +25,8 @@ import type {
   GraphJournal,
   GraphJournalRecord,
 } from '@vn/gengraph';
-import { executeGenGraph, graphDrift, isDefaultGraph } from '@vn/gengraph/state';
+import { authoredHashes, executeGenGraph, isDefaultGraph } from '@vn/gengraph/state';
+import { boundDrift, type BoundGraphFact } from '@vn/constraint-solver';
 import type { GenRunContext, GenRunResult } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
 import { checkRequest, checkRequestWrite } from '@vn/providers';
@@ -149,6 +149,14 @@ function sceneOfShot(model: ProjectModel, shotId: string): string | undefined {
 
 let registered = false;
 
+/** Registers the built-in runtimes once, before any graph's nodes are read. */
+function ensureRuntimes(): void {
+  if (!registered) {
+    registerGenRuntimes();
+    registered = true;
+  }
+}
+
 /** The graph bound to this task's slot, with the built-in runtimes registered by then. */
 export function boundGraph(task: AnyTask, deps: RunDeps): GraphBinding | undefined {
   const runtime = deps.graphs;
@@ -161,54 +169,78 @@ export function boundGraph(task: AnyTask, deps: RunDeps): GraphBinding | undefin
     return undefined;
   }
 
-  if (!registered) {
-    registerGenRuntimes();
-    registered = true;
-  }
+  ensureRuntimes();
   return runtime.bound(slot);
 }
 
 /**
- * The tasks whose bound graph would draw something other than the picture their slot holds. A
- * task's hash does not move when a graph is edited, because the graph is the slot's runner
- * rather than part of what the slot is, so this is the only signal that the picture is out of
- * date. That covers a graph edited since it last drew the slot, and a graph that has never
- * drawn it but differs from `defaultSlotGraph`, which is what the built-in runner draws. The
- * second case is a slot drawn before the graph was bound to it. Each graph is compared once
- * however many tasks reach it.
+ * Summarises the graph bound to each slot named, for the solver's `boundDrift`: the output node's
+ * authored hash now, the one its last completed run recorded, and, for a node that never ran,
+ * whether the graph draws what the default graph draws. A slot no graph draws is left out. Each
+ * graph's authored hashes are computed once however many slots it binds.
  */
-export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[] {
-  const perGraph = new Map<Graph, ReadonlySet<GraphId>>();
-  const stale: AnyTask[] = [];
+export function graphFacts(
+  runtime: GraphRuntime,
+  slots: Iterable<string>,
+): Map<string, BoundGraphFact> {
+  ensureRuntimes();
+  const hashes = new Map<Graph, ReadonlyMap<GraphId, string>>();
+  const out = new Map<string, BoundGraphFact>();
 
-  for (const task of tasks) {
-    const binding = boundGraph(task, deps);
+  for (const slot of slots) {
+    const binding = out.has(slot) ? undefined : runtime.bound(slot);
     if (binding === undefined) {
       continue;
     }
 
-    let drifted = perGraph.get(binding.graph);
-    if (drifted === undefined) {
-      drifted = staleOutputs(binding.graph, binding.journal);
-      perGraph.set(binding.graph, drifted);
+    let authored = hashes.get(binding.graph);
+    if (authored === undefined) {
+      authored = authoredHashes(binding.graph);
+      hashes.set(binding.graph, authored);
     }
-    if (drifted.has(binding.target)) {
-      stale.push(task);
-    }
+    const now = authored.get(binding.target);
+    const last = binding.journal.lastDone.get(binding.target);
+    out.set(slot, {
+      node: String(binding.target),
+      ...(now === undefined ? {} : { authored: now }),
+      ...(last?.authoredHash === undefined ? {} : { recorded: last.authoredHash }),
+      drawn: last !== undefined,
+      ...(last === undefined ? { isDefault: isDefaultGraph(binding.graph, binding.target) } : {}),
+    });
   }
 
-  return stale;
+  return out;
 }
 
-/** Collects the drifted active outputs, plus those never run that differ from the default graph. */
-function staleOutputs(graph: Graph, journal: GraphJournal): Set<GraphId> {
-  const stale = new Set(graphDrift(graph, journal).map((d) => d.nodeId));
-  for (const { id } of activeOutputs(graph)) {
-    if (!journal.lastDone.has(id) && !isDefaultGraph(graph, id)) {
-      stale.add(id);
+/**
+ * The tasks whose bound graph would draw something other than the picture their slot holds, by
+ * the solver's `boundDrift` over `graphFacts`. A task's hash does not move when a graph is
+ * edited, so this is the only signal that the picture is out of date.
+ */
+export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[] {
+  const runtime = deps.graphs;
+  if (runtime === undefined) {
+    return [];
+  }
+
+  const slotted: { task: AnyTask; slot: string }[] = [];
+  for (const task of tasks) {
+    const slot = slotOfTask(task, deps.model);
+    if (slot !== undefined) {
+      slotted.push({ task, slot });
     }
   }
-  return stale;
+
+  const facts = graphFacts(
+    runtime,
+    slotted.map((s) => s.slot),
+  );
+  return slotted
+    .filter(({ slot }) => {
+      const fact = facts.get(slot);
+      return fact !== undefined && boundDrift(fact) !== undefined;
+    })
+    .map(({ task }) => task);
 }
 
 /**

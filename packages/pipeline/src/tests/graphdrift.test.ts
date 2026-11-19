@@ -16,7 +16,12 @@ import {
   registerGenRuntimes,
 } from '@vn/gengraph';
 import type { Node } from '@vn/gengraph';
-import { SCRIPTS, makeProject } from '@vn/testkit';
+import { emptyJournal } from '@vn/gengraph';
+import { pins } from '@vn/contracts';
+import { graphsEditInvalidates, solve } from '@vn/constraint-solver';
+import { stillsFamily } from '@vn/stills';
+import { SCRIPTS, character, makeProject, model, scene, location } from '@vn/testkit';
+import { graphFacts, type GraphBinding, type GraphRuntime } from '../index.js';
 
 jest.setTimeout(120_000);
 
@@ -54,131 +59,166 @@ function templateGraph(slot: string): { graph: Graph; text: GenTemplate } {
   return { graph, text };
 }
 
-describe('a run whose bound graph has not been edited', () => {
-  it('leaves the slot it already drew alone', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      const { graph } = templateGraph('portrait:aiko');
-      await p.run({ graphs: { [SLUG]: graph } });
+describe(pins(graphsEditInvalidates), () => {
+  describe('a run whose bound graph has not been edited', () => {
+    it('leaves the slot it already drew alone', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        const { graph } = templateGraph('portrait:aiko');
+        await p.run({ graphs: { [SLUG]: graph } });
 
-      // The prompt and refs a run seeds land on input defaults and so move the run hashes,
-      // which is why drift is measured against the graph's authored hashes instead. Without
-      // that, an unedited graph would ask to be redrawn on every run for ever.
-      const second = await p.run({ graphs: { [SLUG]: graph } });
+        // The prompt and refs a run seeds land on input defaults and so move the run hashes,
+        // which is why drift is measured against the graph's authored hashes instead. Without
+        // that, an unedited graph would ask to be redrawn on every run for ever.
+        const second = await p.run({ graphs: { [SLUG]: graph } });
 
-      expect(second.redrawn).toEqual([]);
-      expect(second.ran).toEqual([]);
-    } finally {
-      await p.cleanup();
-    }
+        expect(second.redrawn).toEqual([]);
+        expect(second.ran).toEqual([]);
+      } finally {
+        await p.cleanup();
+      }
+    });
   });
-});
 
-describe('a run whose bound graph has been edited', () => {
-  it('redraws the slot the edited graph fills, and nothing beside it', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
+  describe('a run whose bound graph has been edited', () => {
+    it('redraws the slot the edited graph fills, and nothing beside it', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        const { graph, text } = templateGraph('portrait:aiko');
+        const first = await p.run({ graphs: { [SLUG]: graph } });
+        const drawn = first.ran.find((t) => t.kind === 'portrait');
+        expect(drawn).toBeDefined();
+
+        setProp(text, 'template', '{varA}, in ink wash');
+        const second = await p.run({ graphs: { [SLUG]: graph } });
+
+        expect(second.redrawn).toEqual([drawn!.hash]);
+        expect(second.ran.map((t) => t.hash)).toEqual([drawn!.hash]);
+
+        const { store } = await p.reload();
+        const prompts = store
+          .manifest()
+          .filter((a) => a.kind === 'portrait')
+          .map((a) => a.prompt);
+        expect(prompts).toContainEqual(expect.stringMatching(/, in ink wash$/));
+      } finally {
+        await p.cleanup();
+      }
+    });
+
+    it('asks for the redraw once, because the redraw records the graph it ran', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        const { graph, text } = templateGraph('portrait:aiko');
+        await p.run({ graphs: { [SLUG]: graph } });
+
+        setProp(text, 'template', '{varA}, in ink wash');
+        await p.run({ graphs: { [SLUG]: graph } });
+        const third = await p.run({ graphs: { [SLUG]: graph } });
+
+        expect(third.redrawn).toEqual([]);
+        expect(third.ran).toEqual([]);
+      } finally {
+        await p.cleanup();
+      }
+    });
+  });
+
+  describe('a graph bound to a slot the built-in runner already drew', () => {
+    it('redraws the slot once when the graph draws something else', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        const first = await p.run({});
+        const drawn = first.ran.find((t) => t.kind === 'portrait');
+        expect(drawn).toBeDefined();
+
+        const { graph, text } = templateGraph('portrait:aiko');
+        setProp(text, 'template', '{varA}, in ink wash');
+        const second = await p.run({ graphs: { [SLUG]: graph } });
+
+        expect(second.redrawn).toEqual([drawn!.hash]);
+        expect(second.ran.map((t) => t.hash)).toEqual([drawn!.hash]);
+
+        const { store } = await p.reload();
+        const prompts = store
+          .manifest()
+          .filter((a) => a.kind === 'portrait')
+          .map((a) => a.prompt);
+        expect(prompts).toContainEqual(expect.stringMatching(/, in ink wash$/));
+
+        const third = await p.run({ graphs: { [SLUG]: graph } });
+        expect(third.redrawn).toEqual([]);
+        expect(third.ran).toEqual([]);
+      } finally {
+        await p.cleanup();
+      }
+    });
+
+    it('leaves the slot alone when the graph is the default one', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        await p.run({});
+        const second = await p.run({ graphs: { [SLUG]: defaultSlotGraph('portrait:aiko') } });
+
+        expect(second.redrawn).toEqual([]);
+        expect(second.ran).toEqual([]);
+      } finally {
+        await p.cleanup();
+      }
+    });
+
+    it('leaves the slot alone when the default graph was only rearranged', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        await p.run({});
+
+        const graph = defaultSlotGraph('portrait:aiko');
+        const image = graph.nodes.find((n) => n.def.typeName === 'GenImage');
+        expect(image).toBeDefined();
+        image!.pos[0] = 900;
+        image!.pos[1] = -300;
+        graph.add(new GenTemplate());
+
+        const second = await p.run({ graphs: { [SLUG]: graph } });
+
+        expect(second.redrawn).toEqual([]);
+        expect(second.ran).toEqual([]);
+      } finally {
+        await p.cleanup();
+      }
+    });
+  });
+
+  describe('graph facts read by the solver', () => {
+    /** A runtime binding one graph, never run, to `portrait:aiko`. */
+    function runtimeOf(graph: Graph): GraphRuntime {
+      const output = graph.nodes.find((n) => n.def.typeName === 'GenOutput')!;
+      const binding = { graph, journal: emptyJournal(), target: output.id } as GraphBinding;
+      return { bound: (slot) => (slot === 'portrait:aiko' ? binding : undefined) };
+    }
+
+    const facts = (graphs: ReturnType<typeof graphFacts>) => ({
+      model: model([character('aiko')], [scene('s1', ['aiko'], 'cafe')], [location('cafe')]),
+      tasks: { get: () => undefined },
+      graphs,
+    });
+
+    it('reports a graph that never drew its slot and is not the default one on that slot', () => {
       const { graph, text } = templateGraph('portrait:aiko');
-      const first = await p.run({ graphs: { [SLUG]: graph } });
-      const drawn = first.ran.find((t) => t.kind === 'portrait');
-      expect(drawn).toBeDefined();
-
       setProp(text, 'template', '{varA}, in ink wash');
-      const second = await p.run({ graphs: { [SLUG]: graph } });
+      const bound = graphFacts(runtimeOf(graph), ['portrait:aiko', 'plate:cafe/day']);
+      expect([...bound.keys()]).toEqual(['portrait:aiko']);
+      expect(bound.get('portrait:aiko')).toMatchObject({ drawn: false, isDefault: false });
 
-      expect(second.redrawn).toEqual([drawn!.hash]);
-      expect(second.ran.map((t) => t.hash)).toEqual([drawn!.hash]);
+      const slots = solve(stillsFamily, facts(bound)).slots;
+      expect(slots.get('portrait:aiko')!.drift.map((d) => d.source)).toEqual(['graph']);
+      expect(slots.get('plate:cafe/day')!.drift).toEqual([]);
+    });
 
-      const { store } = await p.reload();
-      const prompts = store
-        .manifest()
-        .filter((a) => a.kind === 'portrait')
-        .map((a) => a.prompt);
-      expect(prompts).toContainEqual(expect.stringMatching(/, in ink wash$/));
-    } finally {
-      await p.cleanup();
-    }
-  });
-
-  it('asks for the redraw once, because the redraw records the graph it ran', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      const { graph, text } = templateGraph('portrait:aiko');
-      await p.run({ graphs: { [SLUG]: graph } });
-
-      setProp(text, 'template', '{varA}, in ink wash');
-      await p.run({ graphs: { [SLUG]: graph } });
-      const third = await p.run({ graphs: { [SLUG]: graph } });
-
-      expect(third.redrawn).toEqual([]);
-      expect(third.ran).toEqual([]);
-    } finally {
-      await p.cleanup();
-    }
-  });
-});
-
-describe('a graph bound to a slot the built-in runner already drew', () => {
-  it('redraws the slot once when the graph draws something else', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      const first = await p.run({});
-      const drawn = first.ran.find((t) => t.kind === 'portrait');
-      expect(drawn).toBeDefined();
-
-      const { graph, text } = templateGraph('portrait:aiko');
-      setProp(text, 'template', '{varA}, in ink wash');
-      const second = await p.run({ graphs: { [SLUG]: graph } });
-
-      expect(second.redrawn).toEqual([drawn!.hash]);
-      expect(second.ran.map((t) => t.hash)).toEqual([drawn!.hash]);
-
-      const { store } = await p.reload();
-      const prompts = store
-        .manifest()
-        .filter((a) => a.kind === 'portrait')
-        .map((a) => a.prompt);
-      expect(prompts).toContainEqual(expect.stringMatching(/, in ink wash$/));
-
-      const third = await p.run({ graphs: { [SLUG]: graph } });
-      expect(third.redrawn).toEqual([]);
-      expect(third.ran).toEqual([]);
-    } finally {
-      await p.cleanup();
-    }
-  });
-
-  it('leaves the slot alone when the graph is the default one', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      await p.run({});
-      const second = await p.run({ graphs: { [SLUG]: defaultSlotGraph('portrait:aiko') } });
-
-      expect(second.redrawn).toEqual([]);
-      expect(second.ran).toEqual([]);
-    } finally {
-      await p.cleanup();
-    }
-  });
-
-  it('leaves the slot alone when the default graph was only rearranged', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      await p.run({});
-
-      const graph = defaultSlotGraph('portrait:aiko');
-      const image = graph.nodes.find((n) => n.def.typeName === 'GenImage');
-      expect(image).toBeDefined();
-      image!.pos[0] = 900;
-      image!.pos[1] = -300;
-      graph.add(new GenTemplate());
-
-      const second = await p.run({ graphs: { [SLUG]: graph } });
-
-      expect(second.redrawn).toEqual([]);
-      expect(second.ran).toEqual([]);
-    } finally {
-      await p.cleanup();
-    }
+    it('reports nothing for the default graph', () => {
+      const bound = graphFacts(runtimeOf(defaultSlotGraph('portrait:aiko')), ['portrait:aiko']);
+      expect(bound.get('portrait:aiko')).toMatchObject({ drawn: false, isDefault: true });
+      expect(solve(stillsFamily, facts(bound)).slots.get('portrait:aiko')!.drift).toEqual([]);
+    });
   });
 });

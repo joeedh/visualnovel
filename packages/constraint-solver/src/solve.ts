@@ -10,6 +10,7 @@ import type { TaskInputs, TaskKind, TaskStatus } from '@vn/types';
 import { contract } from '@vn/contracts';
 import { taskHash } from '@vn/taskgraph';
 import type { Family, Held, SlotKind, SolverFacts } from './family.js';
+import { boundDrift, type DriftReason } from './drift.js';
 import { projectRefusal } from './refuse.js';
 import { suspensions } from './suspend.js';
 import { newestFirst, pick } from './take.js';
@@ -41,6 +42,11 @@ export interface SlotState {
   approved: boolean;
   /** The take the slot holds is one `suspensions` lists. */
   suspended: boolean;
+  /**
+   * Why the slot's picture is out of date although its task hash has not moved: the kind's own
+   * reasons, then its bound graph's.
+   */
+  drift: readonly DriftReason[];
   /**
    * True for a slot with an identity whose unit, if it has one, is open, in a project nothing
    * refuses. The planner adds exactly these.
@@ -164,6 +170,19 @@ export function unitGates<F extends SolverFacts>(
   return gateUnits(family, facts, enumerated, units);
 }
 
+/** Lists a slot's drift: what its kind reports, then what its bound graph's fact says. */
+function driftOf<F extends SolverFacts>(
+  kind: SlotKind<F>,
+  binding: unknown,
+  key: string,
+  facts: F,
+): readonly DriftReason[] {
+  const own = kind.drift?.(binding, facts) ?? [];
+  const fact = facts.graphs?.get(key);
+  const graph = fact === undefined ? undefined : boundDrift(fact);
+  return graph === undefined ? own : [...own, graph];
+}
+
 /** Runs the family's slot kinds over every slot it enumerates. */
 export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solution {
   const slots = new Map<string, SlotState>();
@@ -193,6 +212,7 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
       candidates: held.rows.map((a) => a.hash),
       approved  : kind.approved(binding, facts, held),
       suspended : held.pick !== undefined && suspended.has(held.pick),
+      drift     : driftOf(kind, binding, key, facts),
       ready     : false,
     });
   }

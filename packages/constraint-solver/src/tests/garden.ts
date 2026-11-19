@@ -27,6 +27,8 @@ export interface Garden extends SolverFacts {
   fallow?: string[];
   /** Hashes the gardener's notebook names as a sprout's take. */
   notebook?: string[];
+  /** Sprouts the gardener has noted as wilted since they were drawn. */
+  wilted?: string[];
   /** Seeds no longer planted, whose art a collection still keeps. */
   dormant?: string[];
   /** Per row hash, the takes it was grafted from and the slot each was taken from. */
@@ -87,6 +89,8 @@ export const sproutKind: SlotKind<Garden, { id: string }, 'vision_review'> = {
   },
   candidates: (b, facts) => rowsOf(`sprout:${b.id}`, facts),
   named     : (_b, facts) => new Set(facts.notebook ?? []),
+  drift: (b, facts) =>
+    facts.wilted?.includes(b.id) ? [{ source: 'wilt', reason: `sprout ${b.id} has wilted` }] : [],
   approved  : (_b, _facts, held) => held.rows.some((a) => a.hash === held.pick && a.accepted),
 };
 

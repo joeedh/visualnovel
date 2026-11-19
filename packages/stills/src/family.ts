@@ -16,6 +16,7 @@ import {
   unitGates,
   type Decided,
   type DrawnFrom,
+  type DriftReason,
   type Family,
   type Held,
   type Slot,
@@ -28,6 +29,7 @@ import { refsOfSlot, slotOf } from './refcycle.js';
 import { parseSlot, slotKey, slotLabel } from './slotaddr.js';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 import { keptSlots } from './kept.js';
+import { driftOf, scriptProseDriftReported } from './drift.js';
 import { approvedPortraitOf } from './gate.js';
 import {
   planSlot,
@@ -378,9 +380,22 @@ export const portraitKind: SlotKind<StillsFacts, Bound<'portrait'>, 'portrait'> 
   clears: portraitClears,
 };
 export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
+const PROSE_DRIFT: DriftReason = {
+  source: 'prose',
+  reason: 'The lines this shot covers have changed since its picture was drawn.',
+};
+
+/** Reports a shot whose picture was drawn against lines that have since changed. */
+function proseDrift(binding: Bound<'shot'>, facts: StillsFacts): readonly DriftReason[] {
+  const scene = facts.model.scenes.get(binding.sceneId);
+  const shot = shotsOf(facts.model, binding.sceneId).find((s) => s.id === binding.shotId);
+  return scene && shot && driftOf(scene, shot) === 'drifted' ? [PROSE_DRIFT] : [];
+}
+
 export const shotKind: SlotKind<StillsFacts, Bound<'shot'>, 'shot_image'> = {
-  ...stillsKind('shot', 'shot_image', [...EVERY_KIND, gatePerUnit]),
+  ...stillsKind('shot', 'shot_image', [...EVERY_KIND, gatePerUnit, scriptProseDriftReported]),
   named: shotImages,
+  drift: proseDrift,
 };
 
 /** Pairs a binding with the kind its prefix names. */

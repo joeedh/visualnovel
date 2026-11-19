@@ -5,6 +5,7 @@
  * Pure: no I/O, no path.ux, and nothing a family names. A family's facts extend
  * {@link SolverFacts} and pass through the solver to the family's own functions unread.
  */
+export * from './drift.js';
 export * from './family.js';
 export * from './keep.js';
 export * from './refuse.js';

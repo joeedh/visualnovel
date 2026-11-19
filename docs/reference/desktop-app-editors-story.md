@@ -546,15 +546,16 @@ between the page's panels by the rule in `@vn/scriptedit`'s `coverage.ts`.
   reports this before the write. Both the vermilion gap gutter and the uncovered count
   appear only once a storyboard exists.
 - **A frame that illustrates old prose is marked, not re-run.** Main derives drift
-  (`driftOf`, surfaced as `CoverageShot.drift` — see
-  [`pipeline-contracts.md`](pipeline-contracts.md#scenes-shots-and-lines)), and the
-  bracket renders it as a state: dashed sodium with `OLD PROSE` in the mono head. That
-  state is distinct from the vermilion `COVERS NOTHING`, which reports a different problem
-  with a different fix. The color is sodium because the authored side is what moved. The
-  mark sits on the head rather than over the image because the runner will still show that
-  frame. A shot rendered before the hash existed reads a dim `PROSE?`. It is dim because
-  the author cannot act on it and it clears at the next render. Acting on drift is the job
-  of `pipeline.run` and of the author; this surface only reports the drift.
+  (`driftOf`, surfaced as `CoverageShot.drift` — see the contract
+  `script.proseDriftReported`, declared in
+  [`drift.ts`](../../packages/stills/src/drift.ts)), and the bracket renders it as a
+  state: dashed sodium with `OLD PROSE` in the mono head. That state is distinct from the
+  vermilion `COVERS NOTHING`, which reports a different problem with a different fix. The
+  color is sodium because the authored side is what moved. The mark sits on the head
+  rather than over the image because the runner will still show that frame. A shot
+  rendered before the hash existed reads a dim `PROSE?`. It is dim because the author
+  cannot act on it and it clears at the next render. Acting on drift is the job of
+  `pipeline.run` and of the author; this surface only reports the drift.
 - **The wardrobe strip shows both levels at once, and every row names the level that
   answered.** Below the grid sits a `WEARING` section with one row per cast member (the
   scene's `[[outfit:]]` marker). Once a shot is selected, an `IN THIS SHOT` section adds
