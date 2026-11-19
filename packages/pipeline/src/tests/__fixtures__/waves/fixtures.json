@@ -1,0 +1,645 @@
+{
+  "manga": {
+    "waves": [
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e "
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 440dd0e4a65f33f6903a92786a719d92b002abd57c27f6b4a759ebb2a8f188dc 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 792df606f7e6da414bb9de1077d0eabd5a7e26417f87b03193f5e7252c630d1a 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 440dd0e4a65f33f6903a92786a719d92b002abd57c27f6b4a759ebb2a8f188dc 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 792df606f7e6da414bb9de1077d0eabd5a7e26417f87b03193f5e7252c630d1a 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 440dd0e4a65f33f6903a92786a719d92b002abd57c27f6b4a759ebb2a8f188dc 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 792df606f7e6da414bb9de1077d0eabd5a7e26417f87b03193f5e7252c630d1a 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 440dd0e4a65f33f6903a92786a719d92b002abd57c27f6b4a759ebb2a8f188dc 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 792df606f7e6da414bb9de1077d0eabd5a7e26417f87b03193f5e7252c630d1a 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ]
+    ],
+    "shots": {
+      "room/room__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-792df606f7e6da414bb9de1077d0eabd5a7e26417f87b03193f5e7252c630d1a",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__page1": {
+        "prompt": "Art style: watercolor. A manga page of 2 panels in classroom (day). Layout: panel 1: wide, top row, full width; panel 2: wide, bottom row, full width. Panel 1 (wide shot): no characters. Panel 2 (close shot): AIKO, wearing default. Render as one complete comic page with drawn panel borders; no text or lettering of any kind.",
+        "image"    : "out-440dd0e4a65f33f6903a92786a719d92b002abd57c27f6b4a759ebb2a8f188dc",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "staging sheets": {
+    "waves": [
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e "
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0966427c5c4f3de4a81b182d554a8181de6fd4d57d79dd318622d222f41e59ab 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5979780707407758fe7b03df7783c64c300b0613d1e174bd5eb43871d6d57030 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5e139785e4a888df99efcabe48b60afc6d1bf7abb6626a86bc5d1d8cd2fa5a6e 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image f0e7c40219c7be0a2866c20c061275946218fc18fe8b27679c9ba47624c26bad 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0966427c5c4f3de4a81b182d554a8181de6fd4d57d79dd318622d222f41e59ab 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5979780707407758fe7b03df7783c64c300b0613d1e174bd5eb43871d6d57030 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5e139785e4a888df99efcabe48b60afc6d1bf7abb6626a86bc5d1d8cd2fa5a6e 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image f0e7c40219c7be0a2866c20c061275946218fc18fe8b27679c9ba47624c26bad 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0966427c5c4f3de4a81b182d554a8181de6fd4d57d79dd318622d222f41e59ab 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5979780707407758fe7b03df7783c64c300b0613d1e174bd5eb43871d6d57030 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5e139785e4a888df99efcabe48b60afc6d1bf7abb6626a86bc5d1d8cd2fa5a6e 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image f0e7c40219c7be0a2866c20c061275946218fc18fe8b27679c9ba47624c26bad 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0966427c5c4f3de4a81b182d554a8181de6fd4d57d79dd318622d222f41e59ab 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5979780707407758fe7b03df7783c64c300b0613d1e174bd5eb43871d6d57030 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image 5e139785e4a888df99efcabe48b60afc6d1bf7abb6626a86bc5d1d8cd2fa5a6e 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image f0e7c40219c7be0a2866c20c061275946218fc18fe8b27679c9ba47624c26bad 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ]
+    ],
+    "shots": {
+      "room/room__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-f0e7c40219c7be0a2866c20c061275946218fc18fe8b27679c9ba47624c26bad",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__2": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-5979780707407758fe7b03df7783c64c300b0613d1e174bd5eb43871d6d57030",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__3": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-0966427c5c4f3de4a81b182d554a8181de6fd4d57d79dd318622d222f41e59ab",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__4": {
+        "prompt": "Art style: watercolor. close shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-5e139785e4a888df99efcabe48b60afc6d1bf7abb6626a86bc5d1d8cd2fa5a6e",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__5": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "staging sheets, manifest": {
+    "waves": [
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e "
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 617f8f03d8c95c44e5a029c42c3dfb6b2e3ae22b76f74e3a96c95ec0d1b898fa 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image b2ee59ebc85266baaab87f37c91a86ed38930cb292b142baf8b31d72258c9061 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image bfaa0054d585324e7c3e9b24101b82074969c0103f3cf42024ac49a1f5ddd419 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image c5e2f723b33b825b4614a2947e73cf7f0bfb58a6f108562651cb0a81ada6e91d 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 617f8f03d8c95c44e5a029c42c3dfb6b2e3ae22b76f74e3a96c95ec0d1b898fa 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image b2ee59ebc85266baaab87f37c91a86ed38930cb292b142baf8b31d72258c9061 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image bfaa0054d585324e7c3e9b24101b82074969c0103f3cf42024ac49a1f5ddd419 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image c5e2f723b33b825b4614a2947e73cf7f0bfb58a6f108562651cb0a81ada6e91d 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 617f8f03d8c95c44e5a029c42c3dfb6b2e3ae22b76f74e3a96c95ec0d1b898fa 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image b2ee59ebc85266baaab87f37c91a86ed38930cb292b142baf8b31d72258c9061 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image bfaa0054d585324e7c3e9b24101b82074969c0103f3cf42024ac49a1f5ddd419 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image c5e2f723b33b825b4614a2947e73cf7f0bfb58a6f108562651cb0a81ada6e91d 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 617f8f03d8c95c44e5a029c42c3dfb6b2e3ae22b76f74e3a96c95ec0d1b898fa 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image b2ee59ebc85266baaab87f37c91a86ed38930cb292b142baf8b31d72258c9061 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image bfaa0054d585324e7c3e9b24101b82074969c0103f3cf42024ac49a1f5ddd419 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image c5e2f723b33b825b4614a2947e73cf7f0bfb58a6f108562651cb0a81ada6e91d 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91",
+        "shot_image d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ]
+    ],
+    "shots": {
+      "room/room__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-617f8f03d8c95c44e5a029c42c3dfb6b2e3ae22b76f74e3a96c95ec0d1b898fa",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__2": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-bfaa0054d585324e7c3e9b24101b82074969c0103f3cf42024ac49a1f5ddd419",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__3": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-b2ee59ebc85266baaab87f37c91a86ed38930cb292b142baf8b31d72258c9061",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__4": {
+        "prompt": "Art style: watercolor. close shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-c5e2f723b33b825b4614a2947e73cf7f0bfb58a6f108562651cb0a81ada6e91d",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__5": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-d9a46a119668a477962db003f241014a8352a6e0978833778d296d0acbbed4f6",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "outfits": {
+    "waves": [
+      [
+        "location_ref 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf ",
+        "location_ref 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0 ",
+        "model_sheet 32a2a3c2c64ab1bce822f03179d185419b5f8480dd175e268940981c66b6877b ",
+        "model_sheet 59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c ",
+        "model_sheet 65392b618cd820e9e1027cc9d5d46ff1a52a7fee43ce5313f6ce17a94855f1a8 ",
+        "model_sheet ca0fb023e02a63af1e6a354e9b3cf8422e4e50a490a2130b261969d41a37055a ",
+        "model_sheet ca4d9f03c9f7514b7244836fbdd4e9cb20f1cff6b02f026b03d48db99dfc9b9b ",
+        "model_sheet f22cdd4a9aad11f0fac1ac0c28a87378cd0424ae64deec2a6c39e90dc8bb51fc ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e "
+      ],
+      [
+        "location_ref 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf ",
+        "location_ref 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0 ",
+        "model_sheet 32a2a3c2c64ab1bce822f03179d185419b5f8480dd175e268940981c66b6877b ",
+        "model_sheet 59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c ",
+        "model_sheet 65392b618cd820e9e1027cc9d5d46ff1a52a7fee43ce5313f6ce17a94855f1a8 ",
+        "model_sheet ca0fb023e02a63af1e6a354e9b3cf8422e4e50a490a2130b261969d41a37055a ",
+        "model_sheet ca4d9f03c9f7514b7244836fbdd4e9cb20f1cff6b02f026b03d48db99dfc9b9b ",
+        "model_sheet f22cdd4a9aad11f0fac1ac0c28a87378cd0424ae64deec2a6c39e90dc8bb51fc ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0353087eb9aa35d00b576665f02f08a44ac2847e47083951bb609b18cda78e55 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf",
+        "shot_image 460d40230be2fd8c1953b77811da384652cefbc34f761a072a649554be08a258 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0",
+        "shot_image 93bd1e14313623485078bda8be56856c6d6fe05e81e58d02c810f840b8e8f0c8 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c",
+        "shot_image e99b37fc604cbde29c675f92ae80df367a6ed9c9c153bb88cc7145c8f9ae6529 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c"
+      ],
+      [
+        "location_ref 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf ",
+        "location_ref 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0 ",
+        "model_sheet 32a2a3c2c64ab1bce822f03179d185419b5f8480dd175e268940981c66b6877b ",
+        "model_sheet 59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c ",
+        "model_sheet 65392b618cd820e9e1027cc9d5d46ff1a52a7fee43ce5313f6ce17a94855f1a8 ",
+        "model_sheet ca0fb023e02a63af1e6a354e9b3cf8422e4e50a490a2130b261969d41a37055a ",
+        "model_sheet ca4d9f03c9f7514b7244836fbdd4e9cb20f1cff6b02f026b03d48db99dfc9b9b ",
+        "model_sheet f22cdd4a9aad11f0fac1ac0c28a87378cd0424ae64deec2a6c39e90dc8bb51fc ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0353087eb9aa35d00b576665f02f08a44ac2847e47083951bb609b18cda78e55 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf",
+        "shot_image 460d40230be2fd8c1953b77811da384652cefbc34f761a072a649554be08a258 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0",
+        "shot_image 93bd1e14313623485078bda8be56856c6d6fe05e81e58d02c810f840b8e8f0c8 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c",
+        "shot_image e99b37fc604cbde29c675f92ae80df367a6ed9c9c153bb88cc7145c8f9ae6529 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c"
+      ],
+      [
+        "location_ref 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf ",
+        "location_ref 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0 ",
+        "model_sheet 32a2a3c2c64ab1bce822f03179d185419b5f8480dd175e268940981c66b6877b ",
+        "model_sheet 59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c ",
+        "model_sheet 65392b618cd820e9e1027cc9d5d46ff1a52a7fee43ce5313f6ce17a94855f1a8 ",
+        "model_sheet ca0fb023e02a63af1e6a354e9b3cf8422e4e50a490a2130b261969d41a37055a ",
+        "model_sheet ca4d9f03c9f7514b7244836fbdd4e9cb20f1cff6b02f026b03d48db99dfc9b9b ",
+        "model_sheet f22cdd4a9aad11f0fac1ac0c28a87378cd0424ae64deec2a6c39e90dc8bb51fc ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0353087eb9aa35d00b576665f02f08a44ac2847e47083951bb609b18cda78e55 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf",
+        "shot_image 460d40230be2fd8c1953b77811da384652cefbc34f761a072a649554be08a258 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0",
+        "shot_image 93bd1e14313623485078bda8be56856c6d6fe05e81e58d02c810f840b8e8f0c8 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c",
+        "shot_image e99b37fc604cbde29c675f92ae80df367a6ed9c9c153bb88cc7145c8f9ae6529 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c"
+      ],
+      [
+        "location_ref 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf ",
+        "location_ref 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0 ",
+        "model_sheet 32a2a3c2c64ab1bce822f03179d185419b5f8480dd175e268940981c66b6877b ",
+        "model_sheet 59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c ",
+        "model_sheet 65392b618cd820e9e1027cc9d5d46ff1a52a7fee43ce5313f6ce17a94855f1a8 ",
+        "model_sheet ca0fb023e02a63af1e6a354e9b3cf8422e4e50a490a2130b261969d41a37055a ",
+        "model_sheet ca4d9f03c9f7514b7244836fbdd4e9cb20f1cff6b02f026b03d48db99dfc9b9b ",
+        "model_sheet f22cdd4a9aad11f0fac1ac0c28a87378cd0424ae64deec2a6c39e90dc8bb51fc ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 0353087eb9aa35d00b576665f02f08a44ac2847e47083951bb609b18cda78e55 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf",
+        "shot_image 460d40230be2fd8c1953b77811da384652cefbc34f761a072a649554be08a258 9bc1339b622831b856e0955929e33111a3c3f23879458d3bb9f6a1ac5954f4d0",
+        "shot_image 93bd1e14313623485078bda8be56856c6d6fe05e81e58d02c810f840b8e8f0c8 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c",
+        "shot_image e99b37fc604cbde29c675f92ae80df367a6ed9c9c153bb88cc7145c8f9ae6529 008ba2bf380d43bc404c3f4db6b3f6fff2f576b7eda829cee25e3d1d4e69fbbf,59e9c70f1b349804ec8f209759961fe152b718067ab87182838e65948c2e2f8c"
+      ]
+    ],
+    "shots": {
+      "s1/s1__1": {
+        "prompt": "Art style: watercolor. medium shot in cafe (day). Subjects: AIKO, wearing faded club tracksuit. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-93bd1e14313623485078bda8be56856c6d6fe05e81e58d02c810f840b8e8f0c8",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "s1/s1__2": {
+        "prompt": "Art style: watercolor. medium shot in cafe (day). Subjects: AIKO, wearing school uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-0353087eb9aa35d00b576665f02f08a44ac2847e47083951bb609b18cda78e55",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "s2/s2__1": {
+        "prompt": "Art style: watercolor. medium shot in cafe (night). Subjects: AIKO, wearing school uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-460d40230be2fd8c1953b77811da384652cefbc34f761a072a649554be08a258",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "s2/s2__2": {
+        "prompt": "Art style: watercolor. medium shot in cafe (day). Subjects: AIKO, wearing faded club tracksuit. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-e99b37fc604cbde29c675f92ae80df367a6ed9c9c153bb88cc7145c8f9ae6529",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "authored references": {
+    "waves": [
+      [
+        "location_ref 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 46d3ee019c64a18cd8585e1bcf20ea92ea72181b96ef17a51aaefbcbdb2a39ab "
+      ],
+      [
+        "location_ref 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 46d3ee019c64a18cd8585e1bcf20ea92ea72181b96ef17a51aaefbcbdb2a39ab ",
+        "shot_image 7d6bbfb2bb4811dabf7221de4a955ac04167c16448557606840cec682daeac13 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae",
+        "shot_image ded020cf11a363e3c3e808af7e567163a29a530ad67d761e3aedaa75947c1b6f 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae"
+      ],
+      [
+        "location_ref 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 46d3ee019c64a18cd8585e1bcf20ea92ea72181b96ef17a51aaefbcbdb2a39ab ",
+        "shot_image 7d6bbfb2bb4811dabf7221de4a955ac04167c16448557606840cec682daeac13 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae",
+        "shot_image ded020cf11a363e3c3e808af7e567163a29a530ad67d761e3aedaa75947c1b6f 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae"
+      ],
+      [
+        "location_ref 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 46d3ee019c64a18cd8585e1bcf20ea92ea72181b96ef17a51aaefbcbdb2a39ab ",
+        "shot_image 7d6bbfb2bb4811dabf7221de4a955ac04167c16448557606840cec682daeac13 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae",
+        "shot_image ded020cf11a363e3c3e808af7e567163a29a530ad67d761e3aedaa75947c1b6f 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae"
+      ],
+      [
+        "location_ref 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 46d3ee019c64a18cd8585e1bcf20ea92ea72181b96ef17a51aaefbcbdb2a39ab ",
+        "shot_image 7d6bbfb2bb4811dabf7221de4a955ac04167c16448557606840cec682daeac13 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae",
+        "shot_image ded020cf11a363e3c3e808af7e567163a29a530ad67d761e3aedaa75947c1b6f 1944484c758efad2e7c470d3b21db4ee098234cdb4dcfc07030a188c1f988dae"
+      ]
+    ],
+    "shots": {
+      "room/room__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-7d6bbfb2bb4811dabf7221de4a955ac04167c16448557606840cec682daeac13",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "room/room__2": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-ded020cf11a363e3c3e808af7e567163a29a530ad67d761e3aedaa75947c1b6f",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "a gate held by a non-subject": {
+    "waves": [
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad "
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image 2345a8d2687ef9ffbe7b6ab2e965b43e79a8615937f13b2327af64844bfc3b12 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image 2345a8d2687ef9ffbe7b6ab2e965b43e79a8615937f13b2327af64844bfc3b12 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image 2345a8d2687ef9ffbe7b6ab2e965b43e79a8615937f13b2327af64844bfc3b12 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image 2345a8d2687ef9ffbe7b6ab2e965b43e79a8615937f13b2327af64844bfc3b12 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ]
+    ],
+    "shots": {
+      "held/held__1": {},
+      "open/open__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-2345a8d2687ef9ffbe7b6ab2e965b43e79a8615937f13b2327af64844bfc3b12",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "a location with no variants": {
+    "waves": [
+      [
+        "location_ref febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e "
+      ],
+      [
+        "location_ref febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 3f8819d77af2e24d1db555f63f729bfb00f530f899a43694f73bdc9b4be87c2e febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb"
+      ],
+      [
+        "location_ref febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 3f8819d77af2e24d1db555f63f729bfb00f530f899a43694f73bdc9b4be87c2e febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb"
+      ],
+      [
+        "location_ref febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 3f8819d77af2e24d1db555f63f729bfb00f530f899a43694f73bdc9b4be87c2e febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb"
+      ],
+      [
+        "location_ref febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 3f8819d77af2e24d1db555f63f729bfb00f530f899a43694f73bdc9b4be87c2e febe5b62f7e37425be3bc23819147a0986bfd9ee5cca783a887a5a96e9bb2cdb"
+      ]
+    ],
+    "shots": {
+      "top/top__1": {
+        "prompt": "Art style: watercolor. wide shot in roof (day). Subjects: AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-3f8819d77af2e24d1db555f63f729bfb00f530f899a43694f73bdc9b4be87c2e",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "an outfit only a shot names": {
+    "waves": [
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet a8a537c1cdb774c7eaed2924e986f66a85f55b9a6a1cc7d227abe9af2d411e68 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet cc3f5676311b6081e002c8b9053e16bda13da315ec8ad00d24ed48df20a37d93 ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e "
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet a8a537c1cdb774c7eaed2924e986f66a85f55b9a6a1cc7d227abe9af2d411e68 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet cc3f5676311b6081e002c8b9053e16bda13da315ec8ad00d24ed48df20a37d93 ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 63ec7f9073036686ed3f15043f9ad81606c9bf184203d0e5b08b50ca05fd6e77 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a,8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet a8a537c1cdb774c7eaed2924e986f66a85f55b9a6a1cc7d227abe9af2d411e68 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet cc3f5676311b6081e002c8b9053e16bda13da315ec8ad00d24ed48df20a37d93 ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 63ec7f9073036686ed3f15043f9ad81606c9bf184203d0e5b08b50ca05fd6e77 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a,8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet a8a537c1cdb774c7eaed2924e986f66a85f55b9a6a1cc7d227abe9af2d411e68 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet cc3f5676311b6081e002c8b9053e16bda13da315ec8ad00d24ed48df20a37d93 ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 63ec7f9073036686ed3f15043f9ad81606c9bf184203d0e5b08b50ca05fd6e77 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a,8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet a8a537c1cdb774c7eaed2924e986f66a85f55b9a6a1cc7d227abe9af2d411e68 ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet cc3f5676311b6081e002c8b9053e16bda13da315ec8ad00d24ed48df20a37d93 ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "shot_image 63ec7f9073036686ed3f15043f9ad81606c9bf184203d0e5b08b50ca05fd6e77 3df31c79be3042498ec6867006b30dc3e3b165bbc1e54df8245ec8ca8b25732a,8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91"
+      ]
+    ],
+    "shots": {
+      "pool/pool__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: AIKO, wearing swim. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-63ec7f9073036686ed3f15043f9ad81606c9bf184203d0e5b08b50ca05fd6e77",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  },
+  "two characters cast in reverse": {
+    "waves": [
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 4627804fc44467c4ca3b03da6cd183e76e60c28093383dc510f75245621e699f ",
+        "model_sheet 4a6dbff7f07fe3f9e1871c34702249ffeaa3a0b9553adc70454b2ce3fb85a96e ",
+        "model_sheet 81a4852999a98ba16f9880640ce3c42939c23ee80898907cf225022ce7eee1f6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet 98d81f94763e98ac113efd1732abad463d762e0b84b869391b325ceb3ad7eccd ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d ",
+        "model_sheet feb56cc4f4615912f2b7f8915f57b37f33c79d83de88a640d5d0522ca5b7e87f ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad "
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 4627804fc44467c4ca3b03da6cd183e76e60c28093383dc510f75245621e699f ",
+        "model_sheet 4a6dbff7f07fe3f9e1871c34702249ffeaa3a0b9553adc70454b2ce3fb85a96e ",
+        "model_sheet 81a4852999a98ba16f9880640ce3c42939c23ee80898907cf225022ce7eee1f6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet 98d81f94763e98ac113efd1732abad463d762e0b84b869391b325ceb3ad7eccd ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d ",
+        "model_sheet feb56cc4f4615912f2b7f8915f57b37f33c79d83de88a640d5d0522ca5b7e87f ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image da25b90982fb6437f2c01525f96a621f9a31ff54500831424295c64902918dc4 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91,c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 4627804fc44467c4ca3b03da6cd183e76e60c28093383dc510f75245621e699f ",
+        "model_sheet 4a6dbff7f07fe3f9e1871c34702249ffeaa3a0b9553adc70454b2ce3fb85a96e ",
+        "model_sheet 81a4852999a98ba16f9880640ce3c42939c23ee80898907cf225022ce7eee1f6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet 98d81f94763e98ac113efd1732abad463d762e0b84b869391b325ceb3ad7eccd ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d ",
+        "model_sheet feb56cc4f4615912f2b7f8915f57b37f33c79d83de88a640d5d0522ca5b7e87f ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image da25b90982fb6437f2c01525f96a621f9a31ff54500831424295c64902918dc4 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91,c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 4627804fc44467c4ca3b03da6cd183e76e60c28093383dc510f75245621e699f ",
+        "model_sheet 4a6dbff7f07fe3f9e1871c34702249ffeaa3a0b9553adc70454b2ce3fb85a96e ",
+        "model_sheet 81a4852999a98ba16f9880640ce3c42939c23ee80898907cf225022ce7eee1f6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet 98d81f94763e98ac113efd1732abad463d762e0b84b869391b325ceb3ad7eccd ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d ",
+        "model_sheet feb56cc4f4615912f2b7f8915f57b37f33c79d83de88a640d5d0522ca5b7e87f ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image da25b90982fb6437f2c01525f96a621f9a31ff54500831424295c64902918dc4 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91,c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d"
+      ],
+      [
+        "location_ref 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91 ",
+        "model_sheet 36acf6d2f275c00edab6fdd1976a7a7897171116425b206140c56b8c2408cdf6 ",
+        "model_sheet 4627804fc44467c4ca3b03da6cd183e76e60c28093383dc510f75245621e699f ",
+        "model_sheet 4a6dbff7f07fe3f9e1871c34702249ffeaa3a0b9553adc70454b2ce3fb85a96e ",
+        "model_sheet 81a4852999a98ba16f9880640ce3c42939c23ee80898907cf225022ce7eee1f6 ",
+        "model_sheet 89f5b88bf1d8f3e447131a6eeefec2e065b4836cc5db78f1b982084d8b686321 ",
+        "model_sheet 98d81f94763e98ac113efd1732abad463d762e0b84b869391b325ceb3ad7eccd ",
+        "model_sheet ab41d97135d9d865bec59de0f5f070f0aa4f1c8c9523d0859d4ddbbfe2a91f0a ",
+        "model_sheet c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d ",
+        "model_sheet feb56cc4f4615912f2b7f8915f57b37f33c79d83de88a640d5d0522ca5b7e87f ",
+        "portrait 13ff6f08e60a098dd87411ef9854833961521499dd2e452259ca2e044f2cc59e ",
+        "portrait 6f8e36d5249c6fea7285c2b93b4f32e87e63cd6dbf53219645c78f2efa22f6ad ",
+        "shot_image da25b90982fb6437f2c01525f96a621f9a31ff54500831424295c64902918dc4 8ddf6e606d6a1c6e26ae3b4b9d019513ae046911534078ab8823ea94685bca91,c21c2f1e601993b435d6c35e521c40be230c9284fe5f7075a41e7ee47be7cd6d"
+      ]
+    ],
+    "shots": {
+      "duo/duo__1": {
+        "prompt": "Art style: watercolor. medium shot in classroom (day). Subjects: REN, wearing a long coat; AIKO, wearing default. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-da25b90982fb6437f2c01525f96a621f9a31ff54500831424295c64902918dc4",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    }
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "before": {
+    "waves": [
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 "
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ]
+    ],
+    "shots": {
+      "arrival/arrival__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Classroom (day). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13",
+        "proseHash": "16c3da11435a4c1bc8c43a8846f5cd77742d446da45ca45a603c1381304d6175"
+      },
+      "rooftop/rooftop__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Rooftop (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010",
+        "proseHash": "1e5ae35708bf9c28bb7c2a96f45ec1c807de2f1644a2c3a6e66b2cb717d132fe"
+      }
+    }
+  },
+  "after": {
+    "waves": [
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 "
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ]
+    ],
+    "shots": {
+      "arrival/arrival__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Classroom (day). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13",
+        "proseHash": "16c3da11435a4c1bc8c43a8846f5cd77742d446da45ca45a603c1381304d6175"
+      },
+      "rooftop/rooftop__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Rooftop (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010",
+        "proseHash": "1e5ae35708bf9c28bb7c2a96f45ec1c807de2f1644a2c3a6e66b2cb717d132fe"
+      }
+    }
+  },
+  "drawn": {
+    "waves": [
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 "
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ],
+      [
+        "location_ref 0ae799b3f98188d63a9c4913174df822c3064379b7463b0ac124ee1a55323bf7 ",
+        "location_ref b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0 ",
+        "location_ref d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614 ",
+        "shot_image b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010 d8cda35662238d5499b05f3a8f875c25a6612323097c2f0c354f8e164cd21614",
+        "shot_image f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13 b1a7e4120aa966e1b48f2c2f489306fc97ac3d6ff19269b306047a765dcd34a0"
+      ]
+    ],
+    "shots": {
+      "arrival/arrival__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Classroom (day). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-f0074782a7578a1302a23ef73247835408e525d6e2d209890d65964b3e6eed13",
+        "proseHash": "16c3da11435a4c1bc8c43a8846f5cd77742d446da45ca45a603c1381304d6175"
+      },
+      "rooftop/rooftop__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Rooftop (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-b1cdcf77fdbaa360e46e7bbb5a7cb407bc86c719510e6062e11842e0622a7010",
+        "proseHash": "1e5ae35708bf9c28bb7c2a96f45ec1c807de2f1644a2c3a6e66b2cb717d132fe"
+      }
+    }
+  }
+}

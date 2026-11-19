@@ -1,7 +1,8 @@
 /**
- * Stage 6b of `docs/plans/contracts-into-code-and-workflows.md`: the planner, which now plans from
- * `solve(stillsFamily, facts)`, emits what the stage 1 oracle emits, wave by wave. Each wave's tasks
- * are compared with their `deps`, and the shots the two stamp are compared once the waves are over.
+ * The planner, which plans from `solve(stillsFamily, facts)`, emits the waves recorded in
+ * `__fixtures__/waves/`, which the stage 1 oracle produced on master before stage 6e
+ * (`docs/plans/contracts-into-code-and-workflows.md`). Each wave's tasks are compared with their
+ * `deps`, and the shots the planner stamps are compared once the waves are over.
  *
  * The cases are the oracle's six fixtures, three more that the planner and the slot graph once
  * answered differently, and every testkit script on disk before and after its cast is approved.
@@ -16,6 +17,12 @@ import type { ScriptName } from '@vn/testkit';
 import { planTasks, planningIncremental } from '../index.js';
 import { oraclePlanTasks } from './oracle.js';
 import { config, FIXTURES, type Fixture } from './__fixtures__/projects.js';
+import fixtureWaves from './__fixtures__/waves/fixtures.json';
+import branching from './__fixtures__/waves/branching.json';
+import diamond from './__fixtures__/waves/diamond.json';
+import linear from './__fixtures__/waves/linear.json';
+import listed from './__fixtures__/waves/listed.json';
+import orphan from './__fixtures__/waves/orphan.json';
 
 type Planner = typeof planTasks;
 
@@ -26,6 +33,17 @@ interface Run {
   /** What it stamped on every shot in the production map, by scene and shot id. */
   shots: Record<string, Pick<Shot, 'prompt' | 'image' | 'proseHash' | 'panelBoxes'>>;
 }
+
+/** The recorded waves of each script: before approval, after it, and after it with shots on disk. */
+const SCRIPT_WAVES: Record<ScriptName, { before: Run; after: Run; drawn: Run }> = {
+  branching,
+  diamond,
+  linear,
+  listed,
+  orphan,
+};
+
+const FIXTURE_WAVES: Record<string, Run> = fixtureWaves;
 
 const line = (t: AnyTask): string => `${t.kind} ${t.hash} ${t.deps.join(',')}`;
 
@@ -141,12 +159,14 @@ const EXTRA: Record<string, Fixture> = {
 };
 
 describe(pins(planningIncremental), () => {
-  describe('the planner and the oracle plan the same tasks, wave by wave', () => {
+  describe('the planner plans the recorded tasks, wave by wave', () => {
     for (const [name, fixture] of Object.entries({ ...FIXTURES, ...EXTRA })) {
       it(name, async () => {
         const opts = fixture.assets ? { assets: fixture.assets } : {};
         const live = await waves(planTasks, fixture.build(), opts);
-        expect(live).toEqual(await waves(oraclePlanTasks, fixture.build(), opts));
+        expect(live).toEqual(FIXTURE_WAVES[name]);
+        // The recording must equal the stage 1 oracle's output on this tree
+        expect(await waves(oraclePlanTasks, fixture.build(), opts)).toEqual(FIXTURE_WAVES[name]);
         // Each case has to reach a shot, or it compared plates and portraits only
         expect(live.waves.flat().some((l) => l.startsWith('shot_image '))).toBe(true);
       });
@@ -163,8 +183,9 @@ describe(pins(planningIncremental), () => {
             : {}),
         });
         try {
-          /** Both planners over their own fresh reload of the project as it stands. */
-          const agree = async (withPaths: boolean): Promise<Run> => {
+          const recorded = SCRIPT_WAVES[name];
+          /** The planner over a fresh reload of the project as it stands, against `expected`. */
+          const agree = async (withPaths: boolean, expected: Run): Promise<Run> => {
             const runs: Run[] = [];
             for (const plan of [planTasks, oraclePlanTasks]) {
               const { model: m, store } = await p.reload();
@@ -175,16 +196,18 @@ describe(pins(planningIncremental), () => {
                 }),
               );
             }
-            expect(runs[0]).toEqual(runs[1]);
+            expect(runs[0]).toEqual(expected);
+            // The recording must equal the stage 1 oracle's output on this tree
+            expect(runs[1]).toEqual(expected);
             return runs[0]!;
           };
 
-          await agree(false);
+          await agree(false, recorded.before);
           await p.run();
           await p.approveAll();
           await p.run();
-          await agree(false);
-          const drawn = await agree(true);
+          await agree(false, recorded.after);
+          const drawn = await agree(true, recorded.drawn);
           expect(drawn.waves.flat().some((l) => l.startsWith('shot_image '))).toBe(true);
         } finally {
           await p.cleanup();

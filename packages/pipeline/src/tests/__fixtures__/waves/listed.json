@@ -1,0 +1,284 @@
+{
+  "before": {
+    "waves": [
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 "
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371"
+      ]
+    ],
+    "shots": {
+      "dusk/dusk__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Riverbank (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e",
+        "proseHash": "a1034bbdc95378647f0735a08f9c16b937df01072812b32b0a8caf196eda1b8a"
+      }
+    }
+  },
+  "after": {
+    "waves": [
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 "
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ]
+    ],
+    "shots": {
+      "dusk/dusk__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Riverbank (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e",
+        "proseHash": "a1034bbdc95378647f0735a08f9c16b937df01072812b32b0a8caf196eda1b8a"
+      },
+      "lunch/lunch__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Cafeteria (day). Subjects: Haruki, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "lunch/lunch__beat1": {
+        "prompt": "Art style: watercolor. medium shot in Cafeteria (day). Subjects: Haruki, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab",
+        "proseHash": "a52a241abcbdd951dc008a5bad849e503abb3f90e4a2fc6a6034efa361b070e1"
+      },
+      "morning/morning__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Dorm Room (morning). Subjects: Aiko, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd",
+        "proseHash": "3dc3326fe90c9b9fd17b7df455788217d0e98e2790ed93168b7c1bc4f0f85ef8"
+      },
+      "morning/morning__beat1": {
+        "prompt": "Art style: watercolor. medium shot in Dorm Room (morning). Subjects: Aiko, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53",
+        "proseHash": "48d53c47a495312a1880b3cf6815dfed080bd3a0ee1f48407624d0e0ee86bb9c"
+      }
+    }
+  },
+  "drawn": {
+    "waves": [
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 "
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ],
+      [
+        "location_ref 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443 ",
+        "location_ref dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0 ",
+        "location_ref f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371 ",
+        "model_sheet 0085cd4cd53d3e725bc2bc8268faa0d504a4e6d913a3aced57ca2923088d1915 ",
+        "model_sheet 10e06c147148b1c876b60a3183b9d1743326397eeb06e835bc5a2fe2072a33af ",
+        "model_sheet 1711b1cf7d12c56d4fdd8d34926fd1d8ba60107e072e0ef5257899a4ff61972a ",
+        "model_sheet 4d69ae300c0405bfb7200491a25ed9b0190702570f24d8f1626c1eadbdd0cfa3 ",
+        "model_sheet 79860f2aeadad7c49ca34d6385e51497286e4236db9488cb122cafe5220e427b ",
+        "model_sheet 81b48a017b1b77ba0cef65cf6f7de448bbd5e85a9db152c624655bf98a44d11f ",
+        "portrait 5cbe9205ec9930c30c5853a52f5bbcb2cfbd96cab20b086a82054e908b470b53 ",
+        "portrait f8a7646bf075e1039955b45481eba0a0cee99f7a407c41581621a9cab66b1b33 ",
+        "shot_image 5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e f2a0599e2ec67da1c4fde9f39fe017917f7f5450149782516b8fcf80e6516371",
+        "shot_image 6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74 dcd4ff441172011bbe90efda92a1a744981c2cf2458f650758e02b44aac783f0",
+        "shot_image d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443",
+        "shot_image e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd 1708df6b43f55fb89e12999220b9cbc76d17a226ef3bb6368794d7854320d443"
+      ]
+    ],
+    "shots": {
+      "dusk/dusk__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Riverbank (evening). No characters in frame. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-5e2f5d34ec7b9adb2f4c12a1e47c31173a3ec84f4e7004afb6e2c43b680d229e",
+        "proseHash": "a1034bbdc95378647f0735a08f9c16b937df01072812b32b0a8caf196eda1b8a"
+      },
+      "lunch/lunch__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Cafeteria (day). Subjects: Haruki, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-a36b7bb415c4a15890463c81b17da165299810c620db5b1abb8f8277e97c9d74",
+        "proseHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "lunch/lunch__beat1": {
+        "prompt": "Art style: watercolor. medium shot in Cafeteria (day). Subjects: Haruki, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-6b8034905951700e73c719800931ec842e6ed369c543ae7f73fc82b345fa40ab",
+        "proseHash": "a52a241abcbdd951dc008a5bad849e503abb3f90e4a2fc6a6034efa361b070e1"
+      },
+      "morning/morning__establishing": {
+        "prompt": "Art style: watercolor. establishing shot in Dorm Room (morning). Subjects: Aiko, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-e27a1f13c92ca591b351a568e8f39efee0c4363df9b7546ea9c440b9936e7dcd",
+        "proseHash": "3dc3326fe90c9b9fd17b7df455788217d0e98e2790ed93168b7c1bc4f0f85ef8"
+      },
+      "morning/morning__beat1": {
+        "prompt": "Art style: watercolor. medium shot in Dorm Room (morning). Subjects: Aiko, wearing uniform. Render as a single illustrated frame, no UI text.",
+        "image"    : "out-d1e89560baa9008fa21a5634c746632fd3ecacd665ae61c499a4dfce16e82c53",
+        "proseHash": "48d53c47a495312a1880b3cf6815dfed080bd3a0ee1f48407624d0e0ee86bb9c"
+      }
+    }
+  }
+}
