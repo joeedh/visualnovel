@@ -182,11 +182,16 @@ it ([`history-pane.md`](history-pane.md)).
 
 Pure, and names nothing a family defines; `@vn/stills` is its first family.
 
-| module      | purpose                                                                      |
-| ----------- | ---------------------------------------------------------------------------- |
-| `family.ts` | `SolverFacts`, `SlotKind`, `Family`, `Slot` and `slot`, and `Decided`        |
-| `solve.ts`  | `solve` and `unitGates`: each slot's identity or refusal, edges, order, gate |
-| `index.ts`  | barrel                                                                       |
+| module       | purpose                                                                      |
+| ------------ | ---------------------------------------------------------------------------- |
+| `family.ts`  | `SolverFacts`, `SlotKind`, `Family`, `Slot` and `slot`, and `Decided`        |
+| `solve.ts`   | `solve` and `unitGates`: each slot's identity or refusal, edges, order, gate |
+| `take.ts`    | the take (`pick`, `newestFirst`, `loggedTake`) and `overHeld`'s keep rule    |
+| `suspend.ts` | `suspensions`: which rows a moved reference suspends, transitively           |
+| `keep.ts`    | `keepSet`: the slots, task hashes and outputs a collection keeps             |
+| `refuse.ts`  | project-level refusals (`projectRefusal`, `baseRefusal`)                     |
+| `drift.ts`   | `DriftReason`, `BoundGraphFact` and `boundDrift`                             |
+| `index.ts`   | barrel                                                                       |
 
 ### @vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)
 
@@ -205,8 +210,7 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 | `family.ts`     | slot kinds, enumeration, gates (`stillsFamily`); `slotGraph`, `gateStatus`      |
 | `refcycle.ts`   | reference cycle detection; `assetSlotLabel`                                     |
 | `prereq.ts`     | prerequisite refusals                                                           |
-| `overheld.ts`   | slots with more than one current row, and the holds that fix them               |
-| `takes.ts`      | the take the task log names (`loggedTake`, `angleOfTask`)                       |
+| `takes.ts`      | the angle a sheet task was for (`angleOfTask`)                                  |
 | `kept.ts`       | the slots a collection keeps art for (`keptSlots`)                              |
 | `layout.ts`     | page layout templates, panel words, overlap; **side entry** `@vn/stills/layout` |
 | `sheet.ts`      | staging-sheet grouping, grids and seeds                                         |
@@ -215,20 +219,20 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 | `coverage.ts`   | prompt-coverage check                                                           |
 | `condense.ts`   | prompt condensing                                                               |
 | `subject.ts`    | concept subject parse/match                                                     |
-| `drift.ts`      | prose-hash drift marker                                                         |
+| `drift.ts`      | prose drift (`proseHash`, `driftOf`), which the shot kind reports               |
 | `index.ts`      | barrel (reaches `node:fs` through `@vn/taskgraph`; the renderer uses the sides) |
 
 ### @vn/artgen — on-demand art, adoption, and the stills rules' I/O (`packages/artgen`)
 
 | module                                     | purpose                                                                          |
 | ------------------------------------------ | -------------------------------------------------------------------------------- |
-| `suspend.ts`                               | suspension walk (drifted upstream ⇒ suspended downstream)                        |
+| `suspend.ts`                               | `suspendedAssets`: the solver's suspension over the stills family                |
 | `adopt.ts` / `adoptslot.ts` / `promote.ts` | adoption and concept promotion; `adopt.ts` is `@vn/artgen/adopt`, off the barrel |
 | `concept.ts`                               | concept image generation                                                         |
 | `describe.ts`                              | asset description                                                                |
 | `setnotes.ts`                              | art notes / seed setters                                                         |
 | `artnotes.ts`                              | art-target rung queries                                                          |
-| `base.ts`                                  | base-asset refusals                                                              |
+| `base.ts`                                  | re-exports the solver's `baseRefusal`                                            |
 | `upload.ts`                                | reference image upload                                                           |
 | `takes.ts`                                 | the `current` repair and migration, and accepting a take                         |
 | `collect.ts`                               | which rows, files and task records a collection removes                          |
@@ -296,7 +300,7 @@ and `pending` requeues).
 | `runners.ts`                   | task runners                                              |
 | `genservices.ts`               | generation services wiring                                |
 | `graphrun.ts` / `graphload.ts` | bound generation-graph runs                               |
-| `drift.ts`                     | pipeline-side drift reporting                             |
+| `drift.ts`                     | re-exports `driftOf` and `proseHash` from `@vn/stills`    |
 | `prompts.ts`                   | pipeline LLM prompts                                      |
 | `index.ts`                     | barrel (re-exports the P3 gate from `@vn/stills` by name) |
 

@@ -1246,6 +1246,147 @@ the commit that adds this note.** As built:
     - `oracle.ts` and `oracle.test.ts` still run, and still copy `sceneUnblocked`, until
       6e.
 
+**6d landed 2026-11-19 on the `rules` branch, as `1de4f664`, `dc294c60`, `5febe95e`,
+`44a8dcc6` and `0a39c0d6` and the commit that adds this note.** As built:
+
+- **The take** (`1de4f664`).
+    - `packages/constraint-solver/src/take.ts` holds `pick`, `newestFirst`, `loggedTake`,
+      `lastRenderedAt` and `overHeld`, moved from `@vn/stills` (`refs.ts`, `slotgraph.ts`,
+      `takes.ts`, and `overheld.ts`, which is deleted).
+    - `solve` sorts a slot's candidates newest first and picks the take itself.
+      `SlotKind.pick` is gone, and `SlotKind.candidates` returns rows in manifest order.
+    - `overHeld(family, facts, identity?)` walks the manifest's current rows and asks the
+      new `Family.slotOf` which slot each fills, so it still repairs a slot no enumeration
+      lists, such as a deleted character's portrait. The optional `SlotKind.named` lists
+      the hashes a family's own records name as a slot's take; the stills shot kind
+      answers with every storyboard image, as the old first arm did. The third argument is
+      the facts a slot's identity is resolved over, so `repairCurrent` still resolves
+      identities over the manifest as it stood before its own holds.
+    - `repairCurrent` and `validateAssets` call the solver's `overHeld`. Validation passes
+      no config and no task log, so its report reads only the storyboards and the rows'
+      stamps, as before.
+    - `@vn/artgen` may import the solver (lintrix, `package.json`, `pnpm-lock.yaml` by
+      hand; `pnpm install --offline --frozen-lockfile` accepts it).
+- **The base-root refusal** (`dc294c60`). `refuse.ts` holds `baseRefusal`, moved from
+  `@vn/artgen`'s `base.ts`, and `projectRefusal(facts)`. `SolverFacts.base` and
+  `Solution.refusal` are new. A refused solve still states every identity and makes no
+  slot ready. `planTasks` builds its facts with the base root (`waveFacts` takes `base`)
+  and asks `projectRefusal` before decomposing, so it refuses as before. `@vn/artgen`'s
+  `base.ts` and `@vn/pipeline`'s `planner.ts` re-export `baseRefusal` by name.
+- **Suspension** (`5febe95e`). `suspend.ts` holds `suspensions(family, facts)`, the walk
+  from `@vn/artgen`'s `suspend.ts` with its order, cycle guard and inherited sentence
+  unchanged. The new `Family.drawnFrom` answers a row's upstream hashes and the sentence
+  naming its own moved reference, if any. `SlotState.suspended` is true when the slot's
+  take is in the list. The stills `drawnFrom` resolves a pinned slot's take over the rows
+  grouped under its subject rather than the whole manifest.
+- **The keep set** (`44a8dcc6`). `keep.ts` holds `keepSet(family, facts)`, answering
+  `{ slots, tasks, outputs }` over the new `Family.kept`. `stillsFamily.kept` lists
+  `keptSlots`, so the set is as wide as before. `planAssetCollection` reads it in place of
+  its own loop over `keptSlots` and `resolveSlot`, with the same facts.
+- **Drift** (`0a39c0d6`).
+    - `drift.ts` holds `DriftReason`, `BoundGraphFact` and `boundDrift`. A drawn output
+      node drifts when its authored hash differs from the one its last completed run
+      recorded; one that never ran drifts when its graph is not the default one.
+      `SolverFacts.graphs`, `SlotKind.drift` and `SlotState.drift` (the kind's reasons,
+      then the graph's) are new.
+    - `@vn/pipeline`'s `graphFacts(runtime, slots)` builds the facts, and `driftedTasks`,
+      which `requeueDrifted` calls, decides through `graphFacts` and `boundDrift` instead
+      of its own comparison.
+    - `driftOf` moved from `@vn/pipeline`'s `drift.ts` to `@vn/stills`' `drift.ts`, and
+      the stills shot kind's `drift` reports prose drift.
+- **Decisions.**
+    - **`clears` and `approved` stay separate.** Making the portrait slot's `approved`
+      read `approvedPortraitOf` would change what the document tree and the gate pane show
+      for a portrait in the four cases `gate.perUnit`'s detail lists (a locked character,
+      no manifest, an accepted row that is not current, two current rows). The gate's
+      answers would not move, but the panes' would, so the difference stays documented.
+    - **Contracts with family vocabulary are declared outside the solver.** The solver's
+      own declarations name no plate, sheet, shot, portrait or scene, even in their text.
+      `takes.currencyExclusive` is declared in the stills family, `collect.unusedRemoved`
+      in `@vn/artgen`'s `collect.ts` and `script.proseDriftReported` in stills'
+      `drift.ts`, each with `function:` subjects on the solver code, as `gate.perUnit` is.
+    - **Suspension and over-held walk manifest rows, not slot refs.** A row's history is
+      the take it was drawn from, which its upstream slot may no longer hold, and the
+      repair has to reach slots no enumeration lists. Walking slot refs would have changed
+      both answers.
+    - **`keepSet` is not a field of `Solution`.** It resolves slots `enumerate` does not
+      list, which the planner would pay for on every wave and never read.
+    - **`graphFacts` lives in `@vn/pipeline`, not `@vn/gengraph`.** It reads the
+      slot→graph runtime the pipeline builds (`GraphRuntime`), and `@vn/gengraph` has no
+      allow-list entry for the solver.
+    - **No host's facts carry `graphs` yet.** `waveFacts` leaves them out, so the planner
+      pays nothing for graph drift; the rule runs in production through `driftedTasks`.
+- **Timing.** Per wave, from the 6c script: each run takes the median of 51 plans, and the
+  table gives the median of three runs per side, master and 6d interleaved on one machine.
+  The machine was busier than 6c's, and the testkit rows below 0.5 ms move by up to 0.2 ms
+  between runs of the same side. Task counts match on every row.
+
+    | Project             | Wave | Tasks | Master  | 6d      | Ratio |
+    | ------------------- | ---- | ----- | ------- | ------- | ----- |
+    | branching, drawn    | 0    | 19    | 0.40 ms | 0.42 ms | 1.05  |
+    | branching, drawn    | 1    | 19    | 0.38 ms | 0.40 ms | 1.05  |
+    | branching, fresh    | 0    | 12    | 0.29 ms | 0.29 ms | 1.00  |
+    | branching, fresh    | 1    | 19    | 0.47 ms | 0.44 ms | 0.94  |
+    | branching, fresh    | 2    | 19    | 0.34 ms | 0.37 ms | 1.09  |
+    | mySampleRepo, drawn | 0    | 27    | 1.57 ms | 1.86 ms | 1.18  |
+    | mySampleRepo, drawn | 1    | 27    | 1.30 ms | 1.66 ms | 1.28  |
+    | mySampleRepo, fresh | 0    | 17    | 1.16 ms | 1.22 ms | 1.05  |
+    | mySampleRepo, fresh | 1    | 27    | 1.48 ms | 1.54 ms | 1.04  |
+    | mySampleRepo, fresh | 2    | 27    | 1.40 ms | 1.43 ms | 1.02  |
+
+    Over every wave of all five testkit scripts and the sample, 6d takes 1.12x master's
+    time; the highest single row is 1.68x (`diamond`, fresh, wave 1, 0.31 ms against 0.52
+    ms). The added per-wave work is the suspension walk over the manifest and a prose hash
+    per drawn shot, both inside `solve`.
+
+- **Contracts.** Seven, so the index holds 44 and `contracts.json` is 103 KB, past the 100
+  KB at which the generator warns:
+    - `takes.currencyExclusive` (`@vn/stills` `family.ts`, every kind), pinned by
+      `packages/stills/src/tests/overheld.test.ts`.
+    - `storage.baseUnavailable` (solver `refuse.ts`), pinned by the toy family and
+      `pipeline.test.ts`.
+    - `takes.suspensionDerived` (solver `suspend.ts`), pinned by
+      `packages/artgen/src/tests/suspend.test.ts`.
+    - `collect.unusedRemoved` (`@vn/artgen` `collect.ts`) and `collect.applyOrder`
+      (`@vn/gengraph` `collect.ts`), pinned by
+      `packages/gengraph/src/tests/collect.test.ts`.
+    - `graphs.editInvalidates` (solver `drift.ts`), pinned by the toy family and
+      `graphdrift.test.ts`. Its `detail` carries the executor half (`requeueDrifted`, once
+      per run, `RunSummary.redrawn`, the journal write that clears it).
+    - `script.proseDriftReported` (stills `drift.ts`, the shot kind), pinned by
+      `packages/pipeline/src/tests/drift.test.ts`.
+    - Reworded: `takes.approvedMeansAccepted`'s subject names the solver's `pick`.
+    - Removed bullets: the base root, the collector, currency, suspension, prose drift and
+      graph drift. `asset-stores.md`, `gen-graphs.md`, `vnauthor.md` and
+      `desktop-app-editors-story.md` name the contracts instead of linking to them.
+- **Behaviour visible to hosts.** None intended, and none found. The planner's hashes,
+  deps and stamps are unchanged (`plannerwaves.test.ts`, the oracle and
+  `prompthash.test.ts` are untouched and pass). `SlotState` gains `suspended` and `drift`
+  and `Solution` gains `refusal`, which `slotGraph` drops.
+- **Wrappers left for 6e**, each returning what it returned before:
+    - `suspendedAssets` and `suspensionMap` (`@vn/artgen`), read by the CLI's status
+      through `@vn/pipeline`'s `prompts.ts`, and by the desktop's `suspensionsOf`
+      (`session/core.ts`), which `session/gate.ts` and `session/asset.ts` call.
+    - `driftOf` and `proseHash` re-exported from `@vn/pipeline`'s `drift.ts`, read by the
+      document tree (`doctree.ts`), `driftedFrames` (`session/core.ts`) and Shot Coverage
+      (`session/story.ts`), and by the planner's stamping.
+    - `baseRefusal` re-exported from `@vn/artgen`'s `base.ts` and `@vn/pipeline`'s
+      `planner.ts`, read by adoption, concept art, promotion, upload, the scheduler, the
+      desktop's `session/asset.ts`, and `oracle.ts`.
+    - `reportGraphs`' `drifted` list and `boundSlotsToDraw` (`graphload.ts`) still call
+      `@vn/gengraph`'s `graphDrift`, which reports the edited arm only and over every
+      output node, active or not.
+- **For 6e:**
+    - The readers above can read `SlotState.suspended` and `SlotState.drift` from one
+      `solve`, with `graphFacts` passed as `SolverFacts.graphs` where graph drift is
+      wanted. `sessionFacts` does not pass it yet.
+    - `contracts.json` passed 100 KB. The plan's split into a summary file and one shard
+      per area ("Keeping the index small") is now due.
+    - `repairCurrent`'s first loop and `migrateCurrent` still read `slotGraph`.
+    - Stage 8 can give `requeueDrifted` its own declaration and move the executor half out
+      of `graphs.editInvalidates`' `detail`.
+    - `oracle.ts` and `oracle.test.ts` still run until 6e.
+
 The plan as written before 6a landed:
 
 The core of the plan. It runs as five commits, each green.
