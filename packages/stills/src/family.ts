@@ -4,14 +4,16 @@
  * package shares (`slotKey`, `refsOfSlot`, `planSlot`, `candidatesFor`, `pick`), and
  * `solve(stillsFamily, facts)` is what the planner plans from.
  */
-import type { Asset, RefBinding, TaskInputs, TaskKind } from '@vn/types';
+import type { Asset, ProjectModel, RefBinding, TaskInputs, TaskKind } from '@vn/types';
 import { shotsOf } from '@vn/types';
+import type { ProjectConfig } from '@vn/config';
 import { allCharacters, allLocationVariants, liveScenes, usedOutfits } from '@vn/model';
 import { contract, type Contract } from '@vn/contracts';
 import {
   identitySlotsBeforeTasks,
   slot,
   solve,
+  unitGates,
   type Decided,
   type Family,
   type Held,
@@ -41,18 +43,19 @@ type Bound<P extends SlotPrefix> = Extract<RefBinding, { kind: P }>;
 /**
  * What the stills kinds read: the solver's facts plus the model and the config. Without `assets`
  * the gate reads each character sheet's mirror, as a plan with no store does, and no slot holds a
- * row. The kinds memoise each slot's plan on the facts object, so a caller that changes the model
- * or the task log builds new facts before solving again.
+ * row. Without `config` no slot states an identity, which the gate does not need. The kinds
+ * memoise on the facts object, so a caller that changes the model or the task log builds new facts
+ * before solving again.
  */
-export interface StillsFacts extends SolverFacts, Omit<SlotGraphContext, 'assets' | 'graph'> {}
+export interface StillsFacts
+  extends SolverFacts, Omit<SlotGraphContext, 'assets' | 'graph' | 'config'> {
+  readonly config?: ProjectConfig;
+}
 
-/** The context `planSlot` reads, with the manifest left absent when the caller has none. */
-const resolveCtx = (facts: StillsFacts): SlotResolveContext => ({
-  model : facts.model,
-  config: facts.config,
-  assets: facts.assets,
-  graph : facts.tasks,
-});
+/** Stills facts that can state identities, as each host's one builder makes them. */
+export interface PlanFacts extends StillsFacts {
+  readonly config: ProjectConfig;
+}
 
 /** Each facts object's slot plans by address, so a shot's `resolve` and `deps` share one walk. */
 const plans = new WeakMap<StillsFacts, Map<string, Decided<PlannedSlot>>>();
@@ -63,8 +66,26 @@ function planOf(binding: RefBinding, facts: StillsFacts): Decided<PlannedSlot> {
   if (!memo) plans.set(facts, (memo = new Map()));
   const key = slotKey(binding);
   let plan = memo.get(key);
-  if (!plan) memo.set(key, (plan = planSlot(binding, resolveCtx(facts))));
+  if (!plan) memo.set(key, (plan = planned(binding, facts)));
   return plan;
+}
+
+/** Runs `planSlot` over the facts, with the manifest left absent when the caller has none. */
+function planned(binding: RefBinding, facts: StillsFacts): Decided<PlannedSlot> {
+  if (!facts.config) {
+    return {
+      ok    : false,
+      code  : 'NO_CONFIG',
+      reason: 'These facts carry no project config, so no slot states an identity.',
+    };
+  }
+  const ctx: SlotResolveContext = {
+    model : facts.model,
+    config: facts.config,
+    assets: facts.assets,
+    graph : facts.tasks,
+  };
+  return planSlot(binding, ctx);
 }
 
 /** Each facts object's manifest rows, grouped under every id their bindings name. */
@@ -134,9 +155,9 @@ export const takesApprovedMeansAccepted = contract({
     'function:packages/stills/src/refs.ts#pick',
   ],
   detail:
-    "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the " +
-    'two differ in one case: a portrait slot whose only row is accepted but not current is ' +
-    "approved here and not by the gate. `slotGraph`'s `SlotNode.approved` is the kinds' answer.",
+    "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and " +
+    '`gate.perUnit` lists the cases where the two answers differ. ' +
+    "`slotGraph`'s `SlotNode.approved` is the kinds' answer.",
 });
 
 export const planningSheetsOnlyWhenWorn = contract({
@@ -157,9 +178,53 @@ export const planningSheetsOnlyWhenWorn = contract({
     '`stillsFamily` enumerates plates over `allLocationVariants`, portraits over ' +
     '`allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. ' +
     '`usedOutfits` gives everyone a live scene casts their default outfit, plus each ' +
-    '`[[outfit:]]` marker and shot override. The gate is a separate question: ' +
-    "`gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts " +
-    "nothing and shows in the document tree's Awaiting approval branch.",
+    '`[[outfit:]]` marker and shot override. The gate is a separate question: a live scene ' +
+    "waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved " +
+    "portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+});
+
+export const gatePerUnit = contract({
+  id      : 'gate.perUnit',
+  rule: "A live scene is not decomposed, and none of its slots is ready, until every character in `scene.characters` has an approved portrait: a portrait row that is both current and accepted. The solver applies it per unit; the stills family lists the cast's portraits.",
+  prevents:
+    'Paying to decompose and draw a scene whose cast may still change, including cast members no shot shows, or drawing from a re-rendered portrait nobody accepted.',
+  subjects: [
+    'function:packages/stills/src/family.ts#stillsFamily',
+    'function:packages/stills/src/family.ts#gateStatus',
+    'function:packages/stills/src/gate.ts#approvedPortraitOf',
+    'function:packages/constraint-solver/src/solve.ts#unitGates',
+    'function:packages/pipeline/src/planner.ts#planTasks',
+    'task:shot_image',
+    'command:gate.approve',
+    'command:gate.lock',
+  ],
+  see: [
+    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/slot-history-on-the-manifest-row.md',
+  ],
+  detail:
+    'The gate is not a task dependency. A scene is a unit, its shots are its slots, and ' +
+    "`Family.gates` lists the portraits of the scene's cast; `Solution.units` and " +
+    '`SlotState.ready` report it, and the planner decomposes only open units and adds only ' +
+    'ready slots. A scene with no cast is never held, and a cast member with no character sheet ' +
+    "holds it. A portrait clears through its kind's `clears`, which asks " +
+    '`approvedPortraitOf(character, assets)`. A re-render puts an unapproved draft in the slot, ' +
+    'so the gate closes until the author accepts the draft or restores the approved take; ' +
+    'nothing already drawn is touched. The sheet is a mirror: `AssetStore.accept` on the ' +
+    'portrait a slot holds writes `status: approved`, `approved_portrait:` and `approved.png`, ' +
+    'and `unaccept` clears them when the sheet names that hash. A reader with no manifest (a pure ' +
+    'plan) reads the mirror, which is valid because nothing else writes it; `repairCurrent` ' +
+    'catches up a sheet an older tool approved by hand. `status: locked` (`gate.lock`) holds the ' +
+    'approval at the hash the sheet names, whatever the slot holds. `vngen run` halts at the ' +
+    'gate with nothing ready; `gate.approve` and `vngen approve` hold the chosen portrait and ' +
+    'accept it, and choosing an older draft is a restore that `holdPortrait` logs, so the choice ' +
+    "outlasts `repairCurrent`. `gateStatus` reports the same units: a live scene's cast member " +
+    "is pending until their portrait clears. The portrait slot's `approved` " +
+    '(`takes.approvedMeansAccepted`) differs from `clears` in four cases: a portrait whose only ' +
+    'row is accepted but not current is approved and does not clear; with no manifest the slot ' +
+    'holds no row and is not approved, while the gate reads the mirror; a locked character ' +
+    'clears whatever the slot holds; and a slot holding two current rows picks neither and is ' +
+    'not approved, while the gate clears if either is accepted.',
 });
 
 /** Says whether the take a slot holds is one a person accepted, the same test for every kind. */
@@ -212,11 +277,11 @@ const AUTHORED = [...EVERY_KIND, planningSheetsOnlyWhenWorn];
 
 export const plateKind = stillsKind('plate', 'location_ref', AUTHORED);
 export const portraitKind: SlotKind<StillsFacts, Bound<'portrait'>, 'portrait'> = {
-  ...stillsKind('portrait', 'portrait', AUTHORED),
+  ...stillsKind('portrait', 'portrait', [...AUTHORED, gatePerUnit]),
   clears: portraitClears,
 };
 export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
-export const shotKind = stillsKind('shot', 'shot_image', EVERY_KIND);
+export const shotKind = stillsKind('shot', 'shot_image', [...EVERY_KIND, gatePerUnit]);
 
 /**
  * Lists every authored location variant's plate and every authored character's portrait, a sheet
@@ -264,6 +329,39 @@ export const stillsFamily: Family<StillsFacts> = {
   owed,
   gates,
 };
+
+/** The character-approval gate (report §P3): who is still holding a live scene back. */
+export interface GateStatus {
+  /** Characters a live scene casts whose portrait has not cleared. */
+  pending: string[];
+  /** Characters a live scene casts whose portrait has cleared. */
+  approved: string[];
+  /** No live scene is held. */
+  cleared: boolean;
+}
+
+const NO_TASKS: StillsFacts['tasks'] = { get: () => undefined };
+
+/** Reads the character id back out of a portrait address, whatever characters the id holds. */
+const castMember = (key: string): string => key.slice(key.indexOf(':') + 1);
+
+/**
+ * Answers the gate from `unitGates(stillsFamily, …)` over every live scene, so a character no live
+ * scene casts never appears. Reads no config and no task log, which the gate never needs.
+ */
+export function gateStatus(model: ProjectModel, assets?: readonly Asset[]): GateStatus {
+  const pending = new Set<string>();
+  const approved = new Set<string>();
+  for (const unit of unitGates(stillsFamily, { model, assets, tasks: NO_TASKS }).values()) {
+    for (const key of unit.gates)
+      (unit.holding.includes(key) ? pending : approved).add(castMember(key));
+  }
+  return {
+    pending : [...pending].sort(),
+    approved: [...approved].sort(),
+    cleared : pending.size === 0,
+  };
+}
 
 /**
  * Answers `solve(stillsFamily, ctx)` in the `SlotGraph` shape that the document tree, the gate pane,

@@ -6,7 +6,7 @@
  * mirror alone. `status: locked` is the one thing the sheet says on its own: it holds the
  * character's approval with the hash the sheet names, whatever the slot holds.
  */
-import { bindsTo, type Asset, type Character, type ProjectModel } from '@vn/types';
+import { bindsTo, type Asset, type Character } from '@vn/types';
 
 /** The hash the sheet's mirror names, when its status says it is approved. */
 function mirrored(character: Character): string | undefined {
@@ -40,48 +40,4 @@ export function approvedPortraitOf(
 /** A character look is usable downstream once it is approved or locked (report §P3). */
 export function isApproved(character: Character, assets?: readonly Asset[]): boolean {
   return approvedPortraitOf(character, assets) !== undefined;
-}
-
-/** A scene can have its shots generated only once every character in it is approved. */
-export function sceneUnblocked(
-  model: ProjectModel,
-  sceneId: string,
-  assets?: readonly Asset[],
-): boolean {
-  const scene = model.scenes.get(sceneId);
-  if (!scene) return false;
-  return scene.characters.every((id) => {
-    const character = model.characters.get(id);
-    return character ? isApproved(character, assets) : false;
-  });
-}
-
-/** The character-approval gate state (report §P3) — what's blocking shot generation. */
-export interface GateStatus {
-  /** Characters still awaiting human approval of their portrait. */
-  pending: string[];
-  /** Characters whose look is approved/locked. */
-  approved: string[];
-  /** True when every character used by a live scene is approved. */
-  cleared: boolean;
-}
-
-/**
- * Summarize the character gate (report §P3, §10). Only characters that actually appear in
- * a live scene matter — an unused character never blocks the run.
- */
-export function gateStatus(model: ProjectModel, assets?: readonly Asset[]): GateStatus {
-  const used = new Set<string>();
-  for (const scene of model.scenes.values()) {
-    if (!model.narrative.live(scene.id)) continue;
-    for (const id of scene.characters) used.add(id);
-  }
-  const pending: string[] = [];
-  const approved: string[] = [];
-  for (const id of used) {
-    const character = model.characters.get(id);
-    if (character && isApproved(character, assets)) approved.push(id);
-    else pending.push(id);
-  }
-  return { pending: pending.sort(), approved: approved.sort(), cleared: pending.length === 0 };
 }

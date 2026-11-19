@@ -194,7 +194,7 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 
 | module          | purpose                                                                         |
 | --------------- | ------------------------------------------------------------------------------- |
-| `gate.ts`       | P3 approval gate (`gateStatus`, `isApproved`, `sceneUnblocked`)                 |
+| `gate.ts`       | the P3 gate's approval test (`approvedPortraitOf`, `isApproved`)                |
 | `chunks.ts`     | `PromptChunk` composition + fingerprint                                         |
 | `prompts.ts`    | per-slot-kind prompt builders (portrait/location/model-sheet/shot)              |
 | `resolve.ts`    | rung/override resolution                                                        |
@@ -202,7 +202,7 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 | `upstream.ts`   | upstream attachment walk                                                        |
 | `slotaddr.ts`   | slot key parse/format; **side entry** `@vn/stills/slotaddr` (renderer-safe)     |
 | `slotgraph.ts`  | a slot's identity and deps (`planSlot`, `resolveSlot`); the `SlotGraph` shape   |
-| `family.ts`     | the four slot kinds, their enumeration (`stillsFamily`); `slotGraph` over them  |
+| `family.ts`     | slot kinds, enumeration, gates (`stillsFamily`); `slotGraph`, `gateStatus`      |
 | `refcycle.ts`   | reference cycle detection; `assetSlotLabel`                                     |
 | `prereq.ts`     | prerequisite refusals                                                           |
 | `overheld.ts`   | slots with more than one current row, and the holds that fix them               |

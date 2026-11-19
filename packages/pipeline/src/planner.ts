@@ -20,21 +20,15 @@ import { contract } from '@vn/contracts';
 import { liveScenes } from '@vn/model';
 import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
-import { solve } from '@vn/constraint-solver';
+import { solve, unitGates } from '@vn/constraint-solver';
 import { baseRefusal } from '@vn/artgen';
-import {
-  cycleRefusal,
-  firstCycle,
-  layoutDefect,
-  sceneUnblocked,
-  stillsFamily,
-  type StillsFacts,
-} from '@vn/stills';
+import { cycleRefusal, firstCycle, layoutDefect, stillsFamily } from '@vn/stills';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 import { decomposeScene, storyboardStyle, type StoryboardStyle } from './p5.js';
 import { proseHash } from './drift.js';
+import { waveFacts } from './facts.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
 export { MODEL_SHEET_ANGLES };
@@ -187,7 +181,7 @@ function stampShot(
 
 export const planningIncremental = contract({
   id      : 'planning.incremental',
-  rule: '`planTasks` runs once per scheduler wave. It decomposes the owed scenes the P3 gate has cleared, solves the stills family, and adds the task of every slot with an identity whose scene, if it has one, has cleared the gate. It keeps no enumeration of its own.',
+  rule: '`planTasks` runs once per scheduler wave. It decomposes the owed scenes whose unit gate is open, solves the stills family, and adds the task of every slot the solver reports `ready`. It keeps no enumeration and no gate of its own.',
   prevents:
     'Planning a shot before its plate is drawn, when its identity cannot be stated yet, or a planner that enumerates pictures its own way and so plans work the slot graph does not show.',
   subjects: [
@@ -205,8 +199,8 @@ export const planningIncremental = contract({
     'identity until that upstream task is `done`, so it appears a wave later. `vngen cost` ' +
     'therefore counts only what is plannable when it runs, and undercounts the tasks a finished ' +
     "wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and " +
-    'non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is the ' +
-    "planner's `sceneUnblocked` check until the solver's own unit gate replaces it.",
+    'non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is ' +
+    '`gate.perUnit`: the planner asks `unitGates` before decomposing and reads `ready` after.',
 });
 
 /**
@@ -249,26 +243,16 @@ export async function planTasks(opts: {
     logger?.error('plan.refused', { reason: refusal, root: base?.root });
     return [];
   }
-  // The P3 gate per scene, which `solve` does not apply: a shot slot resolves while a cast member
-  // the shot does not show is still unapproved
-  const gate = new Map<string, boolean>();
-  const cleared = (sceneId: string): boolean => {
-    let open = gate.get(sceneId);
-    if (open === undefined) gate.set(sceneId, (open = sceneUnblocked(model, sceneId, opts.assets)));
-    return open;
-  };
   // Built again after decomposing, because the kinds memoise on the facts object
-  const facts = (): StillsFacts => ({
-    model,
-    config,
-    tasks: graph,
-    ...(opts.assets ? { assets: opts.assets } : {}),
-  });
+  const facts = () => waveFacts({ model, config, tasks: graph, assets: opts.assets });
 
   // Storyboards first, so the solve below sees the shot slots of every scene the gate lets through
-  for (const sceneId of stillsFamily.owed(facts())) {
+  const before = facts();
+  const owed = stillsFamily.owed(before);
+  const gates = owed.length ? unitGates(stillsFamily, before) : undefined;
+  for (const sceneId of owed) {
     const scene = model.scenes.get(sceneId);
-    if (!scene || !cleared(sceneId)) continue;
+    if (!scene || !gates?.get(sceneId)?.open) continue;
     const storyboard = await shotsFor(
       scene,
       model,
@@ -282,9 +266,9 @@ export async function planTasks(opts: {
   }
 
   const planned: AnyTask[] = [];
-  for (const state of solve(stillsFamily, facts()).slots.values()) {
-    if (state.inputs === undefined) continue;
-    if (state.unit !== undefined && !cleared(state.unit)) continue;
+  const solved = solve(stillsFamily, facts());
+  for (const state of solved.slots.values()) {
+    if (!state.ready || state.inputs === undefined) continue;
     const node = graph.add(makeTask(state.task, state.inputs, [...state.deps]));
     planned.push(node);
     if (state.task === 'shot_image')
@@ -295,7 +279,8 @@ export async function planTasks(opts: {
   // That final pass is what gets a completed run's outputs into the file.
   if (paths && !readOnlyShots) {
     for (const scene of liveScenes(model))
-      if (cleared(scene.id)) await writeShots(paths, scene.id, shotsOf(model, scene.id));
+      if (solved.units.get(scene.id)?.open)
+        await writeShots(paths, scene.id, shotsOf(model, scene.id));
   }
 
   // The defensive half of §14: `prompt.addRef` refuses a cycle before it can be written, so a

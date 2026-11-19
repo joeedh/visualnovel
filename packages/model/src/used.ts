@@ -28,8 +28,8 @@ export function liveScenes(model: ProjectModel): Scene[] {
  * portrait is owed to whoever has one — an author draws the cast, then writes scenes for the cast
  * they have, and a character invisible until a scene names them has that backwards.
  *
- * Deliberately not the question the P3 gate asks. `gateStatus` keeps its own live-scene walk
- * so an uncast character's unapproved portrait halts nothing.
+ * Deliberately not the question the P3 gate asks. A live scene waits on its own cast's
+ * portraits, so an uncast character's unapproved portrait halts nothing.
  */
 export function allCharacters(model: ProjectModel): Character[] {
   return [...model.characters.values()];

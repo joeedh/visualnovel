@@ -12,7 +12,7 @@ import { logTask } from '@vn/taskgraph/write';
 import { createMockProviders } from '@vn/providers';
 import { planAssetCollection } from '@vn/artgen';
 import { solve, type Solution } from '@vn/constraint-solver';
-import { sceneUnblocked, stillsFamily, type StillsFacts } from '@vn/stills';
+import { stillsFamily, type StillsFacts } from '@vn/stills';
 import { readShots, withProduction, writeShots } from '@vn/store';
 import {
   character,
@@ -133,9 +133,9 @@ const planned = (graph: TaskGraph): string[] =>
     .sort();
 
 /** Every identity a solution states for a slot whose scene, if it has one, has cleared the gate. */
-const promised = (s: Solution, cleared: (sceneId: string) => boolean = () => true): string[] =>
+const promised = (s: Solution): string[] =>
   [...s.slots.values()]
-    .filter((state) => state.unit === undefined || cleared(state.unit))
+    .filter((state) => state.ready)
     .map((state) => state.taskHash)
     .filter((h): h is string => !!h)
     .sort();
@@ -314,8 +314,7 @@ describe('over every testkit script on disk', () => {
             assets,
             tasks: await loadGraph(p.paths),
           };
-          const cleared = (sceneId: string): boolean => sceneUnblocked(full, sceneId, assets);
-          expect(promised(solve(stillsFamily, facts), cleared)).toEqual(
+          expect(promised(solve(stillsFamily, facts))).toEqual(
             [...new Set(tasks.map((t) => t.hash))].sort(),
           );
           return tasks.filter((t) => t.kind === 'shot_image').length;

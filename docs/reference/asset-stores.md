@@ -109,9 +109,7 @@ clears all three when the sheet names that hash. The row is the authority and th
 repeats it, so a reader with no manifest answers as the row does; a `locked` sheet keeps
 its status through the write. An accepted portrait the slot no longer holds is history and
 writes no mirror. The store discovers the sheet the way `loadInputs` does, so a character
-kept under `wiki/` is written where it lives
-([pipeline-contracts.md](pipeline-contracts.md#scheduling), _The gate blocks shot
-planning_).
+kept under `wiki/` is written where it lives (`pnpm contracts gate.perUnit`).
 
 **Reads consult both roots, and one row answers for a hash.** Hashes are content hashes,
 so a byte present in both roots is the same byte and the two indices cannot disagree about

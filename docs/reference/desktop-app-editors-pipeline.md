@@ -113,9 +113,9 @@ review merge. Both are unchanged, and so are their tests. The plan is in
 The graph view exists because a literal rendering of `Task.deps` would misrepresent the
 data in three ways. Each fix is a "pure" (side-effect-free) function tested in node:
 
-- **The gate is a planner predicate, not an edge.** P3 approval is the planner predicate
-  `sceneUnblocked`, so a halted run has no ready tasks and no edge that records the cause.
-  `barrierFor` synthesizes a barrier node, and `taskGraphOf` positions it with
+- **The gate is a planner predicate, not an edge.** P3 approval is the constraint solver's
+  unit gate (`gate.perUnit`), so a halted run has no ready tasks and no edge that records
+  the cause. `barrierFor` synthesizes a barrier node, and `taskGraphOf` positions it with
   ranking-only edges. Those edges are passed to `layoutGraph` but not to `routeEdges`, so
   they set the rank and are never drawn. The barrier node renders as a dashed rule across
   the layout bounds, with one approve button per pending character.

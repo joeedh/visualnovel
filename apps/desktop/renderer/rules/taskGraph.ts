@@ -4,7 +4,7 @@
  *
  * There are exactly three of them:
  *
- * 1. The gate is not an edge. It is a planner predicate (`sceneUnblocked`), so a blocked run has
+ * 1. The gate is not an edge. It is the solver's unit gate (`gate.perUnit`), so a blocked run has
  *    no edge explaining itself. A synthetic barrier node is inserted, and ranking-only edges
  *    force everything it holds up below it.
  * 2. `deps` understates coupling. A `shot_image` lists only its location plate as a dep; the

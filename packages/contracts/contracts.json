@@ -1,6 +1,29 @@
 {
   "contracts": [
     {
+      "id"      : "gate.perUnit",
+      "rule": "A live scene is not decomposed, and none of its slots is ready, until every character in `scene.characters` has an approved portrait: a portrait row that is both current and accepted. The solver applies it per unit; the stills family lists the cast's portraits.",
+      "prevents": "Paying to decompose and draw a scene whose cast may still change, including cast members no shot shows, or drawing from a re-rendered portrait nobody accepted.",
+      "subjects": [
+        "function:packages/stills/src/family.ts#stillsFamily",
+        "function:packages/stills/src/family.ts#gateStatus",
+        "function:packages/stills/src/gate.ts#approvedPortraitOf",
+        "function:packages/constraint-solver/src/solve.ts#unitGates",
+        "function:packages/pipeline/src/planner.ts#planTasks",
+        "task:shot_image",
+        "command:gate.approve",
+        "command:gate.lock",
+        "slot:portrait",
+        "slot:shot"
+      ],
+      "see": [
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family",
+        "docs/plans/archive/slot-history-on-the-manifest-row.md"
+      ],
+      "detail": "The gate is not a task dependency. A scene is a unit, its shots are its slots, and `Family.gates` lists the portraits of the scene's cast; `Solution.units` and `SlotState.ready` report it, and the planner decomposes only open units and adds only ready slots. A scene with no cast is never held, and a cast member with no character sheet holds it. A portrait clears through its kind's `clears`, which asks `approvedPortraitOf(character, assets)`. A re-render puts an unapproved draft in the slot, so the gate closes until the author accepts the draft or restores the approved take; nothing already drawn is touched. The sheet is a mirror: `AssetStore.accept` on the portrait a slot holds writes `status: approved`, `approved_portrait:` and `approved.png`, and `unaccept` clears them when the sheet names that hash. A reader with no manifest (a pure plan) reads the mirror, which is valid because nothing else writes it; `repairCurrent` catches up a sheet an older tool approved by hand. `status: locked` (`gate.lock`) holds the approval at the hash the sheet names, whatever the slot holds. `vngen run` halts at the gate with nothing ready; `gate.approve` and `vngen approve` hold the chosen portrait and accept it, and choosing an older draft is a restore that `holdPortrait` logs, so the choice outlasts `repairCurrent`. `gateStatus` reports the same units: a live scene's cast member is pending until their portrait clears. The portrait slot's `approved` (`takes.approvedMeansAccepted`) differs from `clears` in four cases: a portrait whose only row is accepted but not current is approved and does not clear; with no manifest the slot holds no row and is not approved, while the gate reads the mirror; a locked character clears whatever the slot holds; and a slot holding two current rows picks neither and is not approved, while the gate clears if either is accepted.",
+      "declared": "packages/stills/src/family.ts"
+    },
+    {
       "id"      : "graphs.groupNodeKey",
       "rule": "A node in a generation graph is addressed by its key, the chain of ids from the root (`3/7` for node 7 inside instance 3), never by its id alone. The hashes, the journal, the executor's targets, the cost walk and every `gengraph.*` command's `node` prop use it.",
       "prevents": "A node inside a group instance sharing its id with a root node, since every graph's ids start at zero, so the two would share a hash, a journal record or a command target.",
@@ -143,7 +166,7 @@
     },
     {
       "id"      : "planning.incremental",
-      "rule": "`planTasks` runs once per scheduler wave. It decomposes the owed scenes the P3 gate has cleared, solves the stills family, and adds the task of every slot with an identity whose scene, if it has one, has cleared the gate. It keeps no enumeration of its own.",
+      "rule": "`planTasks` runs once per scheduler wave. It decomposes the owed scenes whose unit gate is open, solves the stills family, and adds the task of every slot the solver reports `ready`. It keeps no enumeration and no gate of its own.",
       "prevents": "Planning a shot before its plate is drawn, when its identity cannot be stated yet, or a planner that enumerates pictures its own way and so plans work the slot graph does not show.",
       "subjects": [
         "module:packages/pipeline/src/planner.ts",
@@ -155,7 +178,7 @@
       "see": [
         "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
       ],
-      "detail": "A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no identity until that upstream task is `done`, so it appears a wave later. `vngen cost` therefore counts only what is plannable when it runs, and undercounts the tasks a finished wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is the planner's `sceneUnblocked` check until the solver's own unit gate replaces it.",
+      "detail": "A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no identity until that upstream task is `done`, so it appears a wave later. `vngen cost` therefore counts only what is plannable when it runs, and undercounts the tasks a finished wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is `gate.perUnit`: the planner asks `unitGates` before decomposing and reads `ready` after.",
       "declared": "packages/pipeline/src/planner.ts"
     },
     {
@@ -174,7 +197,7 @@
         "slot:sheet"
       ],
       "see"     : ["docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them"],
-      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: `gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: a live scene waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
       "declared": "packages/stills/src/family.ts"
     },
     {
@@ -428,7 +451,7 @@
       "subjects": [
         "function:packages/model/src/build.ts#buildModel",
         "function:packages/model/src/used.ts#liveScenes",
-        "function:packages/stills/src/gate.ts#gateStatus",
+        "function:packages/stills/src/family.ts#gateStatus",
         "module:packages/model/src/branching.ts",
         "module:packages/model/src/linear.ts",
         "module:packages/types/src/script/narrative.ts"
@@ -594,7 +617,7 @@
         "slot:sheet",
         "slot:shot"
       ],
-      "detail": "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the two differ in one case: a portrait slot whose only row is accepted but not current is approved here and not by the gate. `slotGraph`'s `SlotNode.approved` is the kinds' answer.",
+      "detail": "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and `gate.perUnit` lists the cases where the two answers differ. `slotGraph`'s `SlotNode.approved` is the kinds' answer.",
       "declared": "packages/stills/src/family.ts"
     }
   ],
@@ -604,6 +627,8 @@
     "command:art.setNotes": ["prompts.artRungsShared"],
     "command:art.setSeed": ["prompts.artRungsShared"],
     "command:asset.adopt"                                                : ["log.doneWriters"],
+    "command:gate.approve"                                               : ["gate.perUnit"],
+    "command:gate.lock"                                                  : ["gate.perUnit"],
     "command:gengraph.run": ["identity.stagingSheet"],
     "command:gengraph.setProp": ["graphs.groupNodeKey", "graphs.instanceEditsOverride"],
     "command:prompt.addRef": ["prompts.refOnClause", "prompts.refsAcyclic"],
@@ -638,6 +663,7 @@
       "identity.slotsBeforeTasks",
       "planning.incremental"
     ],
+    "function:packages/constraint-solver/src/solve.ts#unitGates"         : ["gate.perUnit"],
     "function:packages/gengraph/src/edit.ts#decideGenEdit": ["graphs.instanceEditsOverride"],
     "function:packages/gengraph/src/execute.ts#sharedAncestors": ["identity.stagingSheet"],
     "function:packages/gengraph/src/migrate.ts#migrateGraphJSON": ["graphs.socketRenameMigrates"],
@@ -676,6 +702,7 @@
     "function:packages/pipeline/src/p1.ts#deterministicBreakdown": ["providers.textFallback"],
     "function:packages/pipeline/src/p1.ts#enrichLocation": ["providers.textFallback"],
     "function:packages/pipeline/src/planner.ts#planTasks": [
+      "gate.perUnit",
       "planning.incremental",
       "storage.storyboardKept"
     ],
@@ -706,12 +733,17 @@
     "function:packages/stills/src/chunks.ts#composePrompt"               : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#effectiveChunks"             : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#renderPrompt"                : ["prompts.clauseList"],
+    "function:packages/stills/src/family.ts#gateStatus": [
+      "gate.perUnit",
+      "script.livenessFromNarrative"
+    ],
     "function:packages/stills/src/family.ts#heldAccepted": ["takes.approvedMeansAccepted"],
     "function:packages/stills/src/family.ts#stillsFamily": [
+      "gate.perUnit",
       "planning.incremental",
       "planning.sheetsOnlyWhenWorn"
     ],
-    "function:packages/stills/src/gate.ts#gateStatus": ["script.livenessFromNarrative"],
+    "function:packages/stills/src/gate.ts#approvedPortraitOf"            : ["gate.perUnit"],
     "function:packages/stills/src/prompts.ts#artClause": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildLocationChunks": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildModelSheetChunks": ["prompts.artNotesAppended"],
@@ -819,6 +851,7 @@
       "takes.approvedMeansAccepted"
     ],
     "slot:portrait": [
+      "gate.perUnit",
       "identity.slotsBeforeTasks",
       "planning.sheetsOnlyWhenWorn",
       "takes.approvedMeansAccepted"
@@ -829,11 +862,13 @@
       "takes.approvedMeansAccepted"
     ],
     "slot:shot": [
+      "gate.perUnit",
       "identity.slotsBeforeTasks",
       "identity.stagingSheet",
       "takes.approvedMeansAccepted"
     ],
     "task:shot_image": [
+      "gate.perUnit",
       "identity.headingRekeysShots",
       "identity.stagingSheet",
       "prompts.reviewerSpec"

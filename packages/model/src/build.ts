@@ -264,7 +264,7 @@ export const scriptLivenessFromNarrative = contract({
   subjects: [
     'function:packages/model/src/build.ts#buildModel',
     'function:packages/model/src/used.ts#liveScenes',
-    'function:packages/stills/src/gate.ts#gateStatus',
+    'function:packages/stills/src/family.ts#gateStatus',
     'module:packages/model/src/branching.ts',
     'module:packages/model/src/linear.ts',
     'module:packages/types/src/script/narrative.ts',
