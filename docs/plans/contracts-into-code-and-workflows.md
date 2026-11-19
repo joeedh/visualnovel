@@ -880,6 +880,135 @@ The plan as written before it landed: the workflows note's step 2.
 
 ### Stage 6: the constraint solver, with stills as its first family
 
+**6a landed 2026-11-18 on the `solver` branch, as `e653980c` and `c350ec04` and the commit
+that adds this note.** As built:
+
+- **`SolverFacts`** is `{ assets?, tasks }`. `graphs` is left out until 6d defines
+  `BoundGraphFact`.
+- **`SlotKind<F, B, K extends TaskKind>`.** The sketch's `I` became the task kind `K`, and
+  `resolve` answers `Decided<TaskInputs[K]>`, so a kind and its inputs stay correlated.
+  The solver hashes with `taskHash(kind.task, inputs)`, which is what every branch of
+  `slotTaskHash` does, so the stills kinds wrap `resolveSlot` and not `slotTaskHash`;
+  `slotTaskHash` stays for its other callers. Three members go beyond the sketch:
+    - `candidates(binding, facts)`, the manifest rows bound to the slot, newest first;
+    - `pick(binding, facts)`, the row the slot holds, which 6d replaces with the solver's
+      own rule;
+    - a third argument to `approved`, `Held { pick?, rows }`, so the stills test reads the
+      rows `candidates` already filtered instead of filtering the manifest again.
+- **`Family<F>`** is `{ id, kinds, enumerate }`. `enumerate` returns `Slot<F>` records,
+  `{ kind, binding, unit? }`, rather than bare bindings, because the solver cannot find a
+  kind from an `unknown` binding. `slot(kind, binding, unit?)` builds one and type-checks
+  the pairing. `owed`, `gates` and `kept` are not on the type: no 6a code needed them, so
+  nothing is stubbed, and 6b, 6c and 6d add them.
+- **`SlotState`** is `key`, `kind` (the prefix), `task`, `binding`, `label`, `unit?`,
+  `refs`, `taskHash?`, `inputs?` (typed `TaskInputs[TaskKind]`), `blocked?`, `status?`,
+  `pick?`, `candidates` and `approved`. `binding` and `label` are added because the slot
+  graph's readers use them. `pick`, `candidates` and `approved` are real, computed through
+  the kinds from `resolveBinding`, `candidatesFor` and `newestFirst` as `buildSlotGraph`
+  computes them. `ready`, `suspended` and `drift` are not on the type; 6b to 6d add them.
+- **`solve`** returns `Solution { slots, dependents, order }`. The owed units, the keep
+  set and the project-level refusals belong to 6b and 6d.
+- **`Decided`** moved to `packages/constraint-solver/src/family.ts`; `slotgraph.ts`
+  re-exports it, so its importers did not change.
+- **The stills family** is `packages/stills/src/family.ts`: `stillsFamily`, `StillsFacts`,
+  and `plateKind`, `portraitKind`, `sheetKind` and `shotKind`, built by one factory over
+  `slotKey`, `parseSlot`, `slotLabel`, `refsOfSlot`, `resolveSlot`, `candidatesFor` and
+  `resolveBinding`. `StillsFacts` is the solver's facts plus `SlotGraphContext` without
+  `assets` and `graph`, with `tasks` in place of `graph`, and with `assets` required, as
+  `BindingContext` requires it. The enumeration is written out again rather than shared
+  with `buildSlotGraph`, so the equality test compares two enumerations. A shot's unit is
+  its scene id, and no other slot has one.
+- **The equality test** is `packages/pipeline/src/tests/solveagreement.test.ts`.
+    - It maps each `SlotState` to a `SlotNode` (dropping `kind`, `task`, `unit` and
+      `inputs`, and renaming `pick` to `hash`) and compares the ordered lists with
+      `toStrictEqual`, then the dependents and the order. The four dropped fields are
+      checked on their own: `kind` is the binding's kind, `unit` is the scene id for a
+      shot and absent otherwise, `task` and `inputs` equal `resolveSlot`'s plan, and
+      `taskHash(task, inputs)` is the slot's hash.
+    - It covers the six stage 1 fixtures before and after each of five planner waves, each
+      with the fixture's manifest and with the oracle's `ROWS`, plus once with no task
+      log. It also covers the five testkit scripts on disk (`listed` under
+      `narrative: linear`) at four points: nothing drawn, halted at the gate, after
+      approval and a full run, and after accepting everything. Each point is compared four
+      ways: the planner's own model with its partial production map, the `withProduction`
+      copy, that copy with an `angleOf`, and that copy with no task log.
+    - Changing `heldAccepted` to ignore `accepted` fails five of its eleven tests.
+    - The oracle's fixtures moved to
+      `packages/pipeline/src/tests/__fixtures__/projects.ts` so both tests share them. The
+      oracle's pins did not change.
+- **The toy family** is in `packages/constraint-solver/src/tests/solve.test.ts`. A `seed`
+  (`prompt_refine`) is drawn from nothing. A `sprout` (`vision_review`) belongs to a bed,
+  its unit, and its inputs embed its seed's output, so it has no identity until the seed's
+  task is done; it may also lean on other sprouts. The tests cover enumeration and the
+  rule that the first enumeration of an address wins, identity and status, blocked
+  reasons, a ref to an address no slot has, dependents, the upstream-first order, a cycle,
+  and the take and approval passing through the kind.
+- **Contracts.** Three, so the index holds 35 and `contracts.json` is 71 KB:
+    - `identity.slotsBeforeTasks` in the solver's `solve.ts`, pinned by the toy family
+      test.
+    - `planning.sheetsOnlyWhenWorn` in `family.ts`, pinned by
+      `packages/stills/src/tests/family.test.ts`. The gate sub-bullet is in its `detail`.
+    - `takes.approvedMeansAccepted` in `family.ts`, pinned by the same file. No bullet was
+      false, but its `detail` records the one case where the test differs from the gate's
+      `approvedPortraitOf`: a portrait slot whose only row is accepted but not current is
+      approved by the slot and not by the gate. `SlotNode.approved`'s doc comment still
+      described an asymmetric test the code no longer has, and now says what the code
+      does.
+- **`SlotKind.contracts` is wired.** The generator imports `stillsFamily`, checks a
+  `slot:` subject against the declared prefixes instead of probing `parseSlot` (so
+  `slot:asset`, which no contract used, is no longer accepted), and adds `slot:<prefix>`
+  to each contract a kind carries, as it adds `command:<id>` for commands. All four kinds
+  carry the first and third contracts; plates, portraits and sheets also carry the second.
+- **Allow-lists.** `constraint-solver` may import `types`, `util`, `taskgraph` and
+  `contracts`. It imports only `types`, `taskgraph` and `contracts` today, and its
+  `package.json` lists those three. A probe importing `model`, `config`, `stills`,
+  `artgen`, `gengraph` and `providers` was refused six times and removed.
+  `constraint-solver` was added to `stills` only. `solveagreement.test.ts` imports it from
+  `@vn/pipeline`, but test files are exempt from `vn/element-types`, and a test-only
+  import is not listed in `package.json` (as `@vn/testkit` is not), so `pipeline` gained
+  no entry.
+- **Setup.** `tsconfig.json` paths, `PACKAGES` in `jest.config.cjs` and
+  `scripts/aliases.mjs`, the lintrix element, and the workspace dependency in
+  `packages/stills/package.json`. `pnpm-lock.yaml` was edited by hand, and
+  `pnpm install --offline --frozen-lockfile` accepts it. The package has no subpath.
+- **Docs.** `packages.md`, `module-map.md` and `CLAUDE.md`'s diagram and layering rules
+  gain the package.
+- **For 6b:**
+    - **No manifest is not an empty manifest.** `StillsFacts.assets` is required, so a
+      caller without a store passes `[]`, and `resolveSlot` then finds no approved
+      portrait in it. The planner without a manifest reads the sheet's mirror instead
+      (`approvedPortraitOf(character, undefined)`), so it plans sheets and shots that the
+      solver, given `[]`, reports as blocked. 6b has to make `assets` optional in
+      `StillsFacts`, handing `undefined` to `resolveSlot` and `[]` to `candidatesFor`, or
+      the wave-by-wave comparison fails on every fixture without a manifest.
+    - **Identity is not readiness.** A slot's identity ignores the unit gate: in the
+      `gated` fixture with a manifest, `held__1` resolves a hash the planner never plans,
+      because Ren is unapproved. 6b's `ready` therefore needs the unit gate, which makes
+      `Family.gates` a 6b requirement rather than a 6c one, unless 6b keeps the planner's
+      `sceneUnblocked` check until 6c.
+    - **The solver computes no `deps`.** The planner gives a shot task its plate task and
+      its non-default sheet tasks as deps. Portraits are not deps, since a shot keys on
+      the approved hash rather than the portrait task. `Task.deps` is not hashed, but
+      `topoOrder` reads it, so 6b must derive the same list, from the refs' task hashes or
+      as a kind method.
+    - **Partial and full production maps.** `solve` reads whatever `model.production`
+      holds and never fills it, so the planner's model gives shot slots only for scenes
+      already decomposed. A `waveFacts` over that model matches the planner if the owed
+      decompositions run before each wave is solved. Readers (6e) want the
+      `withProduction` copy.
+    - **In-place stamping.** The planner writes `shot.prompt`, `image` and `proseHash`
+      onto the live `shotsOf` objects before `writeShots`. None of the three enters a
+      shot's inputs, so stamping moves no identity, but the solver hands back no shot
+      objects: the planner must keep stamping the model's own shots, by id, after reading
+      the solver's answer.
+    - **Cost.** Per slot, `solve` makes the calls `buildSlotGraph` makes, including the
+      second `candidatesFor` inside `resolveBinding`. 6a measured no timing, so 6b's
+      measurement starts from that parity.
+    - `solveagreement.test.ts` goes with `buildSlotGraph` and `slotagreement.test.ts`. Its
+      testkit-script half can be pointed at the planner instead.
+
+The plan as written before 6a landed:
+
 The core of the plan. It runs as five commits, each green.
 
 - **6a. Types and the generic loop.** Create `@vn/constraint-solver` with the interfaces
