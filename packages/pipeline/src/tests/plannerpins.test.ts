@@ -1,7 +1,7 @@
 /**
- * The stage 1 planner oracle (`docs/plans/contracts-into-code-and-workflows.md`): the live
- * planner and the frozen copy in `oracle.ts` must plan the same tasks, wave by wave, on fixtures
- * `prompthash.test.ts` does not reach, and both must keep the hashes pinned below.
+ * The planner on the stage 1 fixtures (`docs/plans/contracts-into-code-and-workflows.md`), which
+ * reach what `prompthash.test.ts` does not: it plans the waves the stage 1 oracle recorded, keeps
+ * the task hashes pinned below, and reaches the case each fixture is named for.
  *
  * The pins were recorded from the planner as it stood on 2026-11-17, before any of the plan's
  * code moved. Re-recording them is never the fix for a failure here: a diff means a task's
@@ -11,8 +11,8 @@ import type { AnyTask } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
 import { planTasks } from '../index.js';
-import { oraclePlanTasks } from './oracle.js';
 import { config, FIXTURES, PIN, type Fixture } from './__fixtures__/projects.js';
+import recorded from './__fixtures__/waves/fixtures.json';
 
 type Planner = typeof planTasks;
 
@@ -113,11 +113,17 @@ const PINNED: Record<string, string[]> = {
 
 const everyTask = (all: string[][]): string[] => [...new Set(all.flat())].sort();
 
-describe('the planner oracle', () => {
+/** The oracle's recorded waves for `name`, as sorted `kind hash` lines without their deps. */
+const recordedWaves = (name: string): string[][] =>
+  (recorded as Record<string, { waves: string[][] }>)[name]!.waves.map((wave) =>
+    wave.map((line) => line.split(' ').slice(0, 2).join(' ')).sort(),
+  );
+
+describe('the planner on the stage 1 fixtures', () => {
   for (const [name, fixture] of Object.entries(FIXTURES)) {
     describe(name, () => {
-      it('plans what the oracle plans, wave by wave', async () => {
-        expect(await waves(planTasks, fixture)).toEqual(await waves(oraclePlanTasks, fixture));
+      it('plans the waves the oracle recorded', async () => {
+        expect(await waves(planTasks, fixture)).toEqual(recordedWaves(name));
       });
 
       it('keeps every pinned task hash', async () => {

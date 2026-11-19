@@ -4,7 +4,7 @@
  * (`docs/plans/contracts-into-code-and-workflows.md`). Each wave's tasks are compared with their
  * `deps`, and the shots the planner stamps are compared once the waves are over.
  *
- * The cases are the oracle's six fixtures, three more that the planner and the slot graph once
+ * The cases are the six stage 1 fixtures, three more that the planner and the slot graph once
  * answered differently, and every testkit script on disk before and after its cast is approved.
  */
 import type { AnyTask, Asset, ProjectModel, Shot } from '@vn/types';
@@ -15,7 +15,6 @@ import { character, location, makeProject, model, scene, SCRIPTS, LISTED_ORDER }
 import type { ProjectPaths } from '@vn/store';
 import type { ScriptName } from '@vn/testkit';
 import { planTasks, planningIncremental } from '../index.js';
-import { oraclePlanTasks } from './oracle.js';
 import { config, FIXTURES, type Fixture } from './__fixtures__/projects.js';
 import fixtureWaves from './__fixtures__/waves/fixtures.json';
 import branching from './__fixtures__/waves/branching.json';
@@ -165,8 +164,6 @@ describe(pins(planningIncremental), () => {
         const opts = fixture.assets ? { assets: fixture.assets } : {};
         const live = await waves(planTasks, fixture.build(), opts);
         expect(live).toEqual(FIXTURE_WAVES[name]);
-        // The recording must equal the stage 1 oracle's output on this tree
-        expect(await waves(oraclePlanTasks, fixture.build(), opts)).toEqual(FIXTURE_WAVES[name]);
         // Each case has to reach a shot, or it compared plates and portraits only
         expect(live.waves.flat().some((l) => l.startsWith('shot_image '))).toBe(true);
       });
@@ -186,20 +183,13 @@ describe(pins(planningIncremental), () => {
           const recorded = SCRIPT_WAVES[name];
           /** The planner over a fresh reload of the project as it stands, against `expected`. */
           const agree = async (withPaths: boolean, expected: Run): Promise<Run> => {
-            const runs: Run[] = [];
-            for (const plan of [planTasks, oraclePlanTasks]) {
-              const { model: m, store } = await p.reload();
-              runs.push(
-                await waves(plan, m, {
-                  assets: store.manifest(),
-                  ...(withPaths ? { paths: p.paths } : {}),
-                }),
-              );
-            }
-            expect(runs[0]).toEqual(expected);
-            // The recording must equal the stage 1 oracle's output on this tree
-            expect(runs[1]).toEqual(expected);
-            return runs[0]!;
+            const { model: m, store } = await p.reload();
+            const run = await waves(planTasks, m, {
+              assets: store.manifest(),
+              ...(withPaths ? { paths: p.paths } : {}),
+            });
+            expect(run).toEqual(expected);
+            return run;
           };
 
           await agree(false, recorded.before);

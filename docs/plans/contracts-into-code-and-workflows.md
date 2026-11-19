@@ -1550,8 +1550,13 @@ agree is deleted when the second path is, and the stage's commit message says so
 ## Risks and the cost of undoing
 
 - **Task identity.** Every stage keeps kind names and input shapes byte-identical. The
-  guards are `prompthash.test.ts`, the stage 1 pinned fixtures, and the stage 1 oracle
-  through stage 6. A stage that moves a planner hash does not land.
+  guards are `prompthash.test.ts`, the stage 1 pinned fixtures (`plannerpins.test.ts`),
+  and the oracle's recorded output. The oracle ran beside the planner through 6d; 6e
+  recorded what it planned on master, wave by wave, in
+  `packages/pipeline/src/tests/__fixtures__/waves/`, checked the recording against it, and
+  deleted it. `plannerwaves.test.ts` holds the planner to the recording from then on. A
+  stage that moves a planner hash does not land, and re-recording the files is never the
+  fix.
 - **Planning speed.** The solver runs once per wave over every slot. Stage 6b measures it
   and memoises if needed.
 - **The `@vn/stills` move.** It touches every importer of the moved names in one commit,
@@ -1576,8 +1581,9 @@ agree is deleted when the second path is, and the stage's commit message says so
       map and `narrative.live`.
     - Inside stage 6, 6a reverts on its own while `buildSlotGraph` and the planner's
       enumeration still exist. 6b is the point of no return. Reverting it means restoring
-      about 120 lines of planner enumeration, `buildSlotGraph` and the agreement test; the
-      oracle makes that a copy rather than a rewrite until 6e deletes it.
+      about 120 lines of planner enumeration, `buildSlotGraph` and the agreement test. The
+      oracle made that a copy rather than a rewrite until 6e deleted it; it is in git
+      history at 5bc32739 (`packages/pipeline/src/tests/oracle.ts`).
     - Stages 7 to 9 revert cleanly in reverse order.
 
 ## Review

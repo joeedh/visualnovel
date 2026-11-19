@@ -1,7 +1,7 @@
 /**
- * The fixtures of the stage 1 planner oracle (`docs/plans/contracts-into-code-and-workflows.md`):
- * small in-memory projects that reach what `prompthash.test.ts` does not, shared by the oracle's
- * pins and by the solver's agreement with the slot graph.
+ * The stage 1 planner fixtures (`docs/plans/contracts-into-code-and-workflows.md`): small in-memory
+ * projects that reach what `prompthash.test.ts` does not, shared by the planner's pinned hashes and
+ * recorded waves and by the gate's tests.
  */
 import {
   projectConfig,
