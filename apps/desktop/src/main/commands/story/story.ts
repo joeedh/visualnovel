@@ -1151,7 +1151,7 @@ export const storyExport = define({
     'holds a take nobody has approved, naming it: the player shows whatever a slot holds, and ' +
     'exporting is publishing.',
   notes:
-    'Write `vngen/build/story.play.json` (`vngen export`). Refused, naming the first, while any shot frame or cast portrait the playable would show is the slot’s current take and unapproved (`unapprovedTakes` in `@vn/export`); the run throws `VnError(UNAPPROVED)` with the same sentence. The in-app player asks nothing.',
+    'Write `vngen/build/story.play.json` (`vngen export`). Refused, naming the first, while any shot frame or cast portrait the playable would show is the slot’s current take and unapproved (`unapprovedTakes` in `@vn/stills`); the run throws `VnError(UNAPPROVED)` with the same sentence. The in-app player asks nothing.',
   mutating   : true,
   affects    : ['vngen/build/story.play.json'],
   props      : {},

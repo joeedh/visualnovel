@@ -6,8 +6,8 @@ import { gateStatus, readTaskLog } from '@vn/pipeline';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { solve, type Solution } from '@vn/constraint-solver';
-import { stillsFamily } from '@vn/stills';
-import { buildPlayable, unapprovedSentence, unapprovedTakes, withSceneShots } from '@vn/export';
+import { stillsFamily, unapprovedTakes } from '@vn/stills';
+import { buildPlayable, unapprovedSentence, withSceneShots } from '@vn/export';
 import type { Playable, RefBinding } from '@vn/types';
 import type { PipelineStatus, SlotNode, TaskLogView } from '../../shared/ipc.js';
 import { taskLogView } from './tasklogview.js';
@@ -56,7 +56,7 @@ export class PipelinePart {
   async exportRefusal(): Promise<string | undefined> {
     const project = await loadProject(this.session.dir);
     const model = await withSceneShots(project.paths, project.model);
-    return unapprovedSentence(unapprovedTakes(model, project.store));
+    return unapprovedSentence(unapprovedTakes(model, project.store.manifest()));
   }
 
   /**
@@ -67,7 +67,7 @@ export class PipelinePart {
   async exportPlayable(): Promise<{ path: string; scenes: number }> {
     const project = await loadProject(this.session.dir);
     const model = await withSceneShots(project.paths, project.model);
-    const refusal = unapprovedSentence(unapprovedTakes(model, project.store));
+    const refusal = unapprovedSentence(unapprovedTakes(model, project.store.manifest()));
     if (refusal !== undefined) throw new VnError('UNAPPROVED', refusal);
     const playable = buildPlayable(model, project.store, {
       portraitOverlay: project.config.portrait_overlay,

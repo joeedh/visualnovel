@@ -8,7 +8,7 @@ import { buildModel } from '@vn/model';
 import { ProjectPaths, writeShots } from '@vn/store';
 import { SCRIPTS } from '@vn/testkit';
 import { buildPlayable, withSceneShots } from '../playable.js';
-import { unapprovedSentence, unapprovedTakes } from '../unapproved.js';
+import { unapprovedSentence } from '../unapproved.js';
 
 /** A minimal in-memory {@link AssetStore}: only `manifest()` matters to the exporter. */
 function fakeStore(assets: Asset[] = []): AssetStore {
@@ -159,73 +159,16 @@ describe('buildPlayable', () => {
   });
 });
 
-describe('unapprovedTakes', () => {
-  const base = sampleModel();
-  const lines = base.scenes.get('arrival')!.lines.map((l) => l.id);
-  const shot: Shot = {
-    id         : 'arrival__s1',
-    sceneId    : 'arrival',
-    framing    : 'wide',
-    location   : 'evening',
-    subjects   : [],
-    coversLines: lines,
-  };
-  const model: ProjectModel = { ...base, production: new Map([['arrival', { shots: [shot] }]]) };
-  const frame = (over: Partial<Asset>): Asset =>
-    asset({
-      hash     : 'f1',
-      kind     : 'shot_image',
-      satisfies: [{ sceneId: 'arrival', shotId: 'arrival__s1' }],
-      ...over,
-    });
-  const portrait = (over: Partial<Asset>): Asset =>
-    asset({ hash: 'p1', kind: 'portrait', satisfies: [{ characterId: 'aiko' }], ...over });
-
-  it('lists the frames and cast portraits the playable would show unapproved, frames first', () => {
-    const store = fakeStore([frame({ accepted: false }), portrait({ accepted: false })]);
-    expect(unapprovedTakes(model, store)).toEqual([
+describe('unapprovedSentence', () => {
+  it('names the first take and counts the rest, and says nothing for an empty list', () => {
+    const takes = [
       { slot: 'shot:arrival/arrival__s1', hash: 'f1' },
       { slot: 'portrait:aiko', hash: 'p1' },
-    ]);
-    expect(unapprovedSentence(unapprovedTakes(model, store))).toMatch(
+    ];
+    expect(unapprovedSentence(takes)).toMatch(
       /^shot:arrival\/arrival__s1 holds a take nobody has approved \(f1…\) and 1 more\./,
     );
-  });
-
-  it('is silent for approved takes, and for a slot that holds nothing', () => {
-    // A frame a later render pushed out is history and not shown, so its flag does not matter.
-    const store = fakeStore([
-      frame({ accepted: true }),
-      frame({ hash: 'f0', current: false, accepted: false }),
-      portrait({ accepted: true }),
-    ]);
-    expect(unapprovedTakes(model, store)).toEqual([]);
     expect(unapprovedSentence([])).toBeUndefined();
-    // Nothing drawn at all: the player shows a placeholder, and there is nothing to approve.
-    expect(unapprovedTakes(model, fakeStore())).toEqual([]);
-  });
-
-  it('reads a portrait off its row, as the gate does; the sheet alone approves nothing', () => {
-    const sheetOnly: ProjectModel = {
-      ...model,
-      characters: new Map(
-        [...model.characters].map(([id, c]) =>
-          id === 'aiko' ? [id, { ...c, status: 'approved', approvedPortrait: 'p1' }] : [id, c],
-        ),
-      ),
-    };
-    const store = fakeStore([portrait({ accepted: false })]);
-    expect(unapprovedTakes(sheetOnly, store)).toEqual([{ slot: 'portrait:aiko', hash: 'p1' }]);
-    // A locked character's approval is the sheet's, whatever the slot holds
-    const locked: ProjectModel = {
-      ...model,
-      characters: new Map(
-        [...model.characters].map(([id, c]) =>
-          id === 'aiko' ? [id, { ...c, status: 'locked', approvedPortrait: 'p1' }] : [id, c],
-        ),
-      ),
-    };
-    expect(unapprovedTakes(locked, store)).toEqual([]);
   });
 });
 

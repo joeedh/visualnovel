@@ -220,6 +220,7 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 | `condense.ts`   | prompt condensing                                                               |
 | `subject.ts`    | concept subject parse/match                                                     |
 | `drift.ts`      | prose drift (`proseHash`, `driftOf`), which the shot kind reports               |
+| `unapproved.ts` | the takes an export refuses over (`unapprovedTakes`), across every scene        |
 | `index.ts`      | barrel (reaches `node:fs` through `@vn/taskgraph`; the renderer uses the sides) |
 
 ### @vn/artgen — on-demand art, adoption, and the stills rules' I/O (`packages/artgen`)

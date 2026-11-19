@@ -137,7 +137,7 @@ class AssetIndex {
     );
   }
 
-  /** The portrait a character's slot holds, approved or not; `unapprovedTakes` says which. */
+  /** The portrait a character's slot holds, approved or not; `unapprovedTakes` lists which. */
   portrait(characterId: string): AssetRef | undefined {
     return this.ref(
       this.assets.find((a) => a.kind === 'portrait' && bindsTo(a, { characterId }) && a.current),

@@ -16,13 +16,7 @@ import {
   writeSceneChunk,
   writeStoryGraph,
 } from '@vn/store';
-import {
-  buildPlayable,
-  withSceneShots,
-  unapprovedSentence,
-  unapprovedTakes,
-  writePlayable,
-} from '@vn/export';
+import { buildPlayable, withSceneShots, unapprovedSentence, writePlayable } from '@vn/export';
 import {
   acceptTake,
   acceptableTakes,
@@ -37,6 +31,7 @@ import {
   reportGraphs,
   stillsFamily,
   suspensions,
+  unapprovedTakes,
   waveFacts,
   type GraphDoc,
   type GraphRuntime,
@@ -227,7 +222,7 @@ export async function cmdExport(args: Args): Promise<number> {
   const model = await withSceneShots(project.paths, project.model);
   // A playable shows the take each slot holds, so one holding a take nobody approved is refused
   // here rather than published: `vngen accept` is the route to approval on the command line
-  const refusal = unapprovedSentence(unapprovedTakes(model, project.store));
+  const refusal = unapprovedSentence(unapprovedTakes(model, project.store.manifest()));
   if (refusal !== undefined) {
     ok(`Not exported: ${refusal} (\`vngen accept ${dir} --all\` accepts every take waiting.)`);
     return 1;

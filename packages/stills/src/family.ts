@@ -235,9 +235,10 @@ export const takesCurrencyExclusive = contract({
     "solver applies to every slot's candidates); rows never stamped sort last, in hash order, and " +
     'no surface may present one of those as the latest. Publishing an unapproved current take is ' +
     'refused; watching one is not. `buildPlayable` projects what each slot holds and asks ' +
-    'nothing, so the in-app player shows it; `unapprovedTakes` (`@vn/export`) lists every frame ' +
-    'and cast portrait that would show unapproved, and `story.export`, `project.installPages` ' +
-    "and `vngen export` refuse on the first of them with one sentence, the command's `check` and " +
+    'nothing, so the in-app player shows it; `unapprovedTakes` (`@vn/stills`) lists every frame ' +
+    'and cast portrait in every scene that would show unapproved, the host passes the list to ' +
+    "`@vn/export`'s `unapprovedSentence`, and `story.export`, `project.installPages` and " +
+    "`vngen export` refuse on the first of them with one sentence, the command's `check` and " +
     "its `run` (`VnError('UNAPPROVED')`) alike. `vngen accept --hash | --all` and the testkit's " +
     '`acceptAll` accept through `acceptTake`, the same rule `asset.accept` applies.',
 });
