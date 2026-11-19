@@ -1,7 +1,7 @@
 /**
  * The stills family under the solver: which slots a project implies, and what approval means for
- * each kind. Agreement with `buildSlotGraph` slot for slot is `solveagreement.test.ts`, in
- * `@vn/pipeline`, which can move a project through the planner's waves.
+ * each kind. Agreement with what the planner plans is `slotplan.test.ts` and `plannerwaves.test.ts`,
+ * in `@vn/pipeline`, which can move a project through the planner's waves.
  */
 import { pins } from '@vn/contracts';
 import { solve } from '@vn/constraint-solver';

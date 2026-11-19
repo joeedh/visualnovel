@@ -20,7 +20,7 @@ import {
   angleOfTask,
   assetApproved,
   assetSlotLabel,
-  buildSlotGraph,
+  slotGraph,
   candidatesFor,
   lastRenderedAt,
   loggedTake,
@@ -96,7 +96,7 @@ const isSheet = (asset: Asset): boolean =>
 export async function migrateCurrent(deps: TakeDeps): Promise<Migration | undefined> {
   if (!deps.store.unstamped) return undefined;
   const ctx = contextOf(deps);
-  const slots = buildSlotGraph(ctx);
+  const slots = slotGraph(ctx);
   const renderedAt = lastRenderedAt(deps.graph);
   const chosen = new Map<string, string | undefined>();
   const held: Record<string, string> = {};
@@ -165,7 +165,7 @@ function migrationPick(
 export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
   await migrateCurrent(deps);
   const ctx = contextOf(deps);
-  const slots = buildSlotGraph(ctx);
+  const slots = slotGraph(ctx);
   const byHash = new Map(ctx.assets.map((a) => [a.hash, a]));
   const fixes: OverHeld[] = [];
 
@@ -253,7 +253,7 @@ export function acceptableTakes(deps: TakeDeps): Acceptable[] {
   const byHash = new Map(ctx.assets.map((a) => [a.hash, a]));
   const out: Acceptable[] = [];
   const seen = new Set<string>();
-  const slots = buildSlotGraph(ctx);
+  const slots = slotGraph(ctx);
   for (const key of slots.order) {
     if (key.startsWith('portrait:')) continue;
     const node = slots.nodes.get(key)!;

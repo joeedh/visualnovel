@@ -49,7 +49,7 @@ export interface DocTreeInput {
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
   /**
-   * Every picture the project implies, from `buildSlotGraph`. Optional: when it is absent the
+   * Every picture the project implies, from `slotGraph`. Optional: when it is absent the
    * Unapproved root is left out rather than drawn empty, so a caller that has not built the graph
    * never claims nothing is waiting.
    */

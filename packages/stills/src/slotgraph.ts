@@ -1,29 +1,14 @@
 /**
- * Every picture this project implies, whether or not anything has drawn one yet.
+ * A slot's identity: the task the planner adds for it, or the sentence saying why the project
+ * cannot state one yet (`planSlot`, `resolveSlot`), and the shapes the slot graph's readers take.
  *
- * `planTasks` is incremental by construction: a `shot_image`'s inputs embed its plate's and its
- * cast's asset hashes, and `taskHash` covers the whole inputs object, so a shot's identity does not
- * exist until those have rendered. A graph of task hashes therefore cannot show work that has yet
- * to be planned, and a surface that wants to show it has to guess, which is what the Task Graph
- * pane's ghost clusters did.
+ * A `shot_image`'s inputs embed its plate's and its cast's asset hashes, and `taskHash` covers the
+ * whole inputs object, so a shot has no identity until those have rendered. Its slot exists before
+ * that, under an address `refcycle.ts` speaks, and carries the sentence instead. Adoption refuses
+ * with the same sentence, because it answers the same question.
  *
- * The full graph is instead a graph of slots: the addresses `refcycle.ts` already speaks, which
- * exist before anything is rendered and survive a re-plan. A slot the project can state a planner
- * identity for carries that identity. A slot it cannot carries the sentence saying why instead,
- * which is the sentence adoption refuses with, because it answers the same question.
- *
- * Three contracts, each load-bearing:
- *
- * - Sheets are enumerated for every used outfit whether or not the gate has cleared. That is the
- *   difference between a slot graph and a plan, and it means this is not a prediction of what
- *   `planTasks` emits this wave — `vngen cost` remains that answer.
- * - Shots come only from the model's production map, which a host fills from the persisted
- *   decompositions. A scene with no `work/shots/<id>.json` has no shot slots, and none are
- *   fabricated, because decomposing is an explicit act with a price.
- * - `hash` and `candidates` are different answers and both are needed. See {@link SlotNode}.
- *
- * The reverse index lives here rather than on `TaskGraph` deliberately: `Task.deps` is documented
- * incomplete and is not hashed, so inverting it would answer a question nobody asks.
+ * `solve(stillsFamily, facts)` enumerates the slots, and `slotGraph` in `family.ts` answers them in
+ * the {@link SlotGraph} shape.
  */
 import type {
   AnyTask,
@@ -38,18 +23,10 @@ import type {
 import type { ProjectConfig } from '@vn/config';
 import type { Decided } from '@vn/constraint-solver';
 import { shotsOf } from '@vn/types';
-import {
-  allCharacters,
-  allLocationVariants,
-  outfitFor,
-  liveScenes,
-  usedOutfits,
-  variantIds,
-} from '@vn/model';
+import { outfitFor, usedOutfits, variantIds } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
-import { type BindingContext, candidatesFor, resolveBinding, sheetAngleOf } from './refs.js';
-import { refsOfSlot, slotsOf } from './refcycle.js';
-import { slotKey, slotLabel } from './slotaddr.js';
+import { type BindingContext, candidatesFor, sheetAngleOf } from './refs.js';
+import { slotsOf } from './refcycle.js';
 import type { RungContext } from './resolve.js';
 import {
   imageParams,
@@ -329,17 +306,14 @@ export interface SlotNode {
   binding: RefBinding;
   /** `slotLabel(binding)` — ids, because this names a picture's place rather than the art. */
   label: string;
-  /** Upstream slot keys. May name a slot `nodes` has no entry for; see {@link buildSlotGraph}. */
+  /** Upstream slot keys. May name a slot `nodes` has no entry for, such as an authored pin. */
   refs: string[];
   /** The planner's identity, where the project can state one. */
   taskHash?: string;
   status?: TaskStatus;
   /** {@link resolveSlot}'s sentence saying why no identity can be stated. */
   blocked?: string;
-  /**
-   * The asset that settles this slot — `resolveBinding`'s answer, which declines whenever the
-   * answer is not certain.
-   */
+  /** The asset that settles this slot: `pick`'s answer, which declines whenever it is not certain. */
   hash?: string;
   /**
    * Every manifest asset bound here, newest first ({@link newestFirst}). An empty list is what
@@ -355,78 +329,11 @@ export interface SlotNode {
   approved: boolean;
 }
 
+/** Every slot, keyed by address, in the shape the slot graph's readers take. */
 export interface SlotGraph {
   nodes: Map<string, SlotNode>;
   /** The reverse index `TaskGraph` has never had — slot key → the slots drawn from it. */
   dependents: Map<string, string[]>;
   /** Upstream before downstream: the order approval has to happen in. */
   order: string[];
-}
-
-/** Every slot this project implies, keyed by address, with its edges inverted. */
-export function buildSlotGraph(ctx: SlotGraphContext): SlotGraph {
-  const bindings: RefBinding[] = [];
-
-  for (const [locationId, variants] of allLocationVariants(ctx.model))
-    for (const variant of variants) bindings.push({ kind: 'plate', locationId, variant });
-
-  for (const character of allCharacters(ctx.model))
-    bindings.push({ kind: 'portrait', characterId: character.id });
-
-  for (const [characterId, outfits] of usedOutfits(ctx.model))
-    for (const outfit of outfits)
-      for (const angle of MODEL_SHEET_ANGLES)
-        bindings.push({ kind: 'sheet', characterId, outfit, angle });
-
-  for (const scene of liveScenes(ctx.model))
-    for (const shot of shotsOf(ctx.model, scene.id))
-      bindings.push({ kind: 'shot', sceneId: scene.id, shotId: shot.id });
-
-  const nodes = new Map<string, SlotNode>();
-  for (const binding of bindings) {
-    const key = slotKey(binding);
-    if (nodes.has(key)) continue;
-    const candidates = newestFirst(candidatesFor(binding, ctx));
-    const hash = resolveBinding(binding, ctx);
-    const decided = resolveSlot(binding, ctx);
-    const task = decided.ok ? slotTaskHash(decided.plan) : undefined;
-    const status = task ? ctx.graph?.get(task)?.status : undefined;
-
-    nodes.set(key, {
-      key,
-      binding,
-      label: slotLabel(binding),
-      // Left unfiltered by enumerated keys, because an edge to an authored `asset:<hash>` pin is
-      // real; a consumer treats a key `nodes` has no entry for as an opaque upstream
-      refs : refsOfSlot(binding, ctx).map(slotKey),
-      ...(task ? { taskHash: task } : {}),
-      ...(status ? { status } : {}),
-      ...(decided.ok ? {} : { blocked: decided.reason }),
-      ...(hash ? { hash } : {}),
-      candidates: candidates.map((a) => a.hash),
-      approved  : !!hash && candidates.some((a) => a.hash === hash && a.accepted),
-    });
-  }
-
-  const dependents = new Map<string, string[]>();
-  for (const node of nodes.values())
-    for (const ref of node.refs) dependents.set(ref, [...(dependents.get(ref) ?? []), node.key]);
-
-  // Post-order depth-first, so an upstream is emitted before everything drawn from it. The
-  // `visiting` guard is the one `suspendedAssets` uses, for the same reason: enforcement stops a
-  // cycle being written, and this stops a project that somehow holds one from wedging the app.
-  const order: string[] = [];
-  const done = new Set<string>();
-  const visiting = new Set<string>();
-  const walk = (key: string): void => {
-    if (done.has(key) || visiting.has(key)) return;
-    visiting.add(key);
-    for (const ref of nodes.get(key)?.refs ?? []) walk(ref);
-    visiting.delete(key);
-    done.add(key);
-    if (nodes.has(key)) order.push(key);
-  };
-  for (const key of nodes.keys()) walk(key);
-
-  return { nodes, dependents, order };
 }

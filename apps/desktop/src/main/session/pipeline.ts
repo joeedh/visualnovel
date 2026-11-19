@@ -5,7 +5,7 @@ import { fileCache } from '../workspace/filecache.js';
 import { gateStatus, readTaskLog } from '@vn/pipeline';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
-import { buildSlotGraph } from '@vn/stills';
+import { slotGraph } from '@vn/stills';
 import { buildPlayable, unapprovedSentence, unapprovedTakes, withSceneShots } from '@vn/export';
 import type { Playable } from '@vn/types';
 import type { PipelineStatus, TaskLogView } from '../../shared/ipc.js';
@@ -92,7 +92,7 @@ export class PipelinePart {
     const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
     // The same walk `docTree` reads. Emitted in `order`, so the wire carries the topology the
     // pane needs without shipping the two Maps: upstream is always earlier in the array.
-    const slots = buildSlotGraph({
+    const slots = slotGraph({
       ...labelContext(await withShots(project), project.graph),
       assets: manifest,
       config: project.config,

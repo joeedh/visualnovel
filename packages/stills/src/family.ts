@@ -1,8 +1,8 @@
 /**
  * The stills family as `@vn/constraint-solver` sees it: four slot kinds and the slots a project
- * implies. Each kind wraps the functions the slot graph already calls (`slotKey`, `refsOfSlot`,
- * `planSlot`, `candidatesFor`, `pick`), so `solve(stillsFamily, facts)` and
- * `buildSlotGraph` answer the same slot for slot until stage 6b retires the latter.
+ * implies. Each kind wraps the slot functions the rest of the package shares (`slotKey`,
+ * `refsOfSlot`, `planSlot`, `candidatesFor`, `pick`), and `solve(stillsFamily, facts)` is what the
+ * planner plans from.
  */
 import type { Asset, RefBinding, TaskInputs, TaskKind } from '@vn/types';
 import { shotsOf } from '@vn/types';
@@ -11,6 +11,7 @@ import { contract, type Contract } from '@vn/contracts';
 import {
   identitySlotsBeforeTasks,
   slot,
+  solve,
   type Decided,
   type Family,
   type Held,
@@ -26,7 +27,9 @@ import {
   newestFirst,
   planSlot,
   type PlannedSlot,
+  type SlotGraph,
   type SlotGraphContext,
+  type SlotNode,
   type SlotResolveContext,
 } from './slotgraph.js';
 
@@ -132,8 +135,7 @@ export const takesApprovedMeansAccepted = contract({
   detail:
     "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the " +
     'two differ in one case: a portrait slot whose only row is accepted but not current is ' +
-    "approved here and not by the gate. `buildSlotGraph`'s `SlotNode.approved` uses the same " +
-    'test as the kinds.',
+    "approved here and not by the gate. `slotGraph`'s `SlotNode.approved` is the kinds' answer.",
 });
 
 export const planningSheetsOnlyWhenWorn = contract({
@@ -152,9 +154,9 @@ export const planningSheetsOnlyWhenWorn = contract({
   see     : ['docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them'],
   detail:
     '`stillsFamily` enumerates plates over `allLocationVariants`, portraits over ' +
-    '`allCharacters` and sheets over `usedOutfits`; the planner plans from its slots, and ' +
-    '`buildSlotGraph` enumerates from the same three. `usedOutfits` gives everyone a live scene casts their default ' +
-    'outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: ' +
+    '`allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. ' +
+    '`usedOutfits` gives everyone a live scene casts their default outfit, plus each ' +
+    '`[[outfit:]]` marker and shot override. The gate is a separate question: ' +
     "`gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts " +
     "nothing and shows in the document tree's Awaiting approval branch.",
 });
@@ -201,9 +203,10 @@ export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
 export const shotKind = stillsKind('shot', 'shot_image', EVERY_KIND);
 
 /**
- * Lists the slots `buildSlotGraph` lists, in its order: every authored location variant's plate
- * and every authored character's portrait, a sheet per angle of each used outfit, and the shots
- * of each live scene's storyboard in the production map, each shot in its scene's unit.
+ * Lists every authored location variant's plate and every authored character's portrait, a sheet
+ * per angle of each used outfit whether or not the gate has cleared, and the shots of each live
+ * scene's storyboard in the production map, each shot in its scene's unit. A scene the map holds
+ * no storyboard for has no shot slots; none are made up, because decomposing costs a model call.
  */
 function enumerate(facts: StillsFacts): Slot<StillsFacts>[] {
   const out: Slot<StillsFacts>[] = [];
@@ -238,3 +241,29 @@ export const stillsFamily: Family<StillsFacts> = {
   enumerate,
   owed,
 };
+
+/**
+ * Answers `solve(stillsFamily, ctx)` in the `SlotGraph` shape that the document tree, the gate pane,
+ * the Task Graph pane, takes and the gen-graph loader read. A context with no task log reads as an
+ * empty one, so no shot slot states an identity.
+ */
+export function slotGraph(ctx: SlotGraphContext): SlotGraph {
+  const { graph, ...rest } = ctx;
+  const solved = solve(stillsFamily, { ...rest, tasks: graph ?? { get: () => undefined } });
+  const nodes = new Map<string, SlotNode>();
+  for (const [key, state] of solved.slots) {
+    nodes.set(key, {
+      key,
+      binding: state.binding as RefBinding,
+      label  : state.label,
+      refs   : [...state.refs],
+      ...(state.taskHash ? { taskHash: state.taskHash } : {}),
+      ...(state.status ? { status: state.status } : {}),
+      ...(state.blocked === undefined ? {} : { blocked: state.blocked }),
+      ...(state.pick ? { hash: state.pick } : {}),
+      candidates: [...state.candidates],
+      approved  : state.approved,
+    });
+  }
+  return { nodes, dependents: solved.dependents, order: solved.order };
+}

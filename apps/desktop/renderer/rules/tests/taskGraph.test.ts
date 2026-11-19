@@ -391,7 +391,7 @@ describe('clusterKeyOf', () => {
     expect(clusterKeyOf(slotView(shotSlot('arrival', 'beat1', [])))).toBe('scene:arrival');
     const plateSlot = slot('plate:roof/day', { kind: 'plate', locationId: 'roof', variant: 'day' });
     expect(clusterKeyOf(slotView(plateSlot))).toBe('loc:roof');
-    // `buildSlotGraph` emits no `asset` binding, so this case exists only to be total.
+    // `stillsFamily` enumerates no `asset` binding, so this case exists only to be total.
     const pinned = slot('asset:beef', { kind: 'asset', hash: 'beef' });
     expect(clusterKeyOf(slotView(pinned))).toBe('other:asset:beef');
   });

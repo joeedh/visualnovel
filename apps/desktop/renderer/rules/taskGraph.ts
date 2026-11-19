@@ -320,7 +320,7 @@ export function clusterKeyOf(view: GraphNodeView): string | null {
       return `char:${binding.characterId}`;
     }
     if (binding.kind === 'plate') return `loc:${binding.locationId}`;
-    // `buildSlotGraph` never emits an `asset` binding, so no real slot reaches this line.
+    // `stillsFamily` never enumerates an `asset` binding, so no real slot reaches this line.
     return `other:${view.slot.key}`;
   }
   return null;

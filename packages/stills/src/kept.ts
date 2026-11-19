@@ -8,7 +8,7 @@ import { shotsOf } from '@vn/types';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 
 /**
- * Lists every slot the collector keeps art for. The list is wider than `buildSlotGraph`'s, so art
+ * Lists every slot the collector keeps art for. The list is wider than `stillsFamily`'s, so art
  * the planner has not reached yet is not lost. It holds the shots of every storyboard in the model's
  * production map, wired into the story or not, and sheets for every outfit a character defines or
  * anything names, cast or not.

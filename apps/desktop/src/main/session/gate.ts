@@ -5,7 +5,7 @@ import { holdPortrait, type Suspension } from '@vn/artgen';
 import {
   assetApproved,
   assetPrereqs,
-  buildSlotGraph,
+  slotGraph,
   prereqRefusal,
   resolveSlot,
   slotTaskHash,
@@ -185,7 +185,7 @@ export class GatePart {
     const manifest = project.store.manifest();
     const model = await withShots(project);
     const labels = labelContext(model, project.graph);
-    const slots = buildSlotGraph({
+    const slots = slotGraph({
       ...labels,
       assets: manifest,
       config: project.config,
@@ -248,7 +248,7 @@ export class GatePart {
     const manifest = project.store.manifest();
     const model = await withShots(project);
     const labels = labelContext(model, project.graph);
-    const slots = buildSlotGraph({
+    const slots = slotGraph({
       ...labels,
       assets: manifest,
       config: project.config,

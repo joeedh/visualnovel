@@ -1,22 +1,30 @@
 /**
- * Checks the one property the slot graph can get wrong: promising a picture the planner never
- * plans, or missing one it does.
+ * What a reader solves and what the planner plans agree: every slot with an identity whose scene
+ * has cleared the gate is a task some wave planned, and no wave planned a task no slot names.
  *
- * Both sides enumerate from `@vn/model`'s `used.ts`, but they compose prompts and hash inputs
- * through separate call paths, so agreement is asserted rather than assumed. The planner is run to
- * exhaustion with mock providers and the two hash sets are compared outright.
- *
- * This test lives in `@vn/pipeline` because `@vn/stills` may not import the planner; the pipeline
- * may import both, so this is the only package that can ask the question.
+ * A reader solves facts built from every persisted storyboard, while the planner's model holds
+ * only the storyboards it has decomposed, so agreement is asserted rather than assumed. This lives
+ * in `@vn/pipeline` because only the planner can move a project through its waves.
  */
 import { projectConfig, type Asset, type ProjectModel, type Scene, type Shot } from '@vn/types';
 import { TaskGraph, loadGraph } from '@vn/taskgraph';
 import { logTask } from '@vn/taskgraph/write';
 import { createMockProviders } from '@vn/providers';
 import { planAssetCollection } from '@vn/artgen';
-import { buildSlotGraph, type SlotGraph } from '@vn/stills';
+import { solve, type Solution } from '@vn/constraint-solver';
+import { sceneUnblocked, stillsFamily, type StillsFacts } from '@vn/stills';
 import { readShots, withProduction, writeShots } from '@vn/store';
-import { character, location, makeProject, model, scene, type TestProject } from '@vn/testkit';
+import {
+  character,
+  location,
+  makeProject,
+  model,
+  scene,
+  LISTED_ORDER,
+  SCRIPTS,
+  type ScriptName,
+  type TestProject,
+} from '@vn/testkit';
 import { planTasks } from '../index.js';
 
 const config = projectConfig.parse({
@@ -80,8 +88,8 @@ async function planToExhaustion(m: ProjectModel, assets?: readonly Asset[]): Pro
 
 /**
  * The portrait row whose hash the sheet's `approved_portrait` repeats. The planner here runs
- * with no manifest and reads the sheet; the slot graph always has one and reads the row. The
- * two have to agree, which is what the sheet's copy exists for.
+ * with no manifest and reads the sheet; the reader always has one and reads the row. The two have
+ * to agree, which is what the sheet's copy exists for.
  */
 const PORTRAIT_ROW: Asset = {
   hash      : 'portrait-hash',
@@ -108,13 +116,13 @@ const PLATE_ROW: Asset = {
   current   : true,
 };
 
-function slots(m: ProjectModel, graph: TaskGraph, assets?: readonly Asset[]): SlotGraph {
-  // The model's production map holds what the planner decomposed; `buildSlotGraph` never decomposes
-  return buildSlotGraph({
+function slots(m: ProjectModel, graph: TaskGraph, assets?: readonly Asset[]): Solution {
+  // The model's production map holds what the planner decomposed; `solve` never decomposes
+  return solve(stillsFamily, {
     model : m,
     assets: assets ?? (m.characters.get('aiko')?.status === 'approved' ? [PORTRAIT_ROW] : []),
     config,
-    graph,
+    tasks: graph,
   });
 }
 
@@ -123,13 +131,16 @@ const planned = (graph: TaskGraph): string[] =>
     .all()
     .map((t) => t.hash)
     .sort();
-const promised = (g: SlotGraph): string[] =>
-  [...g.nodes.values()]
-    .map((n) => n.taskHash)
+
+/** Every identity a solution states for a slot whose scene, if it has one, has cleared the gate. */
+const promised = (s: Solution, cleared: (sceneId: string) => boolean = () => true): string[] =>
+  [...s.slots.values()]
+    .filter((state) => state.unit === undefined || cleared(state.unit))
+    .map((state) => state.taskHash)
     .filter((h): h is string => !!h)
     .sort();
 
-describe('the slot graph and the planner agree', () => {
+describe('the solver and the planner agree', () => {
   it('promises exactly the tasks a completed run planned, and no others', async () => {
     const m = project('approved');
     const graph = await planToExhaustion(m);
@@ -138,19 +149,19 @@ describe('the slot graph and the planner agree', () => {
   });
 
   it('states no identity the planner did not, while the gate is still closed', async () => {
-    // Before the gate opens the planner emits plates and portraits only. The slot graph still
-    // lists every sheet and shot, but must not claim a hash for one.
+    // Before the gate opens the planner emits plates and portraits only. The solver still lists
+    // every sheet and shot, but must not claim a hash for one.
     const m = project('draft');
     const graph = await planToExhaustion(m);
-    const g = slots(m, graph);
-    expect(promised(g)).toEqual(planned(graph));
-    expect([...g.nodes.values()].filter((n) => n.blocked).length).toBeGreaterThan(0);
+    const s = slots(m, graph);
+    expect(promised(s)).toEqual(planned(graph));
+    expect([...s.slots.values()].filter((state) => state.blocked).length).toBeGreaterThan(0);
   });
 
   it('lists the sheets and shots the run has not reached yet, each with its reason', async () => {
     const m = project('draft');
-    const g = slots(m, await planToExhaustion(m));
-    const sheet = [...g.nodes.values()].find((n) => n.binding.kind === 'sheet')!;
+    const s = slots(m, await planToExhaustion(m));
+    const sheet = [...s.slots.values()].find((state) => state.kind === 'sheet')!;
     expect(sheet.taskHash).toBeUndefined();
     expect(sheet.blocked).toContain('has not been approved');
   });
@@ -160,7 +171,7 @@ describe('the slot graph and the planner agree', () => {
     const m = stagedProject();
     const assets = [PORTRAIT_ROW, PLATE_ROW];
     const graph = await planToExhaustion(m, assets);
-    const g = slots(m, graph, assets);
+    const s = slots(m, graph, assets);
 
     const planner = (shotId: string): { hash: string; extra?: unknown } => {
       const task = graph
@@ -177,9 +188,9 @@ describe('the slot graph and the planner agree', () => {
     expect(planner('s3__3').extra).toBeUndefined();
 
     for (const shotId of ['s3__1', 's3__2', 's3__3']) {
-      expect(g.nodes.get(`shot:s3/${shotId}`)!.taskHash).toBe(planner(shotId).hash);
+      expect(s.slots.get(`shot:s3/${shotId}`)!.taskHash).toBe(planner(shotId).hash);
     }
-    expect(promised(g)).toEqual(planned(graph));
+    expect(promised(s)).toEqual(planned(graph));
   });
 });
 
@@ -248,12 +259,17 @@ describe('a staging sheet with its own seed and notes, read from disk', () => {
     const { model, config, store } = await p.reload();
     const graph = await loadGraph(p.paths);
     const withShots = await withProduction(p.paths, model);
-    const g = buildSlotGraph({ model: withShots, config, assets: store.manifest(), graph });
+    const s = solve(stillsFamily, {
+      model: withShots,
+      config,
+      assets: store.manifest(),
+      tasks : graph,
+    });
     const sceneId = [...withShots.production].find(([, board]) =>
-      board.shots.some((s) => s.id === grouped[0]),
+      board.shots.some((shot) => shot.id === grouped[0]),
     )![0];
     for (const shotId of grouped) {
-      expect(g.nodes.get(`shot:${sceneId}/${shotId}`)!.taskHash).toBe(plannedFor.get(shotId));
+      expect(s.slots.get(`shot:${sceneId}/${shotId}`)!.taskHash).toBe(plannedFor.get(shotId));
     }
   });
 
@@ -262,4 +278,61 @@ describe('a staging sheet with its own seed and notes, read from disk', () => {
     const collection = await planAssetCollection({ paths: p.paths, model, config });
     expect(collection.tombstones.map((t) => t.hash)).not.toContain(plannedFor.get(grouped[0]!));
   });
+});
+
+describe('over every testkit script on disk', () => {
+  for (const name of Object.keys(SCRIPTS) as ScriptName[]) {
+    it(`${name}: a reader's facts promise what the planner plans, from nothing drawn to everything accepted`, async () => {
+      const p = await makeProject({
+        script: SCRIPTS[name],
+        ...(name === 'listed'
+          ? { config: { narrative: 'linear', scenes: [...LISTED_ORDER] } }
+          : {}),
+      });
+      try {
+        /**
+         * Plans one wave over the project as it stands, solves a reader's facts beside it, and
+         * answers how many shots the wave planned.
+         */
+        const agree = async (): Promise<number> => {
+          const planner = await p.reload();
+          const tasks = await planTasks({
+            model        : planner.model,
+            graph        : planner.graph,
+            config       : planner.config,
+            providers    : createMockProviders(),
+            paths        : p.paths,
+            readOnlyShots: true,
+            assets       : planner.store.manifest(),
+          });
+          const { model, config: cfg, store } = await p.reload();
+          const full = await withProduction(p.paths, model);
+          const assets = store.manifest();
+          const facts: StillsFacts = {
+            model : full,
+            config: cfg,
+            assets,
+            tasks: await loadGraph(p.paths),
+          };
+          const cleared = (sceneId: string): boolean => sceneUnblocked(full, sceneId, assets);
+          expect(promised(solve(stillsFamily, facts), cleared)).toEqual(
+            [...new Set(tasks.map((t) => t.hash))].sort(),
+          );
+          return tasks.filter((t) => t.kind === 'shot_image').length;
+        };
+
+        await agree();
+        await p.run();
+        await agree();
+        await p.approveAll();
+        await p.run();
+        // Once the cast is approved and drawn, the comparison has to reach shots
+        expect(await agree()).toBeGreaterThan(0);
+        await p.acceptAll();
+        await agree();
+      } finally {
+        await p.cleanup();
+      }
+    }, 120_000);
+  }
 });

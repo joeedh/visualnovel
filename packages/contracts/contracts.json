@@ -174,7 +174,7 @@
         "slot:sheet"
       ],
       "see"     : ["docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them"],
-      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`; the planner plans from its slots, and `buildSlotGraph` enumerates from the same three. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: `gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: `gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
       "declared": "packages/stills/src/family.ts"
     },
     {
@@ -594,7 +594,7 @@
         "slot:sheet",
         "slot:shot"
       ],
-      "detail": "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the two differ in one case: a portrait slot whose only row is accepted but not current is approved here and not by the gate. `buildSlotGraph`'s `SlotNode.approved` uses the same test as the kinds.",
+      "detail": "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the two differ in one case: a portrait slot whose only row is accepted but not current is approved here and not by the gate. `slotGraph`'s `SlotNode.approved` is the kinds' answer.",
       "declared": "packages/stills/src/family.ts"
     }
   ],

@@ -9,7 +9,7 @@
 import type { AnyTask, Asset, ProjectModel } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
-import { buildSlotGraph } from '@vn/stills';
+import { slotGraph } from '@vn/stills';
 import {
   activeOutputs,
   bindSlots,
@@ -252,7 +252,7 @@ export interface ProjectSlotInputs {
  * and a slot a later wave unlocks would otherwise be priced at nothing.
  */
 export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
-  const slots = buildSlotGraph({
+  const slots = slotGraph({
     model  : inputs.model,
     config : inputs.config,
     assets : inputs.assets,

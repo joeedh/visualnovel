@@ -201,8 +201,8 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 | `refs.ts`       | reference binding resolution                                                    |
 | `upstream.ts`   | upstream attachment walk                                                        |
 | `slotaddr.ts`   | slot key parse/format; **side entry** `@vn/stills/slotaddr` (renderer-safe)     |
-| `slotgraph.ts`  | slot graph construction (`buildSlotGraph`)                                      |
-| `family.ts`     | the four slot kinds and their enumeration, for the solver (`stillsFamily`)      |
+| `slotgraph.ts`  | a slot's identity and deps (`planSlot`, `resolveSlot`); the `SlotGraph` shape   |
+| `family.ts`     | the four slot kinds, their enumeration (`stillsFamily`); `slotGraph` over them  |
 | `refcycle.ts`   | reference cycle detection; `assetSlotLabel`                                     |
 | `prereq.ts`     | prerequisite refusals                                                           |
 | `overheld.ts`   | slots with more than one current row, and the holds that fix them               |

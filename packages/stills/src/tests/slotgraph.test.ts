@@ -1,8 +1,9 @@
 /**
- * The slot graph: every picture the project implies, before anything has drawn one.
+ * The stills slots: every picture the project implies, before anything has drawn one, as
+ * `solve(stillsFamily, facts)` answers them and as `slotGraph` hands them to its readers.
  *
  * A slot exists whether or not it can state a task identity. Most assertions are therefore about
- * what is enumerated and about the reason each node gives for having no hash yet, rather than
+ * what is enumerated and about the reason each slot gives for having no hash yet, rather than
  * about hashes, which only the planned half has.
  */
 import {
@@ -13,16 +14,18 @@ import {
   type Shot,
 } from '@vn/types';
 import { makeTask } from '@vn/taskgraph';
+import { solve, type Solution } from '@vn/constraint-solver';
 import { character, location, model, scene } from '@vn/testkit';
 import {
-  buildSlotGraph,
   locationInputs,
   heldBy,
   imageParams,
   newestFirst,
   resolveSlot,
   sheetKeys,
+  slotGraph,
   slotTaskHash,
+  stillsFamily,
   type SlotGraphContext,
   type SlotResolveContext,
 } from '../index.js';
@@ -94,9 +97,15 @@ function ctx(
   };
 }
 
-describe('buildSlotGraph', () => {
+/** The solver's answer for a context, which reads no task log as an empty one. */
+function solved(c: SlotGraphContext): Solution {
+  const { graph, ...rest } = c;
+  return solve(stillsFamily, { ...rest, tasks: graph ?? { get: () => undefined } });
+}
+
+describe('solve over the stills family', () => {
   it('enumerates every picture the project implies, drawn or not', () => {
-    const keys = [...buildSlotGraph(ctx()).nodes.keys()].sort();
+    const keys = [...solved(ctx()).slots.keys()].sort();
     expect(keys).toEqual([
       'plate:cafe/day',
       'plate:cafe/night',
@@ -110,13 +119,13 @@ describe('buildSlotGraph', () => {
 
   it('has no shot slots for a scene nothing decomposed', () => {
     // Decomposing is an explicit act with a price; a read must never fabricate the answer.
-    const graph = buildSlotGraph(ctx({}, null));
-    expect([...graph.nodes.keys()].filter((k) => k.startsWith('shot:'))).toEqual([]);
+    const graph = solved(ctx({}, null));
+    expect([...graph.slots.keys()].filter((k) => k.startsWith('shot:'))).toEqual([]);
   });
 
   it('states the identity of what the project can, and the sentence for what it cannot', () => {
-    const graph = buildSlotGraph(ctx());
-    const plate = graph.nodes.get('plate:cafe/day')!;
+    const graph = solved(ctx());
+    const plate = graph.slots.get('plate:cafe/day')!;
     expect(plate.taskHash).toBe(
       makeTask(
         'location_ref',
@@ -126,22 +135,22 @@ describe('buildSlotGraph', () => {
     expect(plate.blocked).toBeUndefined();
 
     // The frame's identity embeds its plate's asset hash, and nothing has rendered one.
-    const frame = graph.nodes.get('shot:arrival/arrival__a')!;
+    const frame = graph.slots.get('shot:arrival/arrival__a')!;
     expect(frame.taskHash).toBeUndefined();
     expect(frame.blocked).toContain('has not been rendered');
   });
 
   it('enumerates sheets before the gate clears, and says why they have no identity', () => {
     const c = ctx({ assets: [{ ...PORTRAIT, accepted: false }] });
-    const sheet = buildSlotGraph(c).nodes.get('sheet:aiko/default/front')!;
+    const sheet = solved(c).slots.get('sheet:aiko/default/front')!;
     // The slot is still enumerated even though nothing can be planned for it yet.
     expect(sheet.taskHash).toBeUndefined();
     expect(sheet.blocked).toContain('has not been approved');
   });
 
   it('inverts the edges the planner derives', () => {
-    const graph = buildSlotGraph(ctx());
-    expect(graph.nodes.get('shot:arrival/arrival__a')!.refs).toEqual([
+    const graph = solved(ctx());
+    expect(graph.slots.get('shot:arrival/arrival__a')!.refs).toEqual([
       'plate:cafe/day',
       'portrait:aiko',
     ]);
@@ -155,7 +164,7 @@ describe('buildSlotGraph', () => {
   });
 
   it('orders upstream before everything drawn from it', () => {
-    const order = buildSlotGraph(ctx()).order;
+    const order = solved(ctx()).order;
     const at = (key: string): number => order.indexOf(key);
     expect(at('portrait:aiko')).toBeLessThan(at('sheet:aiko/default/front'));
     expect(at('plate:cafe/day')).toBeLessThan(at('shot:arrival/arrival__a'));
@@ -164,16 +173,16 @@ describe('buildSlotGraph', () => {
   });
 
   it('answers every kind, a portrait included, from the row its slot holds', () => {
-    expect(buildSlotGraph(ctx()).nodes.get('portrait:aiko')!.approved).toBe(true);
+    expect(solved(ctx()).slots.get('portrait:aiko')!.approved).toBe(true);
     // The sheet still says approved with this hash; the row says nobody accepted it, and the
     // row is what the gate reads once there is a manifest to read.
-    const unaccepted = buildSlotGraph(ctx({ assets: [{ ...PORTRAIT, accepted: false }] }));
-    expect(unaccepted.nodes.get('portrait:aiko')!.approved).toBe(false);
-    expect(unaccepted.nodes.get('sheet:aiko/default/front')!.blocked).toContain(
+    const unaccepted = solved(ctx({ assets: [{ ...PORTRAIT, accepted: false }] }));
+    expect(unaccepted.slots.get('portrait:aiko')!.approved).toBe(false);
+    expect(unaccepted.slots.get('sheet:aiko/default/front')!.blocked).toContain(
       'has not been approved',
     );
 
-    const accepted = buildSlotGraph(
+    const accepted = solved(
       ctx({
         assets: [
           {
@@ -183,8 +192,8 @@ describe('buildSlotGraph', () => {
         ],
       }),
     );
-    expect(accepted.nodes.get('plate:cafe/day')!.approved).toBe(true);
-    expect(accepted.nodes.get('plate:cafe/night')!.approved).toBe(false);
+    expect(accepted.slots.get('plate:cafe/day')!.approved).toBe(true);
+    expect(accepted.slots.get('plate:cafe/night')!.approved).toBe(false);
   });
 
   it('lists a slot’s candidates newest first, by the row’s hold time', () => {
@@ -192,20 +201,20 @@ describe('buildSlotGraph', () => {
       ...asset(hash, 'location_ref', [{ locationId: 'cafe', variant: 'day' }]),
       ...(at === undefined ? {} : { at }),
     });
-    const node = buildSlotGraph(
+    const node = solved(
       ctx({ assets: [plate('c'), plate('a', '2026-01-01'), plate('b', '2026-02-01')] }),
-    ).nodes.get('plate:cafe/day')!;
+    ).slots.get('plate:cafe/day')!;
     expect(node.candidates).toEqual(['b', 'a', 'c']);
   });
 
   it('reports drafts as candidates even when no one can say which is the slot', () => {
-    // With three unaccepted candidates `pick` declines, so `hash` is unset. A surface reading that
+    // With three unaccepted candidates `pick` declines, so the slot names no take. A surface reading that
     // as "nothing drawn" would file three real pictures under "not yet rendered".
     const drafts = ['d1', 'd2', 'd3'].map((h) =>
       asset(h, 'location_ref', [{ locationId: 'cafe', variant: 'day' }]),
     );
-    const node = buildSlotGraph(ctx({ assets: drafts })).nodes.get('plate:cafe/day')!;
-    expect(node.hash).toBeUndefined();
+    const node = solved(ctx({ assets: drafts })).slots.get('plate:cafe/day')!;
+    expect(node.pick).toBeUndefined();
     expect(node.candidates).toEqual(['d1', 'd2', 'd3']);
     expect(node.approved).toBe(false);
   });
@@ -231,9 +240,34 @@ describe('buildSlotGraph', () => {
         ],
       },
     };
-    const graph = buildSlotGraph(c);
-    expect(graph.nodes.has('plate:cafe/day')).toBe(true);
+    const graph = solved(c);
+    expect(graph.slots.has('plate:cafe/day')).toBe(true);
     expect(graph.order).toContain('plate:cafe/night');
+  });
+});
+
+describe('slotGraph', () => {
+  it("answers the solver's slots, edges and order in the readers' shape", () => {
+    const c = ctx();
+    const graph = slotGraph(c);
+    const states = solved(c);
+    expect([...graph.nodes.keys()]).toEqual([...states.slots.keys()]);
+    expect(graph.dependents).toEqual(states.dependents);
+    expect(graph.order).toEqual(states.order);
+    // The row a slot holds is `pick` on the state and `hash` on the node
+    const portrait = graph.nodes.get('portrait:aiko')!;
+    expect(portrait.hash).toBe(states.slots.get('portrait:aiko')!.pick);
+    expect(portrait).toEqual({
+      key       : 'portrait:aiko',
+      binding   : { kind: 'portrait', characterId: 'aiko' },
+      label     : states.slots.get('portrait:aiko')!.label,
+      refs      : [],
+      taskHash  : states.slots.get('portrait:aiko')!.taskHash,
+      hash      : 'p-aiko',
+      candidates: ['p-aiko'],
+      approved  : true,
+    });
+    expect(graph.nodes.get('shot:arrival/arrival__a')!.blocked).toContain('has not been rendered');
   });
 });
 

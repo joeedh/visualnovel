@@ -291,7 +291,7 @@ describe('the Unapproved branch', () => {
   });
 
   // The projection is what is under test, so the graph is handed over rather than built — what
-  // `buildSlotGraph` puts in these fields is `slotgraph.test.ts`'s job.
+  // `slotGraph` puts in these fields is `slotgraph.test.ts`'s job.
   const slots = (nodes: SlotNode[]): SlotGraph => ({
     nodes     : new Map(nodes.map((n) => [n.key, n])),
     dependents: new Map(),
