@@ -781,7 +781,82 @@ The plan as written before it landed: The workflows note's step 1.
 
 ### Stage 5: the narrative seam
 
-The workflows note's step 2.
+**Landed 2026-11-18 on the `narrative` branch, as `4fb1d082` to `89212c2f` and the commit
+that adds this note.** As built:
+
+- **The interface has six members, not four.** `NarrativeStructure` is in
+  `packages/types/src/script/narrative.ts`, with `NARRATIVE_ENGINES` and `SceneExits`:
+    - `engine` is the closed union `NarrativeEngine` (`branching | linear`), like
+      `TaskKind`; a storylet adapter widens it.
+    - `entry` was added because each engine settles the entry its own way (`start:`, or
+      the first listed scene), and `model.entry` is filled from it.
+    - `exits(sceneId)` was added because the playable needs each scene's edges, and
+      `linear` scenes have no markers to read them from. It is the adjacency query the
+      workflows note deferred, and the playable, `toMermaid` and the screenplay export
+      read it.
+    - `scenes()` lists every scene the model holds, the live ones first in reading order,
+      then the rest. For `branching` that is `topologicalOrder`, then the unreachable
+      scenes in model order, which is what the document tree's `storyOrder` was; the tree
+      now reads it.
+- **`Diagnostic` moved** to its own top-level file, `diagnostic.ts`, so the script folder
+  can name it without importing `model.ts`, which names production types.
+- **How the model carries it.** `ProjectModel.narrative` is required. The builder fills
+  `reachable` and `entry` from it, so their readers are unchanged. A hand-built model
+  takes `liveOnly(live, rest)` from `@vn/testkit`, a stand-in structure in which the
+  listed scenes are live in order; the testkit `model()` factory uses it, and the few test
+  literals outside testkit's reach call it or `branchingNarrative`. The structure closes
+  over the scenes map it was built from, so a copy of the model that replaces `scenes`
+  keeps the old answer.
+- **The engines** are `branchingNarrative` in `packages/model/src/branching.ts` (the entry
+  check, `dangling_goto`, `unreachable_scene`, `successors`, `computeReachable`,
+  `topologicalOrder`, all moved out of `build.ts` and `graph.ts`) and `linearNarrative` in
+  `linear.ts`. `graph.ts` keeps only `toMermaid`. The builder's `narrativeOf` picks one.
+  `unknown_location` stayed in the builder, since it is about the script. The narrative
+  diagnostics are now reported together, ahead of `unknown_location`, instead of
+  interleaved scene by scene; no test depended on the order.
+- **Callers.** `reachableScenes` is gone. `liveScenes(model)` in `used.ts` replaces it and
+  reads `narrative.live`, in model order, so the planner walks scenes in the order it
+  always did. The planner, `decompose.ts`'s `decomposeAll` and `decomposeAllPreview`,
+  `buildSlotGraph`, `usedOutfits` and the oracle call it; `gateStatus` calls
+  `narrative.live` directly. The authoring agent's `story_graph` reads `model.reachable`
+  rather than recomputing reachability. `doctree.ts`, `storygraph.ts`, `generated.ts`,
+  `workspace.ts` and the CLI keep reading `model.reachable`.
+- **Config.** `narrative` (an enum defaulting to `branching`) and `scenes` (a list of ids)
+  are in the zod schema. Every check against the scenes is a model diagnostic, as `start:`
+  is, so a mistake reaches the CLI, the desktop app and `vnauthor` through
+  `model.diagnostics` and needs no new UI. Every caller of `modelFromInputs` passes its
+  whole `ProjectConfig`, which satisfies the new `ModelConfig`.
+- **Diagnostics, defaults kept.** Under `linear`: `missing_scene_list`,
+  `unknown_listed_scene`, `duplicate_listed_scene`, `linear_branch_marker` and
+  `linear_start` are errors, and `unlisted_scene` is a warning. A `scenes:` list under
+  `branching` is the error `scenes_without_linear`, rather than being ignored. Two
+  diagnostics go beyond the defaults the stage was given: the missing list, whose message
+  names the scene ids to list, and the duplicate. The table is in
+  [`../guides/cli.md`](../guides/cli.md#how-the-scenes-make-a-story).
+- **The playable format did not change.** It already had a plain `next` edge;
+  `buildPlayable` writes `choices` and `next` from `narrative.exits`.
+- **Tests.** `SCRIPTS.listed` with `LISTED_ORDER` beside it, ids that sort differently
+  from the list. `packages/model/src/tests/narrative.test.ts` covers both engines and the
+  builder, and `packages/export/src/tests/linear.test.ts` runs a linear project through
+  the mock pipeline and the exporter. `prompthash.test.ts` and the oracle pass unchanged.
+  No command or rule module changed, so `ux-model.json` and the anchors are untouched.
+- **Contracts.** `script.livenessFromNarrative` in `build.ts` and
+  `script.linearOrderListed` in `linear.ts`. The contracts document stated no narrative
+  rule, so no bullet moved; two wording changes there and in
+  `planning.storyboardOnRequest` say "live" where they said "reachable". The index holds
+  32, and `contracts.json` is 66 KB.
+- **Left as they are under `linear`.** The Branches editor still draws and edits markers,
+  which `linear` reports as errors; the workflows note's gating of editors by engine is
+  not done. Deleting or renaming a scene does not edit `scenes:`, so the list is left
+  naming the old id, which `unknown_listed_scene` reports. The desktop has no control for
+  either key.
+- **For stage 6.** The stills facts should read `narrative.live`, not `model.reachable`.
+  Units stay scene ids: the solver need only accept the strings the family hands it.
+  `readProduction` still fills an entry for every scene with a file, live or not, so the
+  enumeration filters by `live` and the collector does not. `liveScenes` is in model
+  order; a reader that wants reading order calls `narrative.scenes()`.
+
+The plan as written before it landed: the workflows note's step 2.
 
 - Add `NarrativeStructure` (`engine`, `scenes()`, `live(id)`, `diagnostics()`) to
   `@vn/types`, and move the branching code behind it in `@vn/model`: the markers'
