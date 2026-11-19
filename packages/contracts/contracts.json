@@ -3,24 +3,16 @@
     {
       "id"      : "collect.applyOrder",
       "rule": "`applyCollection` writes in an order a crash cannot hurt: the tombstones, then both manifests, then the files, then graph state. A file the mover cannot take keeps its row, so a stuck picture is never left unlisted.",
-      "prevents": "A crash part way through leaving a manifest row that names a deleted file, or a task the graph still counts as done whose picture is gone.",
       "subjects": [
         "function:packages/gengraph/src/collect.ts#applyCollection",
         "function:packages/artgen/src/collect.ts#planAssetCollection",
         "command:asset.collect",
         "tool:collect_unused_assets"
-      ],
-      "see": [
-        "docs/plans/archive/deleting-things.md",
-        "docs/reference/command-system.md#a-sidecar-keeps-what-the-snapshot-cannot"
-      ],
-      "detail": "A crash after the tombstones leaves files no row lists, which the next collection removes; base-row candidacy reads the raw latest records, tombstones included, so it can. Undoing a collection re-appends each tombstoned task's replaced record with `restored: <ISO time>` added, which the graph reads as the record itself; how the desktop holds the files for that is in `command-system.md`. A claim is a document the undo snapshot holds, so it is deleted rather than moved. What is collected is `collect.unusedRemoved`.",
-      "declared": "packages/gengraph/src/collect.ts"
+      ]
     },
     {
       "id"      : "collect.unusedRemoved",
       "rule": "A collection removes only the manifest rows nothing uses, decided per row and root. A row stays when it fills a slot the keep set lists, a kept slot's task drew it, the project or a graph file names it, it is a concept or a reference, or a kept row was drawn from it.",
-      "prevents": "Deleting art for slots no plan has reached yet, another project's pictures in a shared `assets/`, or an entity's art because its sheet failed to parse, while superseded takes pile up for ever.",
       "subjects": [
         "function:packages/artgen/src/collect.ts#planAssetCollection",
         "function:packages/constraint-solver/src/keep.ts#keepSet",
@@ -30,19 +22,11 @@
         "command:asset.collect",
         "command:asset.recover",
         "tool:collect_unused_assets"
-      ],
-      "see": [
-        "docs/plans/archive/deleting-things.md",
-        "docs/reference/repos-and-commits.md#the-claims-ledger",
-        "docs/reference/history-pane.md#missing-pictures"
-      ],
-      "detail": "`collectProject` (`packages/gengraph/src/collect.ts`, over `planAssetCollection`) decides everything before anything is written; `applyCollection` applies it through a mover the host passes (`collect.applyOrder`). `asset.collect` and the agent's `collect_unused_assets` are its two callers. A row is kept when any of these holds: its `satisfies` binds it to a slot the solver's `keepSet` lists from `stillsFamily.kept` (`keptSlots`): plates and portraits as the family enumerates them, sheets for every outfit a character defines or a scene names, and shots from every persisted storyboard, so an unwired scene keeps its frames; its hash is the output, or an attempt's output, of a kept slot's task (`KeepSet.outputs`); an `approved_portrait:`, a `Shot.image`, a pin, or a graph document or group definition names it (graph files are scanned as raw text for hashes, so one that does not parse still protects what it names); it is a `concept` or a `reference`; a kept row lists it in `refs`, transitively. Every take of a kept slot is kept, so a deleted character's portrait stays while an older frame drawn from it does. A base row is a candidate only when its `sourceTask` is in this project's `tasks.jsonl`, so a shared `assets/` never loses another project's pictures. A base picture another project claims in `assets/claims/` is kept, and this project's own claim on one it no longer uses is dropped. The collection also removes files in an object folder no row lists, the journal and blob folder of a graph whose document is gone, and blobs no journal record names (with `oldAnswers`, blobs only superseded records name). It tombstones each task whose output it removes, and each `failed` or `needs_human` slot task no kept slot names (`KeepSet.tasks`). It refuses while an input fails to load, because a sheet that does not parse drops its entity from the model and that entity's art would look unused; a storyboard that does not parse keeps its scene's frames. `asset.recover` puts a collected picture back from git history and appends a copy of the last `done` record whose output is its hash, stamped `restored`, when that task's latest record is a tombstone. The copy restates a record the log already holds, so it is not a forged record: the picture it names is the one that task drew.",
-      "declared": "packages/artgen/src/collect.ts"
+      ]
     },
     {
       "id"      : "gate.perUnit",
       "rule": "A live scene is not decomposed, and none of its slots is ready, until every character in `scene.characters` has an approved portrait: a portrait row that is both current and accepted. The solver applies it per unit; the stills family lists the cast's portraits.",
-      "prevents": "Paying to decompose and draw a scene whose cast may still change, including cast members no shot shows, or drawing from a re-rendered portrait nobody accepted.",
       "subjects": [
         "function:packages/stills/src/family.ts#stillsFamily",
         "function:packages/stills/src/family.ts#gateStatus",
@@ -54,18 +38,11 @@
         "command:gate.lock",
         "slot:portrait",
         "slot:shot"
-      ],
-      "see": [
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family",
-        "docs/plans/archive/slot-history-on-the-manifest-row.md"
-      ],
-      "detail": "The gate is not a task dependency. A scene is a unit, its shots are its slots, and `Family.gates` lists the portraits of the scene's cast; `Solution.units` and `SlotState.ready` report it, and the planner decomposes only open units and adds only ready slots. A scene with no cast is never held, and a cast member with no character sheet holds it. A portrait clears through its kind's `clears`, which asks `approvedPortraitOf(character, assets)`. A re-render puts an unapproved draft in the slot, so the gate closes until the author accepts the draft or restores the approved take; nothing already drawn is touched. The sheet is a mirror: `AssetStore.accept` on the portrait a slot holds writes `status: approved`, `approved_portrait:` and `approved.png`, and `unaccept` clears them when the sheet names that hash. A reader with no manifest (a pure plan) reads the mirror, which is valid because nothing else writes it; `repairCurrent` catches up a sheet an older tool approved by hand. `status: locked` (`gate.lock`) holds the approval at the hash the sheet names, whatever the slot holds. `vngen run` halts at the gate with nothing ready; `gate.approve` and `vngen approve` hold the chosen portrait and accept it, and choosing an older draft is a restore that `holdPortrait` logs, so the choice outlasts `repairCurrent`. `gateStatus` reports the same units: a live scene's cast member is pending until their portrait clears. The portrait slot's `approved` (`takes.approvedMeansAccepted`) differs from `clears` in four cases: a portrait whose only row is accepted but not current is approved and does not clear; with no manifest the slot holds no row and is not approved, while the gate reads the mirror; a locked character clears whatever the slot holds; and a slot holding two current rows picks neither and is not approved, while the gate clears if either is accepted.",
-      "declared": "packages/stills/src/family.ts"
+      ]
     },
     {
       "id"      : "graphs.editInvalidates",
       "rule": "Editing a generation graph bound to a slot moves no task hash, so it is reported as drift: the output node's authored hash differs from its last completed run's, or the node never ran and the graph is not the default one. A run redraws a drifted planned task once.",
-      "prevents": "A `done` record keeping a picture the edited graph would no longer draw for the life of the project, or a slot redrawn on every run whether or not anyone edited its graph.",
       "subjects": [
         "function:packages/constraint-solver/src/drift.ts#boundDrift",
         "function:packages/constraint-solver/src/solve.ts#solve",
@@ -74,93 +51,61 @@
         "function:packages/scheduler/src/scheduler.ts#requeueDrifted",
         "function:packages/gengraph/src/drift.ts#graphDrift",
         "function:packages/gengraph/src/drift.ts#isDefaultGraph"
-      ],
-      "see": [
-        "docs/reference/gen-graphs.md#identity-the-journal-and-drift",
-        "docs/plans/node-based-asset-generation.md",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
-      "detail": "A bound graph runs the slot, and the graph is the slot's runner rather than part of what the slot is, so editing it never moves the task hash; the difference shows as drift. `graphFacts` summarises each bound slot as a `BoundGraphFact`, and `boundDrift` decides it; `solve` reports it on `SlotState.drift` when the facts carry `graphs`. `graphDrift` recomputes each Output node's authored hash and compares it against the journal's last `done` record for that node, for the report. `requeueDrifted` (`@vn/scheduler`, through `driftedTasks`) returns every planned `done` or `needs_human` task whose bound graph has drifted to `pending`. It runs once per run, before the wave loop, and `RunSummary.redrawn` names the tasks it requeued. A graph bound to a slot the built-in runner already drew has no `done` record for its output, so `graphDrift` reports nothing for it, but the slot is still drifted unless `isDefaultGraph` finds the graph equivalent to `defaultSlotGraph` for the slot, which draws what the built-in runner drew. That comparison uses authored hashes, so a default graph whose nodes were only moved or joined by unconnected nodes still counts as the default. The redraw writes the output's first `done` record, so it is asked for once. Drift is measured on `authoredHashes`, which reads each host-seeded input (the derived prompt, the task refs) as though nothing had been seeded onto it, and not on the task's own `nodeHash`, which includes the seeding and would report drift after every run. A successful redraw writes the graph's new authored hash into the journal, which clears the drift; that holds for a redraw the executor resumed from a cached answer too, because a node that resumes while its latest `done` record carries stale hashes writes a fresh `done` record under the current ones. Without that record an edit that leaves the output unchanged (an empty `{varC}` added to a template) would keep the slot drifted and requeue it on every run. A failed redraw writes no such record, so the failure goes to `requeueFailed` and its own attempt budget rather than being requeued here forever. The requeue happens at run time rather than at the graph write, because undo excludes `vngen/state/`: undoing a graph edit restores the authored hash, so the drift disappears before anything is redrawn. Editing prose is the opposite case; see `script.proseDriftReported`.",
-      "declared": "packages/constraint-solver/src/drift.ts"
+      ]
     },
     {
       "id"      : "graphs.groupNodeKey",
       "rule": "A node in a generation graph is addressed by its key, the chain of ids from the root (`3/7` for node 7 inside instance 3), never by its id alone. The hashes, the journal, the executor's targets, the cost walk and every `gengraph.*` command's `node` prop use it.",
-      "prevents": "A node inside a group instance sharing its id with a root node, since every graph's ids start at zero, so the two would share a hash, a journal record or a command target.",
       "subjects": [
         "module:packages/gengraph/src/nodekey.ts",
         "function:packages/gengraph/src/nodekey.ts#nodeKey",
         "function:packages/gengraph/src/nodekey.ts#resolveNodeKey",
         "command:gengraph.setProp"
-      ],
-      "see": [
-        "docs/reference/gen-graphs.md#groups",
-        "docs/plans/archive/group-nodes-in-the-gen-graph-editor.md"
-      ],
-      "detail": "A root node's key is its id, so keys in a graph with no groups are unchanged and a journal written before groups existed still matches its nodes. Every `node` prop on a `gengraph.*` command resolves through `resolveNodeKey`, so the pane writes an instance's override as `gengraph.setProp` on `<instance>/<id>`, and the agent's whole-graph rewrite keeps an instance under `group: <ref>`.",
-      "declared": "packages/gengraph/src/nodekey.ts"
+      ]
     },
     {
       "id"      : "graphs.instanceEditsOverride",
       "rule": "An edit inside a group instance can only override a value; `decideGenEdit` refuses a structural edit there with the sentence `structuralEditsRefused` gives. Structural edits go to the group's definition, written as `vngen/work/graphs/lib/<ref>.json`.",
-      "prevents": "One instance's wiring silently diverging from the definition every other instance shares, so editing the definition no longer describes what that instance runs.",
       "subjects": [
         "module:packages/gengraph/src/edit.ts",
         "function:packages/gengraph/src/edit.ts#decideGenEdit",
         "command:gengraph.setProp",
         "file:vngen/work/graphs/lib"
-      ],
-      "see": [
-        "docs/reference/gen-graphs.md#groups",
-        "docs/plans/archive/group-nodes-in-the-gen-graph-editor.md"
-      ],
-      "detail": "Every `gengraph.*` editing command reaches a definition through its `group` prop. The renderer only reads the definition file; it never writes it.",
-      "declared": "packages/gengraph/src/edit.ts"
+      ]
     },
     {
       "id"      : "graphs.socketRenameMigrates",
       "rule": "Renaming a node type's socket or prop needs a migration in the same commit: bump the type's `typeVersion` and add a `NodeMigration` step that lands on it. `migrateGraphJSON` replays the renames over a file's JSON before `readGraphFile` deserializes it.",
-      "prevents": "A file written before the rename loading with the old key as an orphaned socket, its link reaching nothing visible and the renamed key at its default, so the wiring is lost silently and the changed hash redraws the slot.",
       "subjects": [
         "module:packages/gengraph/src/migrate.ts",
         "function:packages/gengraph/src/migrate.ts#migrateGraphJSON",
         "function:packages/gengraph/src/migrate.ts#migrateGroupJSON",
         "function:packages/gengraph/src/registry.ts#registerGenNode"
-      ],
-      "see"     : ["docs/reference/gen-graphs.md#node-types"],
-      "detail": "path.ux reconciles a loaded node against its definition by key. The replay moves sockets, props, links, a group's forwarded rows, and the `{name}` tokens a template embeds, which puts the node back on the hash a freshly created one would have. `registerGenNode` refuses a migration whose targets name nothing on the class or whose last step stops short of the declared `typeVersion`. A file keeps its old keys until something writes it back, so a migration stays in place rather than being deleted a release later.",
-      "declared": "packages/gengraph/src/migrate.ts"
+      ]
     },
     {
       "id"      : "identity.conceptNoNode",
       "rule": "A concept image never gets a node in the task graph: `generateConcept` records a hash of the request (prompt, params, refs) as the asset's `sourceTask`, and nothing a run plans consumes the asset, so a project holding a concept plans exactly the tasks it planned before.",
-      "prevents": "A concept bound to `{locationId: 'cafe'}` being taken for that location's plate, or a sketch the author asked for changing what the next run plans and pays for.",
       "subjects": [
         "module:packages/artgen/src/concept.ts",
         "function:packages/artgen/src/concept.ts#generateConcept",
         "command:art.generate"
-      ],
-      "detail": "The asset is bound to what it sketches so the document tree and the backlink panel can find it. Every binding lookup outside the document tree filters by `kind` first, and the planner resolves a shot's plate by task hash rather than by manifest binding.",
-      "declared": "packages/artgen/src/concept.ts"
+      ]
     },
     {
       "id"      : "identity.headingRekeysShots",
       "rule": "A shot's task inputs carry its location twice: `buildShotPrompt` names the location, and the plate's asset hash leads `refs`. So rewriting a scene's heading re-keys every shot in the scene, unlike retyping a line, which re-keys nothing.",
-      "prevents": "Treating a heading edit as free, like other prose edits, when the next run re-renders every shot in the scene; the price has to be shown before the edit runs.",
       "subjects": [
         "function:packages/stills/src/prompts.ts#shotInputs",
         "function:packages/stills/src/prompts.ts#buildShotChunks",
         "function:packages/scriptedit/src/lineops.ts#setHeading",
         "command:story.setHeading",
         "task:shot_image"
-      ],
-      "detail": "The planner passes the plate first in `upstream`, then each subject's portrait and outfit sheet. A heading edit inverts the rule that prose edits are reported as drift rather than re-rendered, so the price counts these shots as `restaged`, never as `drifted` (`script.headingRestagesShots`, in `@vn/scriptedit`).",
-      "declared": "packages/stills/src/prompts.ts"
+      ]
     },
     {
       "id"      : "identity.slotsBeforeTasks",
       "rule": "`solve` enumerates a family's slots whether or not anything has been drawn, and attaches a task hash only to a slot whose kind can resolve its inputs now; any other slot carries the kind's sentence saying why. Edges come from each kind's `refs`, never from `Task.deps`.",
-      "prevents": "A graph of task hashes cannot show work not yet planned, because a downstream hash embeds its upstream outputs, so every surface would have to guess at it.",
       "subjects": [
         "package:packages/constraint-solver",
         "module:packages/constraint-solver/src/solve.ts",
@@ -169,17 +114,11 @@
         "slot:portrait",
         "slot:sheet",
         "slot:shot"
-      ],
-      "see": [
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
-      "detail": "The first enumeration of an address wins and later ones are dropped. `Solution.order` is upstream first, and a walk that meets a reference cycle already on disk stops rather than hanging. A ref to an address with no slot is an opaque upstream, such as an authored pin. `Task.deps` is incomplete and is not hashed, so edges are never derived from it. Each slot kind that carries this contract adds its `slot:` prefix to the subjects in the index.",
-      "declared": "packages/constraint-solver/src/solve.ts"
+      ]
     },
     {
       "id"      : "identity.stagingSheet",
       "rule": "A shot in a staging-sheet group carries `params.extra.sheet`, a hash of the sheet's prompt, its reference hashes in order and the group seed, so anything the sheet is drawn from re-keys every member at once. A shot in no group carries no `extra`.",
-      "prevents": "A member drawn from an old sheet while the others are cut from a new one, or a sheet change that re-renders nothing, because the sheet's inputs are not in any member's identity.",
       "subjects": [
         "module:packages/stills/src/sheet.ts",
         "function:packages/stills/src/sheet.ts#sheetKey",
@@ -192,19 +131,11 @@
         "slot:shot",
         "command:story.setSheetGroup",
         "command:gengraph.run"
-      ],
-      "see": [
-        "docs/reference/gen-graphs.md#slots-and-outputs",
-        "docs/plans/manga-style.md",
-        "docs/research/manga-live-tests.md"
-      ],
-      "detail": "What re-keys the members: the members and their order, each member's framing, cast and camera, the plate, and the group's notes and seed. A shot outside a group carries no `extra`, so no hash that predates the field moved. The seeds are derived from the project and the manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the model's production map beside the members. A sheet is rerolled by changing its seed (`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a node feeds more than one output (`sharedAncestors`), because a forced run to one output would redraw the sheet for it alone and leave the other members' frames cut from the old one with nothing to re-key them. Every slot a graph binds shares its one journal and its one `Graph` object in a process, and `runBoundGraph` serialises the runs of one graph, because seeds are written onto the graph's own sockets: two members running at once would read each other's prompt and references, and the sheet would be drawn once per member rather than once per group.",
-      "declared": "packages/stills/src/sheet.ts"
+      ]
     },
     {
       "id"      : "log.doneWriters",
       "rule": "Outside the scheduler, a `done` record is written only by adoption (`@vn/artgen/adopt`). The maintenance writers re-write a record the log already held, verbatim, or write `pending`.",
-      "prevents": "Marking a task done with bytes no run produced for its current inputs, so the next run skips it and the slot's picture no longer matches the project.",
       "subjects": [
         "module:packages/taskgraph/src/write.ts",
         "module:packages/taskgraph/src/maintain.ts",
@@ -215,36 +146,22 @@
         "function:packages/artgen/src/adoptslot.ts#repinAdoption",
         "command:asset.adopt",
         "file:state/tasks.jsonl"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#adopting-an-uploaded-asset",
-        "docs/plans/archive/INDEX.md#on-demand-concept-images",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-1-tooling-and-guards"
-      ],
-      "detail": "`vn/element-types` lets only the scheduler and `@vn/artgen/adopt` import `@vn/taskgraph/write`, and a test refuses any other file passing `tasksLog` to `appendJsonl`. `adopt` hashes the inputs it is handed, derived from the project as it stands, so it can only mark done the node whose output these bytes now are. Its callers live in `adoptslot.ts`: `adoptSlot` (an author hands bytes to a slot), `fileGraphDraw` (the picture an interactive graph run ended on, `via: graph`), `holdPortrait` (an older portrait draft the gate approves, `via: restore`, so `repairCurrent` does not hand the slot back to the logged output) and `repinAdoption` (the desktop repin keeping its bytes). Adoption is refused for a `portrait:` slot (the gate owns it), for mock-marked bytes, and for superseding a render that already holds the slot without an explicit `replace`. `promoteConcept` is one caller of adoption. In `@vn/taskgraph/maintain`, `restoreDone` and `logRestored` append a copy of a record a tombstone replaced, and `logTombstone` and `logRequeue` write `pending`.",
-      "declared": "packages/taskgraph/src/write.ts"
+      ]
     },
     {
       "id"      : "planning.incremental",
       "rule": "`planTasks` runs once per scheduler wave. It decomposes the owed scenes whose unit gate is open, solves the stills family, and adds the task of every slot the solver reports `ready`. It keeps no enumeration and no gate of its own.",
-      "prevents": "Planning a shot before its plate is drawn, when its identity cannot be stated yet, or a planner that enumerates pictures its own way and so plans work the slot graph does not show.",
       "subjects": [
         "module:packages/pipeline/src/planner.ts",
         "function:packages/pipeline/src/planner.ts#planTasks",
         "function:packages/stills/src/family.ts#stillsFamily",
         "function:packages/stills/src/slotgraph.ts#planSlot",
         "function:packages/constraint-solver/src/solve.ts#solve"
-      ],
-      "see": [
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
-      "detail": "A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no identity until that upstream task is `done`, so it appears a wave later. `vngen cost` therefore counts only what is plannable when it runs, and undercounts the tasks a finished wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is `gate.perUnit`: the planner asks `unitGates` before decomposing and reads `ready` after.",
-      "declared": "packages/pipeline/src/planner.ts"
+      ]
     },
     {
       "id"      : "planning.sheetsOnlyWhenWorn",
       "rule": "Every authored character has a portrait slot and every authored location variant a plate slot, cast or not. Sheet slots exist only for the outfits `usedOutfits` finds over live scenes, so an uncast character has none even once approved.",
-      "prevents": "Paying three sheet calls per outfit for a character no shot can show, or hiding the portrait an author drew before writing the scenes that cast them.",
       "subjects": [
         "function:packages/stills/src/family.ts#stillsFamily",
         "module:packages/stills/src/slotgraph.ts",
@@ -255,15 +172,11 @@
         "slot:plate",
         "slot:portrait",
         "slot:sheet"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them"],
-      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override, and is computed once per facts object. The gate is a separate question: a live scene waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
-      "declared": "packages/stills/src/family.ts"
+      ]
     },
     {
       "id"      : "planning.storyboardOnRequest",
       "rule": "A batch decomposition writes a storyboard only for a live scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.",
-      "prevents": "One bad key permanently baselining a whole project, because an absent file is the only signal meaning \"decompose this scene\", and re-decomposing a kept scene changing its shot ids and so re-rendering art already paid for.",
       "subjects": [
         "module:packages/pipeline/src/decompose.ts",
         "function:packages/pipeline/src/decompose.ts#decomposeAll",
@@ -271,15 +184,11 @@
         "command:story.decomposeAll",
         "command:story.newShot",
         "tool:write_storyboard"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first"],
-      "detail": "Once written, the shots file takes precedence permanently. A hand-placed first shot (`story.newShot`, the agent's `edit_scene op=newShot`, `write_storyboard`) writes the file and so ends decomposition for that scene just as permanently. `decomposeScene` returns a `source` and a `reason` rather than throwing so that this batch can tell a baseline from a model answer; inside one run a single silent fallback is `providers.textFallback` holding. `keepBaseline` exists for a caller that wants the deterministic storyboard, and nothing in the app passes it. `vngen decompose --mock` and the desktop command refuse mock providers by name.",
-      "declared": "packages/pipeline/src/decompose.ts"
+      ]
     },
     {
       "id"      : "prompts.artNotesAppended",
       "rule": "Authored `artNotes` are appended to what a builder derived, entity note first and the narrower rung second, and an empty note adds nothing, so a project that authors no notes composes byte-identical prompts. A shot's prompt reads only the shot's own notes.",
-      "prevents": "Re-keying every task in every project that authors no notes, and losing the style preamble, reference scaffolding and closing frame clause that keep a picture on-model, which a replaced prompt would drop.",
       "subjects": [
         "module:packages/stills/src/prompts.ts",
         "function:packages/stills/src/prompts.ts#artClause",
@@ -287,18 +196,11 @@
         "function:packages/stills/src/prompts.ts#buildLocationChunks",
         "function:packages/stills/src/prompts.ts#buildModelSheetChunks",
         "function:packages/stills/src/prompts.ts#buildShotChunks"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor",
-        "docs/plans/archive/INDEX.md#agent-art-revision"
-      ],
-      "detail": "`artNotes` is an optional free-text field at five rungs: `Character`, `Location`, `Shot`, each `Outfit` and each `LocationVariant`. Setting a note costs money by design, like an outfit and unlike a scene edit: the note is in the prompt, so it re-keys exactly the tasks its rung reaches. `buildShotPrompt` leaves out the entity notes because they already reach the frame through the plates and sheets it references. The test worth having is the byte-identical output of a project with no notes, not the feature. Where the notes, seeds and image models are written is `prompts.artRungsShared`, in `@vn/artgen`.",
-      "declared": "packages/stills/src/prompts.ts"
+      ]
     },
     {
       "id"      : "prompts.artRungsShared",
       "rule": "Art notes, image seeds and image models are authored at the same five rungs, addressed as `character:<id>[/<outfit>]`, `location:<id>[/<variant>]` or `shot:<sceneId>/<shotId>`, and every host writes them through one parser and one write path, with the same refusals.",
-      "prevents": "Two hosts drifting into two rung vocabularies, so the agent and the desktop refuse or write the same authorial act differently, or create the outfit, variant or shot a typo named.",
       "subjects": [
         "module:packages/artgen/src/setnotes.ts",
         "function:packages/artgen/src/artnotes.ts#parseArtTarget",
@@ -316,18 +218,11 @@
         "tool:art_notes",
         "tool:set_art_notes",
         "tool:regenerate_asset"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor",
-        "docs/plans/archive/INDEX.md#agent-art-revision"
-      ],
-      "detail": "An entity rung is written into the sheet the model was built from, through `@vn/model`'s `apply*Edit`; a shot rung into `work/shots/<sceneId>.json`. An empty value clears the rung back to inheriting. The narrowest seed wins (`seedFor`) and is in the task hash; the narrowest image model wins (`modelFor`) and is outside it, and a slot a generation graph binds takes the graph node's own model and seed instead. The Wiki pane's sheet form is a second writer of the same keys (`art_notes`, `seed`, `image_model`) through `@vn/parse`'s front-matter codec, because the `art.*` commands re-serialise the whole front matter and lose the author's comments; the model reads the keys back identically, and a blank box removes the key. `regenerate_asset` is always confirm-gated and refuses where the host has no pipeline (vnauthor). The agent reads a rendered picture back through `view_image` (`describeAsset`, a plain vision question rather than the P7 reviewer).",
-      "declared": "packages/artgen/src/setnotes.ts"
+      ]
     },
     {
       "id"      : "prompts.clauseList",
       "rule": "A derived prompt is a `PromptChunk[]` of keyed clauses, which `renderPrompt` collapses to the flat string a task hashes. An override edits that list at the one rung naming the whole picture, and a project with no override composes byte-identical prompts.",
-      "prevents": "Every existing task re-keying, and so every picture re-rendering, when prompts became editable; and an agent-condensed prompt re-rendering its asset because an unrelated note moved a clause under it.",
       "subjects": [
         "module:packages/types/src/prompt.ts",
         "function:packages/types/src/prompt.ts#PromptChunk",
@@ -337,30 +232,22 @@
         "function:packages/stills/src/chunks.ts#composePrompt",
         "command:prompt.setChunk",
         "command:prompt.clear"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
-      "detail": "Every builder in `@vn/stills` assembles the list. Each clause is keyed, categorised, and carries an origin (a builder, or the document and field its sentence came from) that a surface can open. `renderPrompt` is the `.filter(Boolean).join(' ')` tail the flat builders ended with, and `prompthash.test.ts` pins the sorted hash list against a literal written before chunks existed. The override rungs are `Character` for a portrait, the outfit entry for a sheet, the location variant for a plate and the `Shot` for a frame, never a rung that only contributes a clause, so there is one place to look. Setting `mode` alone overrides nothing: every mode falls back to the derived chunks when the shape it names is empty, and each writer calls `promptOverrideIsEmpty` to clear the key. `TaskInputs.*.prompt` stays a flat string, because `taskHash` hashes the whole inputs object with no allow-list; a chunk reaches a hash only through `composePrompt`'s text. An override edit re-keys exactly the tasks its rung reaches, as an art note does. An agent-condensed prompt records the chunk list it condensed (`chunkFingerprint`). When those chunks move, `composePrompt` in `agent` mode still returns the stored text and reports `held`, and never falls back to fresh chunks; the staleness is derived on read and shown on the pane, never stored.",
-      "declared": "packages/types/src/prompt.ts"
+      ]
     },
     {
       "id"      : "prompts.decomposeByLineId",
       "rule": "P5 receives the scene as identified lines, `[<lineId>] <kind>/<speaker>: <text>`, never as flattened prose, and a decomposition that binds none of the scene's real line ids falls back to the baseline.",
-      "prevents": "A model copying an empty `\"coversLines\":[]` from the response template, which produces shots that are drawn and never displayed, because the exporter shows a shot only where its lines are.",
       "subjects": [
         "function:packages/stills/src/storyboard.ts#decomposeScene",
         "function:packages/stills/src/storyboard.ts#realizeDecomposition",
         "function:packages/stills/src/storyboard.ts#withCoverage",
         "tool:propose_storyboard",
         "tool:write_storyboard"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#shot-timeline-editor"],
-      "detail": "The system prompt asks the model to assign every line to exactly one shot, in order; the code does not enforce that, and a line the answer leaves uncovered stays uncovered. What the code enforces: line ids the scene does not have are dropped, a decomposition that binds no real line falls back to the baseline (`withCoverage`), and an uncovered first line goes to the first shot, so a scene cannot open on a blank frame. `coversLines` is not in a frame's task inputs, so these repairs re-key nothing.",
-      "declared": "packages/stills/src/storyboard.ts"
+      ]
     },
     {
       "id"      : "prompts.refOnClause",
       "rule": "A reference is a `ChunkRef` on one clause: muting the clause drops it, the task hashes its `pin` rather than its slot, authored refs follow the derived ones in `TaskInputs.refs`, and a ref with no `from` names an asset by hash and never drifts.",
-      "prevents": "An upstream approval silently re-rendering everything that points at it, a muted clause still feeding the model its pictures, and every task with no authored reference re-keying, since `canonicalJson` maps arrays by position.",
       "subjects": [
         "module:packages/types/src/prompt.ts",
         "function:packages/types/src/prompt.ts#ChunkRef",
@@ -370,15 +257,11 @@
         "function:apps/desktop/src/main/agent/promptedit.ts#applyPromptEdit",
         "command:prompt.addRef",
         "command:prompt.repin"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
-      "detail": "A linked ref carries a `RefBinding` naming the slot it was taken from (`plate:cafe/night`, `sheet:aiko/gala/front`). Drift is `resolveBinding(from) !== pin`, derived on read, and a slot that cannot be resolved reports none; a moved slot suspends what was pinned to its old hash rather than re-rendering it. `prompt.addRef` attaches a bare asset hash with no `from`, because an upload or a concept has no slot under it. `applyPromptEdit` refuses a reference on a clause the prompt does not have, and the same pin twice on one clause, since `refs` is positional and inside the hash. The cycle refusal is `prompts.refsAcyclic`.",
-      "declared": "packages/types/src/prompt.ts"
+      ]
     },
     {
       "id"      : "prompts.refsAcyclic",
       "rule": "The reference graph over slots stays acyclic: `prompt.addRef` runs `refCycle` in its check and refuses a reference that would close a loop, naming the whole path. The cycle is over slots, not hashes.",
-      "prevents": "Tasks that are never ready, because each waits on the other, so a run appears to do nothing and reports no error.",
       "subjects": [
         "module:packages/stills/src/refcycle.ts",
         "function:packages/stills/src/refcycle.ts#refCycle",
@@ -386,27 +269,20 @@
         "function:packages/stills/src/refcycle.ts#cycleRefusal",
         "module:apps/desktop/src/main/session/prompt.ts",
         "command:prompt.addRef"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
-      "detail": "Hashes cannot cycle, but bindings can: \"Aiko's portrait references Aiko's gala sheet\" closes a loop although no hash repeats, because the sheet's prompt already references the portrait. A ref cycle is invisible to `topoOrder`, which reads `Task.deps`. Left unchecked, `doneOutput` answers `undefined`, the shot is skipped, and the plan-run-replan loop starves in silence. `firstCycle` finds a loop already on disk in a hand-edited project, and the planner calls it so such a project fails loudly.",
-      "declared": "packages/stills/src/refcycle.ts"
+      ]
     },
     {
       "id"      : "prompts.reviewerSpec",
       "rule": "The P7 reviewer sees only what `shotSpec` says about the shot: its own framing, location and cast, with the prose of its covered lines marked as context only. `spec.characters` decides who must be in frame, and an empty list means an absence is not a defect.",
-      "prevents": "A reviewer handed the scene synopsis flagging every shot, plates included, for characters the scene mentions but the shot never ordered, so the refine loop spends every attempt and lands on `needs_human`.",
       "subjects": [
         "function:packages/stills/src/prompts.ts#shotSpec",
         "command:story.requireCast",
         "task:shot_image"
-      ],
-      "detail": "`Shot.castOptional` exempts a shot that has a cast from the same trap: the subjects stay on the shot, so their sheets still reach the generator as references, but `shotSpec` hands the reviewer an empty `characters` and the description says an absence is not a defect. Without it, a frame the reviewer will never accept (a figure seen from behind, a crowd, a hand) spends the whole cap. `story.requireCast` writes the field, normally from the Shot Coverage strip. `shotSpec`'s output never enters a task's `inputs`, and `castOptional` is read only by `shotSpec`, so neither re-keys the shot: setting the field changes what the next review asks and does not by itself redraw the frame.",
-      "declared": "packages/stills/src/prompts.ts"
+      ]
     },
     {
       "id"      : "providers.modelIdRoutes",
       "rule": "A model id alone picks its backend: it names a native vendor, gains a transport from the keys that resolve (the vendor's, else OpenRouter's, else none), and a model no key carries is refused by name before anything is paid for. The scheduler never imports a concrete provider.",
-      "prevents": "Swapping a model in `project.yaml` needing code changes, a graph node naming another model drawing with the project's instead, or a run paying for pictures it then cannot review for want of a key.",
       "subjects": [
         "module:packages/providers/src/factory.ts",
         "function:packages/providers/src/factory.ts#createImageBackend",
@@ -414,15 +290,11 @@
         "function:packages/providers/src/factory.ts#createProviders",
         "function:packages/providers/src/mock.ts#createMockProviders",
         "package:packages/scheduler"
-      ],
-      "see"     : ["docs/plans/openrouter-as-a-fallback-transport.md", "docs/guides/testkit.md"],
-      "detail": "`chatVendorFor` and `imageVendorOf` in `@vn/types` name the vendor (`<vendor>/<model>` is OpenRouter's, `claude-…` is Anthropic's, anything else is Gemini's), and `chatRouteFor` / `imageRouteFor` add the transport, falling back to OpenRouter under the id's OpenRouter spelling (`openRouterIdFor`). Every table above the seam stays keyed by the native spelling (`nativeIdFor`). The image seam routes each call by the `modelId` on its params and hands every result back under the id the caller sent. The refusal is the `ConfigError` `missingRouteError` raises, naming both keys; `resolveRoutes` raises the same refusal ahead of a run. An open conversation keeps the transport it started on, because the two APIs do not share a message format. The scheduler's side is enforced by `vn/element-types`: `lintrix.config.json` does not list `providers` among what `@vn/scheduler` may import, and it reaches providers only through the `Providers` interface. Tests inject `RecordedChatBackend` and `StubImageBackend` through `createMockProviders`, so every contract runs without network access.",
-      "declared": "packages/providers/src/factory.ts"
+      ]
     },
     {
       "id"      : "providers.textFallback",
       "rule": "The text steps (P1 location enrichment, P5 shot decomposition) call the LLM with structured-output enforcement and fall back to a deterministic baseline when the step fails, so a whole run completes with mock providers and no API calls.",
-      "prevents": "A run that stops at the first text step a mock, missing or failing model cannot answer, which would make the pipeline impossible to run end to end without paid calls.",
       "subjects": [
         "module:packages/stills/src/storyboard.ts",
         "function:packages/stills/src/storyboard.ts#decomposeScene",
@@ -430,68 +302,48 @@
         "function:packages/pipeline/src/p1.ts#enrichLocation",
         "function:packages/pipeline/src/p1.ts#deterministicBreakdown",
         "function:packages/providers/src/mock.ts#createMockProviders"
-      ],
-      "detail": "P5's baseline is one establishing shot carrying the scene's cast plus one medium shot per character, each on the location's first variant. The establishing shot carries the cast because it covers the narration and action beats, which describe the characters doing things; a scene with no cast gets a bare plate. `decomposeScene` never throws: a failure becomes a `baseline` decomposition with a `reason`, so a caller that persists can refuse to write it (`planning.storyboardOnRequest`). P1 keeps the mined location when enrichment fails. Changing the baseline changes the prompt and re-keys establishing tasks, but shots are persisted, so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is deleted or edited.",
-      "declared": "packages/stills/src/storyboard.ts"
+      ]
     },
     {
       "id"      : "script.entityByTag",
       "rule": "A character or set-location is a file whose front matter says `type: character` or `type: location`, found only in `characters/<id>/character.md`, `locations/<id>.md` and `wiki/**/*.md`, and it is read and written only in the file it was found in.",
-      "prevents": "Approving or editing a `characters/<id>/character.md` rebuilt from the id, which silently writes a file that is not the one loaded, and treating every stray Markdown file in the wiki as an input.",
       "subjects": [
         "module:packages/store/src/entities.ts",
         "function:packages/store/src/entities.ts#discoverEntities",
         "function:packages/store/src/entities.ts#entityFile",
         "function:packages/store/src/entities.ts#entityIdentity"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#entity-discovery-by-meta-tag"],
-      "detail": "In the two conventional directories the tag is implied by the directory and may be stated redundantly; stating the other kind there is an `entity_tag_conflict` error rather than an override, because a document changes kind only when its file moves. In the wiki a file is an entity only if it carries the tag, and an untagged file belongs to the story bible and is skipped without a diagnostic. Discovery yields an `EntityDoc` (`id`, `file`, parsed `doc`, raw `text`), and `entityFile(docs, id)` is how `vngen approve`, the desktop session, testkit and `vnauthor`'s edit tools find their target. When two files claim one id, discovery warns `duplicate_entity` naming both and prefers the conventional file, then the lexicographically first path. Unparseable front matter is an `entity_file` diagnostic rather than a thrown load: an error under the conventional directories, a warning under the wiki. That the declared `id:` agrees with the file's name is `script.entityIdMatchesFile`, checked by the model build.",
-      "declared": "packages/store/src/entities.ts"
+      ]
     },
     {
       "id"      : "script.entityIdMatchesFile",
       "rule": "A character or location sheet's front-matter `id:` must equal the id its file's name implies (the directory for a character sheet, the filename stem elsewhere); a mismatch is an `entity_id_mismatch` error and the entity is dropped.",
-      "prevents": "A sheet such as `characters/ada/` declaring `id: ren`, which produces a character no file on disk names, so every path derived from the id points somewhere the entity is not.",
       "subjects": [
         "module:packages/model/src/build.ts",
         "function:packages/model/src/build.ts#buildModel",
         "function:packages/store/src/entities.ts#discoverEntities"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#entity-discovery-by-meta-tag"],
-      "detail": "The disagreement is reported and never resolved by picking one side, the way `sceneFromDoc` treats a scene whose filename and `scene:` key disagree. Discovery itself is `script.entityByTag`, in `@vn/store`.",
-      "declared": "packages/model/src/build.ts"
+      ]
     },
     {
       "id"      : "script.headingRestagesShots",
       "rule": "Editing a scene's heading through `setHeading` moves no line id and no coverage, restages every shot in the scene onto the new heading's variant, and counts those shots as `restaged`, never as `drifted`, in the price shown before the edit runs.",
-      "prevents": "A shot whose stored `Shot.location` names a variant the new location does not declare, which the planner skips silently and permanently, and an edit that re-renders art being reported as harmless drift.",
       "subjects": [
         "module:packages/scriptedit/src/shotfallout.ts",
         "function:packages/scriptedit/src/shotfallout.ts#shotFallout",
         "function:packages/scriptedit/src/lineops.ts#setHeading",
         "command:story.setHeading"
-      ],
-      "detail": "The heading is not a `SceneLine` but `location` + `locationVariant` + `headingPrefix`, which `headingOf` reassembles and `parseHeading` reads back. Restaging goes through the `relocated` channel on `LineOp`: `Shot.location` is a variant id persisted in `work/shots/<sceneId>.json`, and the planner's `locationTask(…, shot.location, …)` skips a shot whose variant the location does not declare. Why a heading edit re-renders is `identity.headingRekeysShots`. The prose still describes the old place; the op's message says so and names the agent. `story.setHeading` is not `confirm: true`, because a confirm command is never checked, and the check is what raises the warning.",
-      "declared": "packages/scriptedit/src/shotfallout.ts"
+      ]
     },
     {
       "id"      : "script.linearOrderListed",
       "rule": "A linear project's scene order is `project.yaml`'s `scenes:` list and nothing else: never the directory's order, never branch markers. A listed id with no scene file, a repeat, a marker and a `start:` that is not the first listed scene are errors.",
-      "prevents": "A story whose order moves the day a scene file is renamed, because a directory has no document order and sorts by name; and a marker silently reordering a story its author wrote as a list.",
       "subjects": [
         "function:packages/model/src/linear.ts#linearNarrative",
         "function:packages/model/src/build.ts#buildModel"
-      ],
-      "see": [
-        "docs/research/workflows-and-narrative-engines.md#the-narrative-seam",
-        "docs/guides/cli.md#how-the-scenes-make-a-story"
-      ],
-      "declared": "packages/model/src/linear.ts"
+      ]
     },
     {
       "id"      : "script.lineIdsAllocated",
       "rule": "Line ids are allocated and stored, and a read never writes: a new line takes its id from its scene's allocator, never from its position, and loading a project allocates ids in memory only.",
-      "prevents": "Re-pointing every shot below an inserted line at a different line, which re-renders that art at cost and reports nothing.",
       "subjects": [
         "module:packages/scriptedit/src/lineops.ts",
         "function:packages/scriptedit/src/lineops.ts#nextIdOf",
@@ -499,15 +351,11 @@
         "function:packages/model/src/lineids.ts#assignLineIds",
         "command:story.assignLineIds",
         "tool:edit_scene"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#allocated-line-ids"],
-      "detail": "`Shot.coversLines` binds art to `<sceneId>:L<n>`, so an id derived from position would re-point every shot below an inserted line. `splitScenes` prefers a `[[line: L4]]` note (a Fountain note leading the element it names) and allocates only for unmarked elements, starting from the scene's `[[nextline: 12]]` mark raised past every id in use; a stale allocator is a bug and never justifies reusing an id. Duplicate and dangling marks are `error` diagnostics. Allocation happens in memory, and loading a project never allocates. The `story.assignLineIds` command (undoable, over `assignLineIds` in `packages/model/src/lineids.ts`) persists the ids: it adds only whole marker lines, re-parses its own output, and discards the patch unless the re-parse reproduces the same scenes line for line, because a note inserted above a `CHARACTER` cue would turn that cue into action and the lines below it would no longer parse as dialogue.",
-      "declared": "packages/scriptedit/src/lineops.ts"
+      ]
     },
     {
       "id"      : "script.livenessFromNarrative",
       "rule": "Whether a scene is live comes only from the model's narrative engine (`model.narrative.live`). The builder fills `model.reachable` and `model.entry` from it, and the production readers (planner, decomposition, slot graph, `usedOutfits`, gate) ask it rather than walk markers.",
-      "prevents": "Two readers disagreeing about which scenes the story contains once a project can pick its engine: the planner paying for a scene the gate or the export treats as dead, or a linear project whose scenes reach nothing through markers being drawn as unreachable.",
       "subjects": [
         "function:packages/model/src/build.ts#buildModel",
         "function:packages/model/src/used.ts#liveScenes",
@@ -515,30 +363,22 @@
         "module:packages/model/src/branching.ts",
         "module:packages/model/src/linear.ts",
         "module:packages/types/src/script/narrative.ts"
-      ],
-      "see"     : ["docs/research/workflows-and-narrative-engines.md#the-narrative-seam"],
-      "detail": "`project.yaml`'s `narrative:` selects the engine and defaults to `branching`, where live means reachable from `start:` through the markers. Under `linear` the scenes listed under `scenes:` are live. Readers that only list scenes, such as the document tree, take the order from `narrative.scenes()`, and the playable takes each scene's edges from `narrative.exits`.",
-      "declared": "packages/model/src/build.ts"
+      ]
     },
     {
       "id"      : "script.outfitInherited",
       "rule": "`outfitFor` alone resolves what a subject wears, in order: the shot subject's own `outfit`, then the scene's `[[outfit: id=outfit]]` marker, then the character's `default_outfit`. An absent field defers to the next level.",
-      "prevents": "The prompt builders, the planner and the desktop resolving an outfit in different orders, so a shot is drawn in one outfit while its reference sheet, or the surface describing it, names another.",
       "subjects": [
         "module:packages/model/src/outfits.ts",
         "function:packages/model/src/outfits.ts#outfitFor",
         "function:packages/model/src/outfits.ts#outfitText",
         "function:packages/model/src/used.ts#usedOutfits",
         "function:packages/stills/src/storyboard.ts#deterministicShots"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#outfits-at-scene-and-shot-level"],
-      "detail": "A `ShotSubject` with no `outfit` inherits, which is why `deterministicShots` and the decomposer emit shots without one. `ResolvedOutfit.origin` names the level that answered, so a surface can say which rather than \"inherited\". `outfitText` falls back to the outfit id when nothing describes the outfit, so a wardrobe can be named before it is described and an undescribed project keeps its prompts. An outfit edit re-renders, unlike other scene edits: the outfit is in `buildShotPrompt`, so a change re-keys exactly the shots it reaches. The sheet fan-out follows from the same function: `usedOutfits` is the character's default plus every scene marker and shot override over live scenes, which is `outfitFor`'s range, so a character no live scene casts plans no sheets and a shot cannot depend on a sheet nothing planned. A subject out of its default takes that outfit's front sheet as a reference (a frame needs the clothes, not a turnaround), which reaches the planner a wave later, the way a shot waits on its plate.",
-      "declared": "packages/model/src/outfits.ts"
+      ]
     },
     {
       "id"      : "script.proseDriftReported",
       "rule": "Editing a scene's prose never invalidates a frame's art, so drift is reported: `driftOf` compares the hash of a frame's covered lines, stamped with its image, against the same hash now, and a drifted frame's shot slot says so on `SlotState.drift`.",
-      "prevents": "A frame silently illustrating words the scene no longer contains, or a stored flag that goes stale, comes back from an old commit, or misses an edit that took another path.",
       "subjects": [
         "function:packages/stills/src/drift.ts#driftOf",
         "function:packages/stills/src/drift.ts#proseHash",
@@ -547,18 +387,11 @@
         "module:apps/desktop/src/main/session/story.ts",
         "command:story.setLineText",
         "slot:shot"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#line-editing-in-floor",
-        "docs/reference/desktop-app-editors-story.md#shot-coverage"
-      ],
-      "detail": "`buildShotPrompt` reads neither `coversLines` nor line text on a frame, because prose reaches only the P7 reviewer spec, which never enters a task's `inputs`. Retyping a covered line therefore rehashes nothing and re-renders nothing, and the frame still illustrates words the scene no longer contains, so it is checked against the words it covers. A page under `lettering: model` is the one exception: its lettered lines are in its prompt, so retyping one, or moving one between panels, re-keys the page. Drift on a page therefore only ever means a line that changed without changing the prompt, which under `lettering: runner` is every line. `Shot.proseHash` records a hash of the covered lines' text at the moment the image was produced. It is persisted under `shotData`, is written only beside an image, and is stamped only when the bytes are new, so a rerun that reports the same image cannot re-baseline the prose beneath it or clear a drift nobody acted on. `driftOf` re-derives the comparison on every read and returns `unrendered`, `current`, `drifted` or `unknown`; a shot rendered before the field existed returns `unknown`, so it never reads as `current` or as `drifted`. Shot Coverage, the Stale branch and the approval queue call `driftOf` over every scene, keyed by a frame's image; `SlotState.drift` answers only for the shot slots of live scenes. The value is derived rather than stored because `shotData` is rewritten wholesale each pass, and it is not the task hash, which is the hash prose cannot move. The hash walks `scene.lines`, so reordering `coversLines` does not count as an edit while extending coverage does, since the question is whether this frame illustrates the words it is against. Every surface that can change prose shows the author the sentence before the commit (`story.setLineText`'s `check`) and the mark after it. A bound generation graph is the opposite case: editing one does invalidate the slot (`graphs.editInvalidates`).",
-      "declared": "packages/stills/src/drift.ts"
+      ]
     },
     {
       "id"      : "script.sceneEditAllOrNothing",
       "rule": "A scene edit that spans several chunk files is computed and proved in full before any file is written, and an existing chunk keeps its front-matter block byte for byte; only the body is rewritten.",
-      "prevents": "A splice refused on the third file leaving the first two already changed, and a re-serialized YAML block silently dropping the comments the author wrote in it.",
       "subjects": [
         "module:packages/scriptedit/src/markers.ts",
         "function:packages/scriptedit/src/markers.ts#planMarkerEdit",
@@ -566,80 +399,53 @@
         "function:packages/scriptedit/src/apply.ts#proveScenes",
         "function:packages/scriptedit/src/apply.ts#planSceneEdit",
         "function:packages/scriptedit/src/sources.ts#chunkText"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#scene-chunk-files"],
-      "detail": "Deciding is split from writing for both write paths: `planMarkerEdit` and `planSceneEdit` touch nothing, so a command's `check` and its `run` ask the same function, and the apply step writes a plan that already proved itself. The front-matter block is spliced back from `splitFrontMatter`'s prefix rather than re-serialized.",
-      "declared": "packages/scriptedit/src/markers.ts"
+      ]
     },
     {
       "id"      : "script.sceneOneFile",
       "rule": "A scene is one `scenes/<id>.md` file whose front matter is `scene: <id>` and nothing else and whose body is one complete Fountain scene with its own heading. The id comes from the filename and the front matter, and the body cannot override it.",
-      "prevents": "Renaming a scene by editing its prose, and a key such as `next` or `location` stated both in front matter and in the body, so an edit written to one is read from the other.",
       "subjects": [
         "module:packages/model/src/entities.ts",
         "function:packages/model/src/entities.ts#sceneFromDoc",
         "function:packages/model/src/serialize.ts#sceneToDoc",
         "function:packages/store/src/scenes.ts#readSceneChunks",
         "file:scenes"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#scene-chunk-files",
-        "docs/reference/fountain.md#where-the-fountain-lives-project-specific"
-      ],
-      "detail": "The front-matter schema is closed, so a key the body owns is a `scene_frontmatter` error; a filename and `scene:` key that disagree are `scene_id`; a body with no heading or with two is `scene_body`. A `[[scene:]]` marker in a chunk is ignored with a warning. A directory has no document order, so `start:` in `project.yaml` names the entry scene rather than whichever file sorts first. Which files hold scenes, and what a writer patches, is `script.sceneSourcesOneLoad` in `@vn/scriptedit`.",
-      "declared": "packages/model/src/entities.ts"
+      ]
     },
     {
       "id"      : "script.sceneRoundTrip",
       "rule": "Writing a scene to Fountain and parsing it back returns the same scene, `parse(write(scene)) ≡ scene`, for every field of `Scene`. `sceneToFountain` writes from `Scene.lines` and the heading fields.",
-      "prevents": "A prose edit that re-serializes a scene silently changing it, such as turning `EXT. ROOFTOP - NIGHT` into `INT. ROOFTOP - DAY`, which also changes the location variant the plate is drawn from.",
       "subjects": [
         "module:packages/model/src/serialize.ts",
         "function:packages/model/src/serialize.ts#sceneToFountain",
         "function:packages/model/src/serialize.ts#sceneToDoc",
         "function:packages/scriptedit/src/apply.ts#proveScenes"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#lossless-scene-serialization"],
-      "detail": "It is the scene counterpart of `fromDoc(toDoc(x)) ≡ x` for characters and locations, and a property test over the `@vn/testkit` scripts and hand-built scenes pins it. `Scene.body` was removed because flattened prose cannot be split back into its parts: `NAME:` and an action paragraph containing a colon are the same string. The model keeps what Fountain says, including the heading's prefix, its time-of-day variant and `transition`/`lyric`/`centered` lines; `section`, `page_break` and dual dialogue are dropped deliberately. Blank lines are structural: a `[[…]]` marker line is not blank, so a cue always gets a blank line above it, nothing but a `[[line:]]` mark goes between a cue and its first dialogue line, and anything that could be read as another element is written in its forced form (`!`, `@`, `>`, `~`). `needsForcedAction` tests every alternative reading the parser has. Byte-exactness is not a goal: the surgical patchers (`branchpatch.ts`, `lineids.ts`) still handle files the author wrote, because their formatting is the author's.",
-      "declared": "packages/model/src/serialize.ts"
+      ]
     },
     {
       "id"      : "script.sceneSourcesOneLoad",
       "rule": "`loadInputs` alone decides which files hold scenes, reading only `scenes/<id>.md`, and every scene writer patches the sources `sourcesOf` derives from the same `LoadedInputs` the model was built from, never from a second look at `scenes/`.",
-      "prevents": "A model built from one file while an edit is written to another, or a writer patching whatever is on disk by the time it writes rather than the bytes the model was read from.",
       "subjects": [
         "module:packages/scriptedit/src/sources.ts",
         "function:packages/scriptedit/src/sources.ts#sourcesOf",
         "function:packages/store/src/worktree.ts#loadInputs",
         "function:packages/store/src/worktree.ts#findScreenplay",
         "file:scenes"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#scene-chunk-files",
-        "docs/plans/archive/INDEX.md#fountain-import-export",
-        "docs/reference/fountain.md#where-the-fountain-lives-project-specific"
-      ],
-      "detail": "Nothing reads the older `screenplay/*.fountain` form, so a model can no longer be built from one file while edits are written to another. A project holding a screenplay and no `scenes/` gets a `legacy_screenplay` error naming `vngen import`; a screenplay left beside chunks gets a `stray_screenplay` warning to delete or rename it. `loadInputs` (`packages/store/src/worktree.ts`) also decides which file is the leftover, through `findScreenplay`, which the importer calls too, so the file the reader complains about is the file the importer converts. What a chunk may contain is `script.sceneOneFile`.",
-      "declared": "packages/scriptedit/src/sources.ts"
+      ]
     },
     {
       "id"      : "script.shotOrderFromProse",
       "rule": "A shot has no position field: its place is where its covered lines sit. Moving a shot moves the block of lines it covers, through the scene write path, and only a contiguous shot can move; one with another shot drawing inside its lines is refused by name.",
-      "prevents": "A second ordering kept beside the prose that can disagree with it, and a move that silently interleaves shots or re-renders art.",
       "subjects": [
         "module:packages/scriptedit/src/shotorder.ts",
         "function:packages/scriptedit/src/shotorder.ts#moveShot",
         "function:packages/scriptedit/src/shotorder.ts#planShotMove",
         "command:story.moveShot"
-      ],
-      "see"     : ["docs/plans/archive/INDEX.md#shot-ordering-in-scenes"],
-      "detail": "The exporter's `sceneBeats` emits a `show` beat whenever the covering shot changes down `scene.lines`, so nothing needs renumbering. Coverage is a set and interleaving is normal (the deterministic decomposer gives the establishing shot every narration line while each medium shot takes one character's dialogue); a shot with holes is on screen in more than one place, so it has no single position to move from. A move changes no hash: ids stay the same, coverage stays the same, and every shot's covered lines keep their relative order, so `proseHash`, which walks `scene.lines` in order, does not drift and nothing re-renders.",
-      "declared": "packages/scriptedit/src/shotorder.ts"
+      ]
     },
     {
       "id"      : "storage.baseUnavailable",
       "rule": "A base asset root whose directory exists without a readable manifest is `unavailable`, and the project is refused: `solve` reports the refusal with no slot ready, the planner plans nothing, and every act that would write to the root refuses in the same sentence.",
-      "prevents": "Regenerating an approved library at cost over a checkout that is missing the base repo, which a check that only counts assets cannot tell from a root where nothing has been generated yet.",
       "subjects": [
         "function:packages/constraint-solver/src/refuse.ts#baseRefusal",
         "function:packages/constraint-solver/src/refuse.ts#projectRefusal",
@@ -647,31 +453,21 @@
         "function:packages/pipeline/src/planner.ts#planTasks",
         "module:packages/scheduler/src/scheduler.ts",
         "module:packages/artgen/src/adoptslot.ts"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#base-and-project-asset-stores",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
-      "detail": "A checkout missing the base repo leaves the same state behind. The planner produces no plan when the root is `unavailable`, because the work downstream of base art references it, and it logs `plan.refused` with the root. The run stops before its wave loop and reports a single sentence, `baseRefusal`, that names the root and says to restore it rather than regenerate. On-demand art, adoption, promotion and upload refuse with the same sentence. An `absent` root (a new or legacy project) and a `ready` one refuse nothing, and facts with no base root have no opinion.",
-      "declared": "packages/constraint-solver/src/refuse.ts"
+      ]
     },
     {
       "id"      : "storage.manifestQueue",
       "rule": "Each asset root writes its manifest through one queue: a write waits for the previous one, re-reads the file, and applies only the rows its own instance changed.",
-      "prevents": "Two parallel tasks renaming onto `manifest.json` at once, which fails on Windows (EPERM), and a stale instance writing back rows another instance removed.",
       "subjects": [
         "module:packages/store/src/assetstore.ts",
         "function:packages/store/src/assetstore.ts#AssetRoot",
         "file:vngen/build/manifest.json",
         "file:assets/manifest.json"
-      ],
-      "see"     : ["docs/reference/asset-stores.md"],
-      "declared": "packages/store/src/assetstore.ts"
+      ]
     },
     {
       "id"      : "storage.storyboardKept",
       "rule": "A scene is decomposed once: the planner reads `work/shots/<sceneId>.json` whenever it exists and decomposes only when it does not. A malformed file throws, a dry run writes none, and a reader fills a copy of the model's `production` map rather than the planner's.",
-      "prevents": "Re-running P5, an LLM step, on every pass: new shot ids, hence new task hashes, re-render art already paid for. A malformed file silently re-decomposed over would discard the hand edits in it.",
       "subjects": [
         "module:packages/store/src/shots.ts",
         "function:packages/store/src/shots.ts#readShots",
@@ -681,32 +477,22 @@
         "function:packages/types/src/production/storyboard.ts#ProductionData",
         "function:packages/pipeline/src/planner.ts#planTasks",
         "file:vngen/work/shots"
-      ],
-      "detail": "A file created by a hand-placed shot is read the same way, so placing the first shot by hand ends decomposition for that scene. Because the result is kept, changing `art_style`, `storyboard_notes` or `shot_form` re-keys nothing and reaches the next scene storyboarded. Authored fields sit at the top level of the file and what a run produced under `shotData`, which each pass rewrites wholesale; `tasks.jsonl` and `manifest.json` stay the authority, so a file restored from an old commit does not mark work done, and `shotData` carries no `status`. Line ids the scene no longer has are dropped with a warning. The model builder leaves `ProjectModel.production` empty and the planner fills its own model's entry for a scene the first time that scene clears the gate, so a model a run plans from holds only the storyboards the run has reached. `readProduction` and `withProduction` write nothing into the model they are given; `withProduction` returns a copy, and `readProduction` reports a file that will not parse in `broken` rather than throwing. The exporter reads strictly, through `withSceneShots`.",
-      "declared": "packages/store/src/shots.ts"
+      ]
     },
     {
       "id"      : "storage.twoRoots",
       "rule": "Image bytes are stored once per root under their content hash: base art (portraits, model sheets, plates, concepts, references) in `assets/`, shot frames in `vngen/build/`. A write routes by `AssetKind` alone, and each root has its own manifest.",
-      "prevents": "A base subtree that is its own git repo losing its provenance to the project's manifest, or one picture stored twice under two names, so a reader cannot tell which root an asset lives in.",
       "subjects": [
         "module:packages/store/src/assetstore.ts",
         "function:packages/store/src/assetstore.ts#AssetStore",
         "function:packages/store/src/assetstore.ts#isBaseKind",
         "file:assets/manifest.json",
         "file:vngen/build/manifest.json"
-      ],
-      "see": [
-        "docs/reference/asset-stores.md",
-        "docs/plans/archive/INDEX.md#base-and-project-asset-stores"
-      ],
-      "detail": "Base art lives at `assets/objects/<hash>.<ext>`, frames at `vngen/build/assets/<hash>.<ext>`. Reads consult both roots, which is safe because a hash names the same bytes wherever it is. A hash both roots hold is a picture adopted across them, and the project row answers when it is a frame (`rowRoot`). A project written before the split still resolves, because its base art stays indexed in the project manifest. Writing a base kind while the base root is `unavailable` throws rather than writing there.",
-      "declared": "packages/store/src/assetstore.ts"
+      ]
     },
     {
       "id"      : "takes.approvedMeansAccepted",
       "rule": "A stills slot is approved when the take it holds (`pick`: its one current row, else its only row) is a row a person accepted. Every kind, the portrait included, answers through the one test on `SlotKind.approved`, `heldAccepted`.",
-      "prevents": "Each surface deciding approval its own way per kind, so the document tree, the gate pane and export disagree about whether a slot still waits for a person.",
       "subjects": [
         "function:packages/stills/src/family.ts#heldAccepted",
         "function:packages/constraint-solver/src/solve.ts#SlotState",
@@ -715,14 +501,11 @@
         "slot:portrait",
         "slot:sheet",
         "slot:shot"
-      ],
-      "detail": "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and `gate.perUnit` lists the cases where the two answers differ. `SlotState.approved` is the kinds' answer, which the document tree, the gate pane and the Task Graph pane read from `solve(stillsFamily, facts)`.",
-      "declared": "packages/stills/src/family.ts"
+      ]
     },
     {
       "id"      : "takes.currencyExclusive",
       "rule": "A slot holds one take: its one `current` row, else its only row (the solver's `pick`). Two current rows hold nothing, and `overHeld` says which stays. `current` (the slot holds it) and `accepted` (a person approved it) are set by different acts, and neither clears the other.",
-      "prevents": "A slot read as holding two pictures, so the Task Graph pane, every pinned reference and everything drawn from the slot disagree about the take, or an approval that silently follows a re-render.",
       "subjects": [
         "function:packages/constraint-solver/src/take.ts#pick",
         "function:packages/constraint-solver/src/take.ts#newestFirst",
@@ -738,18 +521,11 @@
         "slot:portrait",
         "slot:sheet",
         "slot:shot"
-      ],
-      "see": [
-        "docs/plans/archive/slot-history-on-the-manifest-row.md",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
-      "detail": "`pick` reads `current` and never `accepted`: one current row is the take, two resolve to nothing (the slot reads as empty and everything drawn from it becomes unsettled), and a slot with a single row and no current one resolves to that row. `AssetStore.hold(hash, supersede, stamp)` sets `current` on one row and clears it on the takes being replaced in the same manifest write; `heldBy` computes that list from every slot the row serves. It restamps `at` (the hold time) and writes `via` (`run | graph | adopt | promote | upload | migrated`) only where the row has none. `AssetStore.accept(hash)` sets `accepted` alone. Every writer holds: the runners on a clean output and on the last output of a `needs_human` task (the flawed frame stays on screen), adoption, promotion, upload and restore through `adoptSlot`, and the gate and `vngen approve`, which hold and then accept. A run accepts nothing. A re-render leaves the approved take behind as history, `accepted` and not current. Approved, for a plate, sheet or frame, is `assetApproved`: current and accepted. The prerequisite check reads `assetBlessed` (`accepted` alone), because a frame drawn from a plate that was approved and has since been superseded was still drawn from an approved plate. A portrait reads the same two bits. `acceptRefusal` refuses to accept a take its slot does not hold, naming `asset.restore`, which holds and then accepts. A sheet binding written since takes were held carries its `angle`; an older row is told apart from its siblings through its task's inputs (`angleOf`), and a row with neither releases nothing when held, since four angles share one binding. `current` is a cache of the task log (`loggedTake`): where a slot's identity is `done`, its `output` is the take; where it is `needs_human`, its last output is; otherwise (`pending` after a re-key, `running`, `failed`) the row is authoritative. `repairCurrent` (`@vn/artgen`, re-exported from `@vn/pipeline`) runs on every open and every non-dry run, from the CLI's and `vnauthor`'s project load too: it rewrites the bit to what the log says and puts any slot left with two current rows back to one by `overHeld`'s keep rule (a row the kind names, which for a shot is the storyboard's take, else the identity's logged output, else the newest `at` or last render, else the lowest hash), logged as `manifest.repair`. A clean manifest is not written. Validation is the one project read that skips the repair. `validateProject` (`@vn/gengraph/state`, with its asset half `validateAssets` in `@vn/artgen`) and the desktop's `readProject` open the manifests and the task log as they are on disk, so a slot with two current rows is reported rather than fixed. `project.validate` and the agent's `validate_project` write nothing. `migrateCurrent` runs first, once per manifest, keyed on a row with no `current` field, and stamps every row: the identity's output, else the last `needs_human` output, else the one accepted candidate, else the newest by attempt time then lowest hash, else the sole candidate, with `via: 'migrated'`; every other row gets `current: false`. Logged as `manifest.migrate`, naming characters whose approved portrait is no longer the take the slot holds. The row's `at` orders a slot's takes newest first (`newestFirst`, which the solver applies to every slot's candidates); rows never stamped sort last, in hash order, and no surface may present one of those as the latest. Publishing an unapproved current take is refused; watching one is not. `buildPlayable` projects what each slot holds and asks nothing, so the in-app player shows it; `unapprovedTakes` (`@vn/stills`) lists every frame and cast portrait in every scene that would show unapproved, the host passes the list to `@vn/export`'s `unapprovedSentence`, and `story.export`, `project.installPages` and `vngen export` refuse on the first of them with one sentence, the command's `check` and its `run` (`VnError('UNAPPROVED')`) alike. `vngen accept --hash | --all` and the testkit's `acceptAll` accept through `acceptTake`, the same rule `asset.accept` applies.",
-      "declared": "packages/stills/src/family.ts"
+      ]
     },
     {
       "id"      : "takes.suspensionDerived",
       "rule": "A row is suspended when a pinned reference on it no longer names its slot's take, or when a row it was drawn from is suspended. `suspensions` derives that on every read and nothing stores it; a suspended row keeps its bytes and nothing is redrawn for it.",
-      "prevents": "A stored flag that every writer has to invalidate, which an interrupted cascade leaves disagreeing with the disk, or an upstream change that silently re-keys and redraws everything downstream of it.",
       "subjects": [
         "function:packages/constraint-solver/src/suspend.ts#suspensions",
         "function:packages/constraint-solver/src/solve.ts#solve",
@@ -757,13 +533,7 @@
         "command:asset.suspended",
         "command:prompt.repin",
         "command:asset.accept"
-      ],
-      "see": [
-        "docs/plans/archive/INDEX.md#chunked-prompts",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
-      "detail": "When a slot moves, everything pinned to its old hash is suspended, along with everything downstream of that. A row's upstream is what its task was drawn from (`Asset.refs`, so a row that predates pinned references still cascades) plus the pins an author attached, and a muted clause contributes no pin. The walk carries a guard, so a reference cycle already on disk is stepped over rather than hanging it; refusing the cycle is the write-time check and the planner's. `suspensions` lists the suspended rows upstream first, the order an agent clearing a subtree works in, and `asset.suspended` enumerates them in that order. `SlotState.suspended` says whether the take a slot holds is one of them. A suspended asset refuses `accept` and `approve` by name, and `prompt.repin` clears the suspension. `regenerate=false` re-approves: it swaps the pin, computes the newly keyed task's identity from the state just written, and records the existing bytes as its output. Promotion rests on the same bound, that recorded work is never forged. A pinned reference's task hash does not move when its slot moves, so the run plans nothing new for a suspended row until the author repins or regenerates.",
-      "declared": "packages/constraint-solver/src/suspend.ts"
+      ]
     }
   ],
   "bySubject": {

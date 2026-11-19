@@ -1,0 +1,71 @@
+{
+  "contracts": [
+    {
+      "id"      : "storage.baseUnavailable",
+      "rule": "A base asset root whose directory exists without a readable manifest is `unavailable`, and the project is refused: `solve` reports the refusal with no slot ready, the planner plans nothing, and every act that would write to the root refuses in the same sentence.",
+      "prevents": "Regenerating an approved library at cost over a checkout that is missing the base repo, which a check that only counts assets cannot tell from a root where nothing has been generated yet.",
+      "subjects": [
+        "function:packages/constraint-solver/src/refuse.ts#baseRefusal",
+        "function:packages/constraint-solver/src/refuse.ts#projectRefusal",
+        "function:packages/constraint-solver/src/solve.ts#solve",
+        "function:packages/pipeline/src/planner.ts#planTasks",
+        "module:packages/scheduler/src/scheduler.ts",
+        "module:packages/artgen/src/adoptslot.ts"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#base-and-project-asset-stores",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+      ],
+      "detail": "A checkout missing the base repo leaves the same state behind. The planner produces no plan when the root is `unavailable`, because the work downstream of base art references it, and it logs `plan.refused` with the root. The run stops before its wave loop and reports a single sentence, `baseRefusal`, that names the root and says to restore it rather than regenerate. On-demand art, adoption, promotion and upload refuse with the same sentence. An `absent` root (a new or legacy project) and a `ready` one refuse nothing, and facts with no base root have no opinion.",
+      "declared": "packages/constraint-solver/src/refuse.ts"
+    },
+    {
+      "id"      : "storage.manifestQueue",
+      "rule": "Each asset root writes its manifest through one queue: a write waits for the previous one, re-reads the file, and applies only the rows its own instance changed.",
+      "prevents": "Two parallel tasks renaming onto `manifest.json` at once, which fails on Windows (EPERM), and a stale instance writing back rows another instance removed.",
+      "subjects": [
+        "module:packages/store/src/assetstore.ts",
+        "function:packages/store/src/assetstore.ts#AssetRoot",
+        "file:vngen/build/manifest.json",
+        "file:assets/manifest.json"
+      ],
+      "see"     : ["docs/reference/asset-stores.md"],
+      "declared": "packages/store/src/assetstore.ts"
+    },
+    {
+      "id"      : "storage.storyboardKept",
+      "rule": "A scene is decomposed once: the planner reads `work/shots/<sceneId>.json` whenever it exists and decomposes only when it does not. A malformed file throws, a dry run writes none, and a reader fills a copy of the model's `production` map rather than the planner's.",
+      "prevents": "Re-running P5, an LLM step, on every pass: new shot ids, hence new task hashes, re-render art already paid for. A malformed file silently re-decomposed over would discard the hand edits in it.",
+      "subjects": [
+        "module:packages/store/src/shots.ts",
+        "function:packages/store/src/shots.ts#readShots",
+        "function:packages/store/src/shots.ts#writeShots",
+        "function:packages/store/src/shots.ts#readProduction",
+        "function:packages/store/src/shots.ts#withProduction",
+        "function:packages/types/src/production/storyboard.ts#ProductionData",
+        "function:packages/pipeline/src/planner.ts#planTasks",
+        "file:vngen/work/shots"
+      ],
+      "detail": "A file created by a hand-placed shot is read the same way, so placing the first shot by hand ends decomposition for that scene. Because the result is kept, changing `art_style`, `storyboard_notes` or `shot_form` re-keys nothing and reaches the next scene storyboarded. Authored fields sit at the top level of the file and what a run produced under `shotData`, which each pass rewrites wholesale; `tasks.jsonl` and `manifest.json` stay the authority, so a file restored from an old commit does not mark work done, and `shotData` carries no `status`. Line ids the scene no longer has are dropped with a warning. The model builder leaves `ProjectModel.production` empty and the planner fills its own model's entry for a scene the first time that scene clears the gate, so a model a run plans from holds only the storyboards the run has reached. `readProduction` and `withProduction` write nothing into the model they are given; `withProduction` returns a copy, and `readProduction` reports a file that will not parse in `broken` rather than throwing. The exporter reads strictly, through `withSceneShots`.",
+      "declared": "packages/store/src/shots.ts"
+    },
+    {
+      "id"      : "storage.twoRoots",
+      "rule": "Image bytes are stored once per root under their content hash: base art (portraits, model sheets, plates, concepts, references) in `assets/`, shot frames in `vngen/build/`. A write routes by `AssetKind` alone, and each root has its own manifest.",
+      "prevents": "A base subtree that is its own git repo losing its provenance to the project's manifest, or one picture stored twice under two names, so a reader cannot tell which root an asset lives in.",
+      "subjects": [
+        "module:packages/store/src/assetstore.ts",
+        "function:packages/store/src/assetstore.ts#AssetStore",
+        "function:packages/store/src/assetstore.ts#isBaseKind",
+        "file:assets/manifest.json",
+        "file:vngen/build/manifest.json"
+      ],
+      "see": [
+        "docs/reference/asset-stores.md",
+        "docs/plans/archive/INDEX.md#base-and-project-asset-stores"
+      ],
+      "detail": "Base art lives at `assets/objects/<hash>.<ext>`, frames at `vngen/build/assets/<hash>.<ext>`. Reads consult both roots, which is safe because a hash names the same bytes wherever it is. A hash both roots hold is a picture adopted across them, and the project row answers when it is a frame (`rowRoot`). A project written before the split still resolves, because its base art stays indexed in the project manifest. Writing a base kind while the base root is `unavailable` throws rather than writing there.",
+      "declared": "packages/store/src/assetstore.ts"
+    }
+  ]
+}

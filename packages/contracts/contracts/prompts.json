@@ -1,0 +1,131 @@
+{
+  "contracts": [
+    {
+      "id"      : "prompts.artNotesAppended",
+      "rule": "Authored `artNotes` are appended to what a builder derived, entity note first and the narrower rung second, and an empty note adds nothing, so a project that authors no notes composes byte-identical prompts. A shot's prompt reads only the shot's own notes.",
+      "prevents": "Re-keying every task in every project that authors no notes, and losing the style preamble, reference scaffolding and closing frame clause that keep a picture on-model, which a replaced prompt would drop.",
+      "subjects": [
+        "module:packages/stills/src/prompts.ts",
+        "function:packages/stills/src/prompts.ts#artClause",
+        "function:packages/stills/src/prompts.ts#buildPortraitChunks",
+        "function:packages/stills/src/prompts.ts#buildLocationChunks",
+        "function:packages/stills/src/prompts.ts#buildModelSheetChunks",
+        "function:packages/stills/src/prompts.ts#buildShotChunks"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor",
+        "docs/plans/archive/INDEX.md#agent-art-revision"
+      ],
+      "detail": "`artNotes` is an optional free-text field at five rungs: `Character`, `Location`, `Shot`, each `Outfit` and each `LocationVariant`. Setting a note costs money by design, like an outfit and unlike a scene edit: the note is in the prompt, so it re-keys exactly the tasks its rung reaches. `buildShotPrompt` leaves out the entity notes because they already reach the frame through the plates and sheets it references. The test worth having is the byte-identical output of a project with no notes, not the feature. Where the notes, seeds and image models are written is `prompts.artRungsShared`, in `@vn/artgen`.",
+      "declared": "packages/stills/src/prompts.ts"
+    },
+    {
+      "id"      : "prompts.artRungsShared",
+      "rule": "Art notes, image seeds and image models are authored at the same five rungs, addressed as `character:<id>[/<outfit>]`, `location:<id>[/<variant>]` or `shot:<sceneId>/<shotId>`, and every host writes them through one parser and one write path, with the same refusals.",
+      "prevents": "Two hosts drifting into two rung vocabularies, so the agent and the desktop refuse or write the same authorial act differently, or create the outfit, variant or shot a typo named.",
+      "subjects": [
+        "module:packages/artgen/src/setnotes.ts",
+        "function:packages/artgen/src/artnotes.ts#parseArtTarget",
+        "function:packages/artgen/src/artnotes.ts#rungsFor",
+        "function:packages/artgen/src/setnotes.ts#setArtNotes",
+        "function:packages/artgen/src/setnotes.ts#setArtSeed",
+        "function:packages/artgen/src/setnotes.ts#setArtModel",
+        "function:packages/stills/src/prompts.ts#seedFor",
+        "function:packages/stills/src/prompts.ts#modelFor",
+        "module:apps/desktop/renderer/pathux/doctree/sheetform.ts",
+        "command:art.setNotes",
+        "command:art.setSeed",
+        "command:art.setModel",
+        "tool:list_assets",
+        "tool:art_notes",
+        "tool:set_art_notes",
+        "tool:regenerate_asset"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#asset-names-and-the-asset-editor",
+        "docs/plans/archive/INDEX.md#agent-art-revision"
+      ],
+      "detail": "An entity rung is written into the sheet the model was built from, through `@vn/model`'s `apply*Edit`; a shot rung into `work/shots/<sceneId>.json`. An empty value clears the rung back to inheriting. The narrowest seed wins (`seedFor`) and is in the task hash; the narrowest image model wins (`modelFor`) and is outside it, and a slot a generation graph binds takes the graph node's own model and seed instead. The Wiki pane's sheet form is a second writer of the same keys (`art_notes`, `seed`, `image_model`) through `@vn/parse`'s front-matter codec, because the `art.*` commands re-serialise the whole front matter and lose the author's comments; the model reads the keys back identically, and a blank box removes the key. `regenerate_asset` is always confirm-gated and refuses where the host has no pipeline (vnauthor). The agent reads a rendered picture back through `view_image` (`describeAsset`, a plain vision question rather than the P7 reviewer).",
+      "declared": "packages/artgen/src/setnotes.ts"
+    },
+    {
+      "id"      : "prompts.clauseList",
+      "rule": "A derived prompt is a `PromptChunk[]` of keyed clauses, which `renderPrompt` collapses to the flat string a task hashes. An override edits that list at the one rung naming the whole picture, and a project with no override composes byte-identical prompts.",
+      "prevents": "Every existing task re-keying, and so every picture re-rendering, when prompts became editable; and an agent-condensed prompt re-rendering its asset because an unrelated note moved a clause under it.",
+      "subjects": [
+        "module:packages/types/src/prompt.ts",
+        "function:packages/types/src/prompt.ts#PromptChunk",
+        "function:packages/types/src/prompt.ts#PromptOverride",
+        "function:packages/stills/src/chunks.ts#renderPrompt",
+        "function:packages/stills/src/chunks.ts#effectiveChunks",
+        "function:packages/stills/src/chunks.ts#composePrompt",
+        "command:prompt.setChunk",
+        "command:prompt.clear"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
+      "detail": "Every builder in `@vn/stills` assembles the list. Each clause is keyed, categorised, and carries an origin (a builder, or the document and field its sentence came from) that a surface can open. `renderPrompt` is the `.filter(Boolean).join(' ')` tail the flat builders ended with, and `prompthash.test.ts` pins the sorted hash list against a literal written before chunks existed. The override rungs are `Character` for a portrait, the outfit entry for a sheet, the location variant for a plate and the `Shot` for a frame, never a rung that only contributes a clause, so there is one place to look. Setting `mode` alone overrides nothing: every mode falls back to the derived chunks when the shape it names is empty, and each writer calls `promptOverrideIsEmpty` to clear the key. `TaskInputs.*.prompt` stays a flat string, because `taskHash` hashes the whole inputs object with no allow-list; a chunk reaches a hash only through `composePrompt`'s text. An override edit re-keys exactly the tasks its rung reaches, as an art note does. An agent-condensed prompt records the chunk list it condensed (`chunkFingerprint`). When those chunks move, `composePrompt` in `agent` mode still returns the stored text and reports `held`, and never falls back to fresh chunks; the staleness is derived on read and shown on the pane, never stored.",
+      "declared": "packages/types/src/prompt.ts"
+    },
+    {
+      "id"      : "prompts.decomposeByLineId",
+      "rule": "P5 receives the scene as identified lines, `[<lineId>] <kind>/<speaker>: <text>`, never as flattened prose, and a decomposition that binds none of the scene's real line ids falls back to the baseline.",
+      "prevents": "A model copying an empty `\"coversLines\":[]` from the response template, which produces shots that are drawn and never displayed, because the exporter shows a shot only where its lines are.",
+      "subjects": [
+        "function:packages/stills/src/storyboard.ts#decomposeScene",
+        "function:packages/stills/src/storyboard.ts#realizeDecomposition",
+        "function:packages/stills/src/storyboard.ts#withCoverage",
+        "tool:propose_storyboard",
+        "tool:write_storyboard"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#shot-timeline-editor"],
+      "detail": "The system prompt asks the model to assign every line to exactly one shot, in order; the code does not enforce that, and a line the answer leaves uncovered stays uncovered. What the code enforces: line ids the scene does not have are dropped, a decomposition that binds no real line falls back to the baseline (`withCoverage`), and an uncovered first line goes to the first shot, so a scene cannot open on a blank frame. `coversLines` is not in a frame's task inputs, so these repairs re-key nothing.",
+      "declared": "packages/stills/src/storyboard.ts"
+    },
+    {
+      "id"      : "prompts.refOnClause",
+      "rule": "A reference is a `ChunkRef` on one clause: muting the clause drops it, the task hashes its `pin` rather than its slot, authored refs follow the derived ones in `TaskInputs.refs`, and a ref with no `from` names an asset by hash and never drifts.",
+      "prevents": "An upstream approval silently re-rendering everything that points at it, a muted clause still feeding the model its pictures, and every task with no authored reference re-keying, since `canonicalJson` maps arrays by position.",
+      "subjects": [
+        "module:packages/types/src/prompt.ts",
+        "function:packages/types/src/prompt.ts#ChunkRef",
+        "function:packages/types/src/prompt.ts#RefBinding",
+        "function:packages/stills/src/refs.ts#authoredRefs",
+        "function:packages/stills/src/refs.ts#refDrift",
+        "function:apps/desktop/src/main/agent/promptedit.ts#applyPromptEdit",
+        "command:prompt.addRef",
+        "command:prompt.repin"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
+      "detail": "A linked ref carries a `RefBinding` naming the slot it was taken from (`plate:cafe/night`, `sheet:aiko/gala/front`). Drift is `resolveBinding(from) !== pin`, derived on read, and a slot that cannot be resolved reports none; a moved slot suspends what was pinned to its old hash rather than re-rendering it. `prompt.addRef` attaches a bare asset hash with no `from`, because an upload or a concept has no slot under it. `applyPromptEdit` refuses a reference on a clause the prompt does not have, and the same pin twice on one clause, since `refs` is positional and inside the hash. The cycle refusal is `prompts.refsAcyclic`.",
+      "declared": "packages/types/src/prompt.ts"
+    },
+    {
+      "id"      : "prompts.refsAcyclic",
+      "rule": "The reference graph over slots stays acyclic: `prompt.addRef` runs `refCycle` in its check and refuses a reference that would close a loop, naming the whole path. The cycle is over slots, not hashes.",
+      "prevents": "Tasks that are never ready, because each waits on the other, so a run appears to do nothing and reports no error.",
+      "subjects": [
+        "module:packages/stills/src/refcycle.ts",
+        "function:packages/stills/src/refcycle.ts#refCycle",
+        "function:packages/stills/src/refcycle.ts#firstCycle",
+        "function:packages/stills/src/refcycle.ts#cycleRefusal",
+        "module:apps/desktop/src/main/session/prompt.ts",
+        "command:prompt.addRef"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#chunked-prompts"],
+      "detail": "Hashes cannot cycle, but bindings can: \"Aiko's portrait references Aiko's gala sheet\" closes a loop although no hash repeats, because the sheet's prompt already references the portrait. A ref cycle is invisible to `topoOrder`, which reads `Task.deps`. Left unchecked, `doneOutput` answers `undefined`, the shot is skipped, and the plan-run-replan loop starves in silence. `firstCycle` finds a loop already on disk in a hand-edited project, and the planner calls it so such a project fails loudly.",
+      "declared": "packages/stills/src/refcycle.ts"
+    },
+    {
+      "id"      : "prompts.reviewerSpec",
+      "rule": "The P7 reviewer sees only what `shotSpec` says about the shot: its own framing, location and cast, with the prose of its covered lines marked as context only. `spec.characters` decides who must be in frame, and an empty list means an absence is not a defect.",
+      "prevents": "A reviewer handed the scene synopsis flagging every shot, plates included, for characters the scene mentions but the shot never ordered, so the refine loop spends every attempt and lands on `needs_human`.",
+      "subjects": [
+        "function:packages/stills/src/prompts.ts#shotSpec",
+        "command:story.requireCast",
+        "task:shot_image"
+      ],
+      "detail": "`Shot.castOptional` exempts a shot that has a cast from the same trap: the subjects stay on the shot, so their sheets still reach the generator as references, but `shotSpec` hands the reviewer an empty `characters` and the description says an absence is not a defect. Without it, a frame the reviewer will never accept (a figure seen from behind, a crowd, a hand) spends the whole cap. `story.requireCast` writes the field, normally from the Shot Coverage strip. `shotSpec`'s output never enters a task's `inputs`, and `castOptional` is read only by `shotSpec`, so neither re-keys the shot: setting the field changes what the next review asks and does not by itself redraw the frame.",
+      "declared": "packages/stills/src/prompts.ts"
+    }
+  ]
+}

@@ -1,27 +1,35 @@
 /**
- * The contract index's three guards: the committed `contracts.json` equals a regeneration, every
- * declared contract is listed in its package's `contracts.ts` (and every `contracts.ts` in
+ * The contract index's three guards: the committed summary file and shards equal a regeneration,
+ * every declared contract is listed in its package's `contracts.ts` (and every `contracts.ts` in
  * `entry.ts`), and every contract has a test that pins it.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import type { Contract } from '@vn/contracts';
-import type { ContractIndex } from '@vn/contracts/query';
+import { CONTRACT_AREAS, type Contract, type ContractArea } from '@vn/contracts';
+import { INDEX, joinIndex, type ContractShard, type ContractSummaries } from '@vn/contracts/query';
 import {
   buildIndex,
   constNameOf,
   declaredConsts,
   idOfConst,
+  splitIndex,
   srcRootOf,
   type Facts,
 } from '../build.js';
-import { contractIndex, DECLARED } from '../entry.js';
+import { contractFiles, contractIndex, DECLARED } from '../entry.js';
 
 const REPO = resolve(__dirname, '../../..');
 
-const committed = JSON.parse(
-  readFileSync(join(REPO, 'packages/contracts/contracts.json'), 'utf8'),
-) as ContractIndex;
+const read = <T>(file: string): T =>
+  JSON.parse(readFileSync(join(REPO, 'packages/contracts', file), 'utf8')) as T;
+
+/** The committed summary file and shards, as `gen:contracts` wrote them. */
+const committed = {
+  summary: read<ContractSummaries>('contracts.json'),
+  shards: Object.fromEntries(
+    CONTRACT_AREAS.map((area) => [area, read<ContractShard>(`contracts/${area}.json`)]),
+  ) as Record<ContractArea, ContractShard>,
+};
 
 /** Every package's and app's source root. */
 function srcRoots(): string[] {
@@ -57,14 +65,24 @@ function filesUnder(dir: string, keep: (name: string) => boolean): string[] {
   return out;
 }
 
-describe('contracts.json', () => {
-  it('equals a regeneration (run `pnpm gen:contracts` after declaring or editing a contract)', () => {
-    const fresh = contractIndex(REPO);
-    // Contract by contract first, so a stale file names the first one that moved
-    for (const c of fresh.contracts) {
-      expect(committed.contracts.find((x) => x.id === c.id)).toEqual(c);
+describe('contracts.json and its shards', () => {
+  it('equal a regeneration (run `pnpm gen:contracts` after declaring or editing a contract)', () => {
+    const fresh = contractFiles(REPO);
+    // Contract by contract first, so a stale shard names the first one that moved
+    for (const [area, shard] of Object.entries(fresh.shards)) {
+      for (const c of shard.contracts) {
+        expect(committed.shards[area as ContractArea].contracts.find((x) => x.id === c.id)).toEqual(
+          c,
+        );
+      }
     }
     expect(committed).toEqual(fresh);
+  });
+
+  it('join back into the index the queries read, which is the unsplit index', () => {
+    expect(joinIndex(committed.summary, committed.shards)).toEqual(INDEX);
+    expect(INDEX).toEqual(contractIndex(REPO));
+    expect(splitIndex(INDEX)).toEqual(committed);
   });
 });
 
@@ -98,7 +116,9 @@ describe('the declarations', () => {
         if (id) pinned.add(id);
       }
     }
-    expect(committed.contracts.map((c) => c.id).filter((id) => !pinned.has(id))).toEqual([]);
+    expect(committed.summary.contracts.map((c) => c.id).filter((id) => !pinned.has(id))).toEqual(
+      [],
+    );
   });
 });
 

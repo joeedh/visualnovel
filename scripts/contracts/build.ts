@@ -1,14 +1,21 @@
 /**
- * Builds the contract index, `packages/contracts/contracts.json`, from the declarations each
- * package's and app's `contracts.ts` lists, and refuses it when any subject names nothing.
+ * Builds the contract index from the declarations each package's and app's `contracts.ts` lists,
+ * refuses it when any subject names nothing, and splits it into the files the generator writes:
+ * `packages/contracts/contracts.json` and `packages/contracts/contracts/<area>.json`.
  *
  * Pure apart from reading the repo's files, so the generator (through `entry.ts`) and the jest
  * test that keeps the committed file current compute the same answer.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONTRACT_AREAS, SUBJECT_PREFIXES, type Contract } from '@vn/contracts';
-import type { ContractIndex, ContractRecord } from '@vn/contracts/query';
+import { CONTRACT_AREAS, SUBJECT_PREFIXES, type Contract, type ContractArea } from '@vn/contracts';
+import {
+  areaOf,
+  type ContractIndex,
+  type ContractRecord,
+  type ContractShard,
+  type ContractSummaries,
+} from '@vn/contracts/query';
 
 /** One `contracts.ts` and the array it exports. */
 export interface Declared {
@@ -31,8 +38,26 @@ export interface Facts {
   slotContracts: readonly { prefix: string; contracts: readonly Contract[] }[];
 }
 
-/** The size past which the generator warns that the index should be split into shards. */
-export const SHARD_BYTES = 100 * 1024;
+/** The files the generator writes: the summary file, and one shard per area, empty ones included. */
+export interface IndexFiles {
+  summary: ContractSummaries;
+  shards: Record<ContractArea, ContractShard>;
+}
+
+/** Splits an index into the summary file and the shards, keeping its order in each. */
+export function splitIndex(index: ContractIndex): IndexFiles {
+  const shards = Object.fromEntries(
+    CONTRACT_AREAS.map((area) => [area, { contracts: [] as ContractRecord[] }]),
+  ) as Record<ContractArea, ContractShard>;
+  for (const record of index.contracts) shards[areaOf(record.id)].contracts.push(record);
+  return {
+    summary: {
+      contracts: index.contracts.map((c) => ({ id: c.id, rule: c.rule, subjects: c.subjects })),
+      bySubject: index.bySubject,
+    },
+    shards,
+  };
+}
 
 /** The longest a contract's `rule` or `prevents` may be. */
 const MAX_FIELD = 280;

@@ -1,17 +1,30 @@
 /**
  * `@vn/contracts/query`: the generated contract index and the lookups every host answers from.
  *
- * The index is `packages/contracts/contracts.json`, which `pnpm gen:contracts` writes from the
- * declarations and a jest test keeps current. Hosts read the committed file rather than importing
- * the declarations, so `vnauthor`, which may not import the pipeline, sees the same contracts as
- * the desktop app.
+ * The index is generated in two parts, which `pnpm gen:contracts` writes from the declarations
+ * and a jest test keeps current: `packages/contracts/contracts.json` holds each contract's summary
+ * and the subject map, and `packages/contracts/contracts/<area>.json` holds each area's full
+ * records. Hosts read the committed files rather than importing the declarations, so `vnauthor`,
+ * which may not import the pipeline, sees the same contracts as the desktop app.
  *
  * A lookup answers summaries (id, rule, subjects) unless it asks for the full record, and at most
  * {@link MAX_RESULTS} of them, with a count of the rest, so a broad query reads as cut rather
  * than complete.
  */
-import data from '../contracts.json';
-import { SUBJECT_PREFIXES } from './index.js';
+import summaries from '../contracts.json';
+import collectShard from '../contracts/collect.json';
+import executionShard from '../contracts/execution.json';
+import gateShard from '../contracts/gate.json';
+import graphsShard from '../contracts/graphs.json';
+import identityShard from '../contracts/identity.json';
+import logShard from '../contracts/log.json';
+import planningShard from '../contracts/planning.json';
+import promptsShard from '../contracts/prompts.json';
+import providersShard from '../contracts/providers.json';
+import scriptShard from '../contracts/script.json';
+import storageShard from '../contracts/storage.json';
+import takesShard from '../contracts/takes.json';
+import { SUBJECT_PREFIXES, type ContractArea } from './index.js';
 
 /** One contract as the index records it. */
 export interface ContractRecord {
@@ -28,14 +41,60 @@ export interface ContractRecord {
 /** What a lookup returns unless it asks for the full record. */
 export type ContractSummary = Pick<ContractRecord, 'id' | 'rule' | 'subjects'>;
 
-/** The generated file: every contract, and the ids attached to each subject. */
+/** Every contract in full, sorted by id, and the ids attached to each subject. */
 export interface ContractIndex {
   contracts: ContractRecord[];
   bySubject: Record<string, string[]>;
 }
 
+/** `contracts.json`: every contract's summary, sorted by id, and the subject map. */
+export interface ContractSummaries {
+  contracts: ContractSummary[];
+  bySubject: Record<string, string[]>;
+}
+
+/** `contracts/<area>.json`: the full records of one area's contracts, sorted by id. */
+export interface ContractShard {
+  contracts: ContractRecord[];
+}
+
+/** Gives the area a contract id starts with. */
+export const areaOf = (id: string): ContractArea => id.slice(0, id.indexOf('.')) as ContractArea;
+
+/**
+ * Rebuilds the full index from the summary file and the shards, in the summary file's order. A
+ * summary whose shard has no record for it is left out rather than thrown on, so the generator,
+ * which imports this module, can still run over a stale pair; the regeneration test fails on one.
+ */
+export function joinIndex(
+  summary: ContractSummaries,
+  shards: Readonly<Record<ContractArea, ContractShard>>,
+): ContractIndex {
+  const contracts = summary.contracts.flatMap((s) => {
+    const record = shards[areaOf(s.id)]?.contracts.find((c) => c.id === s.id);
+    return record ? [record] : [];
+  });
+  return { contracts, bySubject: summary.bySubject };
+}
+
+/** The committed shards, by area. */
+const SHARDS = {
+  identity : identityShard,
+  storage  : storageShard,
+  log      : logShard,
+  gate     : gateShard,
+  takes    : takesShard,
+  collect  : collectShard,
+  planning : planningShard,
+  graphs   : graphsShard,
+  script   : scriptShard,
+  prompts  : promptsShard,
+  execution: executionShard,
+  providers: providersShard,
+} as unknown as Record<ContractArea, ContractShard>;
+
 /** The committed index. */
-export const INDEX = data as ContractIndex;
+export const INDEX = joinIndex(summaries as ContractSummaries, SHARDS);
 
 /** Contracts one lookup returns before it says how many it left out. */
 export const MAX_RESULTS = 20;

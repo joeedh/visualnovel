@@ -1,0 +1,27 @@
+{
+  "contracts": [
+    {
+      "id"      : "gate.perUnit",
+      "rule": "A live scene is not decomposed, and none of its slots is ready, until every character in `scene.characters` has an approved portrait: a portrait row that is both current and accepted. The solver applies it per unit; the stills family lists the cast's portraits.",
+      "prevents": "Paying to decompose and draw a scene whose cast may still change, including cast members no shot shows, or drawing from a re-rendered portrait nobody accepted.",
+      "subjects": [
+        "function:packages/stills/src/family.ts#stillsFamily",
+        "function:packages/stills/src/family.ts#gateStatus",
+        "function:packages/stills/src/gate.ts#approvedPortraitOf",
+        "function:packages/constraint-solver/src/solve.ts#unitGates",
+        "function:packages/pipeline/src/planner.ts#planTasks",
+        "task:shot_image",
+        "command:gate.approve",
+        "command:gate.lock",
+        "slot:portrait",
+        "slot:shot"
+      ],
+      "see": [
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family",
+        "docs/plans/archive/slot-history-on-the-manifest-row.md"
+      ],
+      "detail": "The gate is not a task dependency. A scene is a unit, its shots are its slots, and `Family.gates` lists the portraits of the scene's cast; `Solution.units` and `SlotState.ready` report it, and the planner decomposes only open units and adds only ready slots. A scene with no cast is never held, and a cast member with no character sheet holds it. A portrait clears through its kind's `clears`, which asks `approvedPortraitOf(character, assets)`. A re-render puts an unapproved draft in the slot, so the gate closes until the author accepts the draft or restores the approved take; nothing already drawn is touched. The sheet is a mirror: `AssetStore.accept` on the portrait a slot holds writes `status: approved`, `approved_portrait:` and `approved.png`, and `unaccept` clears them when the sheet names that hash. A reader with no manifest (a pure plan) reads the mirror, which is valid because nothing else writes it; `repairCurrent` catches up a sheet an older tool approved by hand. `status: locked` (`gate.lock`) holds the approval at the hash the sheet names, whatever the slot holds. `vngen run` halts at the gate with nothing ready; `gate.approve` and `vngen approve` hold the chosen portrait and accept it, and choosing an older draft is a restore that `holdPortrait` logs, so the choice outlasts `repairCurrent`. `gateStatus` reports the same units: a live scene's cast member is pending until their portrait clears. The portrait slot's `approved` (`takes.approvedMeansAccepted`) differs from `clears` in four cases: a portrait whose only row is accepted but not current is approved and does not clear; with no manifest the slot holds no row and is not approved, while the gate reads the mirror; a locked character clears whatever the slot holds; and a slot holding two current rows picks neither and is not approved, while the gate clears if either is accepted.",
+      "declared": "packages/stills/src/family.ts"
+    }
+  ]
+}

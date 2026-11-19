@@ -1,0 +1,74 @@
+{
+  "contracts": [
+    {
+      "id"      : "identity.conceptNoNode",
+      "rule": "A concept image never gets a node in the task graph: `generateConcept` records a hash of the request (prompt, params, refs) as the asset's `sourceTask`, and nothing a run plans consumes the asset, so a project holding a concept plans exactly the tasks it planned before.",
+      "prevents": "A concept bound to `{locationId: 'cafe'}` being taken for that location's plate, or a sketch the author asked for changing what the next run plans and pays for.",
+      "subjects": [
+        "module:packages/artgen/src/concept.ts",
+        "function:packages/artgen/src/concept.ts#generateConcept",
+        "command:art.generate"
+      ],
+      "detail": "The asset is bound to what it sketches so the document tree and the backlink panel can find it. Every binding lookup outside the document tree filters by `kind` first, and the planner resolves a shot's plate by task hash rather than by manifest binding.",
+      "declared": "packages/artgen/src/concept.ts"
+    },
+    {
+      "id"      : "identity.headingRekeysShots",
+      "rule": "A shot's task inputs carry its location twice: `buildShotPrompt` names the location, and the plate's asset hash leads `refs`. So rewriting a scene's heading re-keys every shot in the scene, unlike retyping a line, which re-keys nothing.",
+      "prevents": "Treating a heading edit as free, like other prose edits, when the next run re-renders every shot in the scene; the price has to be shown before the edit runs.",
+      "subjects": [
+        "function:packages/stills/src/prompts.ts#shotInputs",
+        "function:packages/stills/src/prompts.ts#buildShotChunks",
+        "function:packages/scriptedit/src/lineops.ts#setHeading",
+        "command:story.setHeading",
+        "task:shot_image"
+      ],
+      "detail": "The planner passes the plate first in `upstream`, then each subject's portrait and outfit sheet. A heading edit inverts the rule that prose edits are reported as drift rather than re-rendered, so the price counts these shots as `restaged`, never as `drifted` (`script.headingRestagesShots`, in `@vn/scriptedit`).",
+      "declared": "packages/stills/src/prompts.ts"
+    },
+    {
+      "id"      : "identity.slotsBeforeTasks",
+      "rule": "`solve` enumerates a family's slots whether or not anything has been drawn, and attaches a task hash only to a slot whose kind can resolve its inputs now; any other slot carries the kind's sentence saying why. Edges come from each kind's `refs`, never from `Task.deps`.",
+      "prevents": "A graph of task hashes cannot show work not yet planned, because a downstream hash embeds its upstream outputs, so every surface would have to guess at it.",
+      "subjects": [
+        "package:packages/constraint-solver",
+        "module:packages/constraint-solver/src/solve.ts",
+        "function:packages/constraint-solver/src/solve.ts#solve",
+        "slot:plate",
+        "slot:portrait",
+        "slot:sheet",
+        "slot:shot"
+      ],
+      "see": [
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+      ],
+      "detail": "The first enumeration of an address wins and later ones are dropped. `Solution.order` is upstream first, and a walk that meets a reference cycle already on disk stops rather than hanging. A ref to an address with no slot is an opaque upstream, such as an authored pin. `Task.deps` is incomplete and is not hashed, so edges are never derived from it. Each slot kind that carries this contract adds its `slot:` prefix to the subjects in the index.",
+      "declared": "packages/constraint-solver/src/solve.ts"
+    },
+    {
+      "id"      : "identity.stagingSheet",
+      "rule": "A shot in a staging-sheet group carries `params.extra.sheet`, a hash of the sheet's prompt, its reference hashes in order and the group seed, so anything the sheet is drawn from re-keys every member at once. A shot in no group carries no `extra`.",
+      "prevents": "A member drawn from an old sheet while the others are cut from a new one, or a sheet change that re-renders nothing, because the sheet's inputs are not in any member's identity.",
+      "subjects": [
+        "module:packages/stills/src/sheet.ts",
+        "function:packages/stills/src/sheet.ts#sheetKey",
+        "function:packages/stills/src/sheet.ts#sheetKeys",
+        "function:packages/stills/src/sheet.ts#sheetSeeds",
+        "function:packages/stills/src/prompts.ts#shotInputs",
+        "function:packages/gengraph/src/execute.ts#sharedAncestors",
+        "function:packages/pipeline/src/graphrun.ts#runBoundGraph",
+        "task:shot_image",
+        "slot:shot",
+        "command:story.setSheetGroup",
+        "command:gengraph.run"
+      ],
+      "see": [
+        "docs/reference/gen-graphs.md#slots-and-outputs",
+        "docs/plans/manga-style.md",
+        "docs/research/manga-live-tests.md"
+      ],
+      "detail": "What re-keys the members: the members and their order, each member's framing, cast and camera, the plate, and the group's notes and seed. A shot outside a group carries no `extra`, so no hash that predates the field moved. The seeds are derived from the project and the manifest, never from a task graph, by `sheetSeeds`, which the planner, the scheduled runner and `gengraph.run` all call; a group's seed and notes live in the shots file and reach the model's production map beside the members. A sheet is rerolled by changing its seed (`story.setSheetGroup`), never by force: `gengraph.run` refuses `force` on a graph where a node feeds more than one output (`sharedAncestors`), because a forced run to one output would redraw the sheet for it alone and leave the other members' frames cut from the old one with nothing to re-key them. Every slot a graph binds shares its one journal and its one `Graph` object in a process, and `runBoundGraph` serialises the runs of one graph, because seeds are written onto the graph's own sockets: two members running at once would read each other's prompt and references, and the sheet would be drawn once per member rather than once per group.",
+      "declared": "packages/stills/src/sheet.ts"
+    }
+  ]
+}

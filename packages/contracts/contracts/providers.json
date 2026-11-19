@@ -1,0 +1,35 @@
+{
+  "contracts": [
+    {
+      "id"      : "providers.modelIdRoutes",
+      "rule": "A model id alone picks its backend: it names a native vendor, gains a transport from the keys that resolve (the vendor's, else OpenRouter's, else none), and a model no key carries is refused by name before anything is paid for. The scheduler never imports a concrete provider.",
+      "prevents": "Swapping a model in `project.yaml` needing code changes, a graph node naming another model drawing with the project's instead, or a run paying for pictures it then cannot review for want of a key.",
+      "subjects": [
+        "module:packages/providers/src/factory.ts",
+        "function:packages/providers/src/factory.ts#createImageBackend",
+        "function:packages/providers/src/factory.ts#resolveRoutes",
+        "function:packages/providers/src/factory.ts#createProviders",
+        "function:packages/providers/src/mock.ts#createMockProviders",
+        "package:packages/scheduler"
+      ],
+      "see"     : ["docs/plans/openrouter-as-a-fallback-transport.md", "docs/guides/testkit.md"],
+      "detail": "`chatVendorFor` and `imageVendorOf` in `@vn/types` name the vendor (`<vendor>/<model>` is OpenRouter's, `claude-…` is Anthropic's, anything else is Gemini's), and `chatRouteFor` / `imageRouteFor` add the transport, falling back to OpenRouter under the id's OpenRouter spelling (`openRouterIdFor`). Every table above the seam stays keyed by the native spelling (`nativeIdFor`). The image seam routes each call by the `modelId` on its params and hands every result back under the id the caller sent. The refusal is the `ConfigError` `missingRouteError` raises, naming both keys; `resolveRoutes` raises the same refusal ahead of a run. An open conversation keeps the transport it started on, because the two APIs do not share a message format. The scheduler's side is enforced by `vn/element-types`: `lintrix.config.json` does not list `providers` among what `@vn/scheduler` may import, and it reaches providers only through the `Providers` interface. Tests inject `RecordedChatBackend` and `StubImageBackend` through `createMockProviders`, so every contract runs without network access.",
+      "declared": "packages/providers/src/factory.ts"
+    },
+    {
+      "id"      : "providers.textFallback",
+      "rule": "The text steps (P1 location enrichment, P5 shot decomposition) call the LLM with structured-output enforcement and fall back to a deterministic baseline when the step fails, so a whole run completes with mock providers and no API calls.",
+      "prevents": "A run that stops at the first text step a mock, missing or failing model cannot answer, which would make the pipeline impossible to run end to end without paid calls.",
+      "subjects": [
+        "module:packages/stills/src/storyboard.ts",
+        "function:packages/stills/src/storyboard.ts#decomposeScene",
+        "function:packages/stills/src/storyboard.ts#deterministicShots",
+        "function:packages/pipeline/src/p1.ts#enrichLocation",
+        "function:packages/pipeline/src/p1.ts#deterministicBreakdown",
+        "function:packages/providers/src/mock.ts#createMockProviders"
+      ],
+      "detail": "P5's baseline is one establishing shot carrying the scene's cast plus one medium shot per character, each on the location's first variant. The establishing shot carries the cast because it covers the narration and action beats, which describe the characters doing things; a scene with no cast gets a bare plate. `decomposeScene` never throws: a failure becomes a `baseline` decomposition with a `reason`, so a caller that persists can refuse to write it (`planning.storyboardOnRequest`). P1 keeps the mined location when enrichment fails. Changing the baseline changes the prompt and re-keys establishing tasks, but shots are persisted, so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is deleted or edited.",
+      "declared": "packages/stills/src/storyboard.ts"
+    }
+  ]
+}

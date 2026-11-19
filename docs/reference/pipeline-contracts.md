@@ -10,10 +10,12 @@ These implement the system design in
 The invariants are moving into code, each as a `contract({...})` declaration beside the
 code that enforces it, and are deleted from this page as they move
 ([`../plans/contracts-into-code-and-workflows.md`](../plans/contracts-into-code-and-workflows.md)).
-`pnpm contracts <query>` lists the ones already moved, and
-`packages/contracts/contracts.json` holds them all. [`../../CLAUDE.md`](../../CLAUDE.md)
-describes the package layering, and [`packages.md`](packages.md) describes it package by
-package.
+`pnpm contracts <query>` lists the ones already moved. `packages/contracts/contracts.json`
+holds every one's summary (id, rule, subjects) and the subject map, and
+`packages/contracts/contracts/<area>.json` holds the full records of one area, so a reader
+opens the summary file and then the one shard it needs.
+[`../../CLAUDE.md`](../../CLAUDE.md) describes the package layering, and
+[`packages.md`](packages.md) describes it package by package.
 
 <!-- toc -->
 

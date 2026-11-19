@@ -27,7 +27,7 @@ import { CONTRACTS as stills } from '../../packages/stills/src/contracts.js';
 import { CONTRACTS as store } from '../../packages/store/src/contracts.js';
 import { CONTRACTS as taskgraph } from '../../packages/taskgraph/src/contracts.js';
 import { CONTRACTS as types } from '../../packages/types/src/contracts.js';
-import { buildIndex, type Declared, type Facts } from './build.js';
+import { buildIndex, splitIndex, type Declared, type Facts, type IndexFiles } from './build.js';
 
 /** Every `contracts.ts`, with the array it exports. */
 export const DECLARED: readonly Declared[] = [
@@ -83,4 +83,9 @@ export function facts(root: string): Facts {
 /** The index the declarations produce, or an error naming every subject that names nothing. */
 export function contractIndex(root: string): ContractIndex {
   return buildIndex(root, DECLARED, facts(root));
+}
+
+/** The summary file and the shards `pnpm gen:contracts` writes for {@link contractIndex}. */
+export function contractFiles(root: string): IndexFiles {
+  return splitIndex(contractIndex(root));
 }

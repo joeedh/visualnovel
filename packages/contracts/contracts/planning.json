@@ -1,0 +1,56 @@
+{
+  "contracts": [
+    {
+      "id"      : "planning.incremental",
+      "rule": "`planTasks` runs once per scheduler wave. It decomposes the owed scenes whose unit gate is open, solves the stills family, and adds the task of every slot the solver reports `ready`. It keeps no enumeration and no gate of its own.",
+      "prevents": "Planning a shot before its plate is drawn, when its identity cannot be stated yet, or a planner that enumerates pictures its own way and so plans work the slot graph does not show.",
+      "subjects": [
+        "module:packages/pipeline/src/planner.ts",
+        "function:packages/pipeline/src/planner.ts#planTasks",
+        "function:packages/stills/src/family.ts#stillsFamily",
+        "function:packages/stills/src/slotgraph.ts#planSlot",
+        "function:packages/constraint-solver/src/solve.ts#solve"
+      ],
+      "see": [
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+      ],
+      "detail": "A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no identity until that upstream task is `done`, so it appears a wave later. `vngen cost` therefore counts only what is plannable when it runs, and undercounts the tasks a finished wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is `gate.perUnit`: the planner asks `unitGates` before decomposing and reads `ready` after.",
+      "declared": "packages/pipeline/src/planner.ts"
+    },
+    {
+      "id"      : "planning.sheetsOnlyWhenWorn",
+      "rule": "Every authored character has a portrait slot and every authored location variant a plate slot, cast or not. Sheet slots exist only for the outfits `usedOutfits` finds over live scenes, so an uncast character has none even once approved.",
+      "prevents": "Paying three sheet calls per outfit for a character no shot can show, or hiding the portrait an author drew before writing the scenes that cast them.",
+      "subjects": [
+        "function:packages/stills/src/family.ts#stillsFamily",
+        "module:packages/stills/src/slotgraph.ts",
+        "module:packages/pipeline/src/planner.ts",
+        "function:packages/model/src/used.ts#allCharacters",
+        "function:packages/model/src/used.ts#allLocationVariants",
+        "function:packages/model/src/used.ts#usedOutfits",
+        "slot:plate",
+        "slot:portrait",
+        "slot:sheet"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them"],
+      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override, and is computed once per facts object. The gate is a separate question: a live scene waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+      "declared": "packages/stills/src/family.ts"
+    },
+    {
+      "id"      : "planning.storyboardOnRequest",
+      "rule": "A batch decomposition writes a storyboard only for a live scene with no `work/shots/<sceneId>.json`, has no `force`, and never writes a baseline: a scene the model does not answer for is named and skipped. Hosts refuse mock or unresolved keys by name.",
+      "prevents": "One bad key permanently baselining a whole project, because an absent file is the only signal meaning \"decompose this scene\", and re-decomposing a kept scene changing its shot ids and so re-rendering art already paid for.",
+      "subjects": [
+        "module:packages/pipeline/src/decompose.ts",
+        "function:packages/pipeline/src/decompose.ts#decomposeAll",
+        "function:packages/pipeline/src/decompose.ts#decomposeAllPreview",
+        "command:story.decomposeAll",
+        "command:story.newShot",
+        "tool:write_storyboard"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#the-full-slot-graph-and-approving-upstream-first"],
+      "detail": "Once written, the shots file takes precedence permanently. A hand-placed first shot (`story.newShot`, the agent's `edit_scene op=newShot`, `write_storyboard`) writes the file and so ends decomposition for that scene just as permanently. `decomposeScene` returns a `source` and a `reason` rather than throwing so that this batch can tell a baseline from a model answer; inside one run a single silent fallback is `providers.textFallback` holding. `keepBaseline` exists for a caller that wants the deterministic storyboard, and nothing in the app passes it. `vngen decompose --mock` and the desktop command refuse mock providers by name.",
+      "declared": "packages/pipeline/src/decompose.ts"
+    }
+  ]
+}
