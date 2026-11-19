@@ -11,6 +11,8 @@ import { addClaim, AssetStore, loadInputs, readClaims, removeClaim } from '@vn/s
 import { latestRecords } from '@vn/taskgraph';
 import { logTombstone } from '@vn/taskgraph/maintain';
 import { exists } from '@vn/util';
+import { pins } from '@vn/contracts';
+import { collectUnusedRemoved } from '@vn/artgen';
 
 import { GenImageFile, Graph, registerGenNodes } from '../index.js';
 import { writeGraphDoc } from '../document.js';
@@ -18,6 +20,7 @@ import { graphBlobDir, graphJournalFile } from '../paths.js';
 import { validateProject } from '../projectcheck.js';
 import {
   applyCollection,
+  collectApplyOrder,
   collectProject,
   collectsNothing,
   describeCollection,
@@ -115,127 +118,131 @@ describe('collectProject and the claims ledger', () => {
     expect(await readClaims(p.paths)).toEqual(new Map());
   });
 });
-describe('collectProject', () => {
-  it('finds nothing to collect in a project the pipeline has just run', async () => {
-    const planned = await plan();
-    expect(collectsNothing(planned)).toBe(true);
-    expect(describeCollection(planned, { uncommitted: 0 })).toMatch(/^Nothing to collect/);
-  });
-
-  it('removes the frames of a storyboard that is gone, and keeps an upload', async () => {
-    const { sceneId, hashes } = await framesOfAScene();
-    const store = await AssetStore.open(p.paths);
-    const upload = await store.write(new TextEncoder().encode('ref'), 'png', {
-      kind      : 'reference',
-      sourceTask: 'upload',
-      modelId   : 'none',
+describe(pins(collectUnusedRemoved), () => {
+  describe('collectProject', () => {
+    it('finds nothing to collect in a project the pipeline has just run', async () => {
+      const planned = await plan();
+      expect(collectsNothing(planned)).toBe(true);
+      expect(describeCollection(planned, { uncommitted: 0 })).toMatch(/^Nothing to collect/);
     });
-    await unlink(p.paths.shotsFile(sceneId));
 
-    const planned = await plan();
-    expect(planned.assets.rows.project.map((r) => r.hash).sort()).toEqual([...hashes].sort());
-    expect(planned.assets.rows.base).toEqual([]);
-    expect(planned.assets.tombstones.length).toBeGreaterThan(0);
-    expect(describeCollection(planned, { uncommitted: 2 }).split('\n')).toEqual([
-      expect.stringMatching(new RegExp(`^Removes ${hashes.length} pictures? \\(`)),
-      '2 pictures are in no commit, so git cannot bring them back.',
-      `They are shots of ${sceneId} (${hashes.length}).`,
-      expect.stringMatching(/^Also removes \d+ task records?\.$/),
-      'A picture that is still wanted after this is planned again on the next run.',
-    ]);
+    it('removes the frames of a storyboard that is gone, and keeps an upload', async () => {
+      const { sceneId, hashes } = await framesOfAScene();
+      const store = await AssetStore.open(p.paths);
+      const upload = await store.write(new TextEncoder().encode('ref'), 'png', {
+        kind      : 'reference',
+        sourceTask: 'upload',
+        modelId   : 'none',
+      });
+      await unlink(p.paths.shotsFile(sceneId));
 
-    const applied = await apply(planned);
-    expect(applied.stuck).toEqual([]);
-    const after = await AssetStore.open(p.paths);
-    for (const hash of hashes) expect(after.has(hash)).toBe(false);
-    expect(after.has(upload.hash)).toBe(true);
-    const latest = await latestRecords(p.paths);
-    for (const task of planned.assets.tombstones) {
-      expect(latest.get(task.hash)).toMatchObject({ removed: true });
-    }
+      const planned = await plan();
+      expect(planned.assets.rows.project.map((r) => r.hash).sort()).toEqual([...hashes].sort());
+      expect(planned.assets.rows.base).toEqual([]);
+      expect(planned.assets.tombstones.length).toBeGreaterThan(0);
+      expect(describeCollection(planned, { uncommitted: 2 }).split('\n')).toEqual([
+        expect.stringMatching(new RegExp(`^Removes ${hashes.length} pictures? \\(`)),
+        '2 pictures are in no commit, so git cannot bring them back.',
+        `They are shots of ${sceneId} (${hashes.length}).`,
+        expect.stringMatching(/^Also removes \d+ task records?\.$/),
+        'A picture that is still wanted after this is planned again on the next run.',
+      ]);
 
-    const { model } = await p.reload();
-    const findings = await validateProject({ root: p.dir, model });
-    expect(findings.filter((f) => f.severity === 'blocking')).toEqual([]);
-    // The scene is storyboarded and drawn again, without reaching for a file that is gone
-    await expect(p.run()).resolves.toBeDefined();
-    expect(collectsNothing(await plan())).toBe(true);
-  }, 60_000);
+      const applied = await apply(planned);
+      expect(applied.stuck).toEqual([]);
+      const after = await AssetStore.open(p.paths);
+      for (const hash of hashes) expect(after.has(hash)).toBe(false);
+      expect(after.has(upload.hash)).toBe(true);
+      const latest = await latestRecords(p.paths);
+      for (const task of planned.assets.tombstones) {
+        expect(latest.get(task.hash)).toMatchObject({ removed: true });
+      }
 
-  it('finishes the job when a collection stopped after its tombstones', async () => {
-    const { sceneId, hashes } = await framesOfAScene();
-    await unlink(p.paths.shotsFile(sceneId));
-    const first = await plan();
-    for (const task of first.assets.tombstones) await logTombstone(p.paths, task);
+      const { model } = await p.reload();
+      const findings = await validateProject({ root: p.dir, model });
+      expect(findings.filter((f) => f.severity === 'blocking')).toEqual([]);
+      // The scene is storyboarded and drawn again, without reaching for a file that is gone
+      await expect(p.run()).resolves.toBeDefined();
+      expect(collectsNothing(await plan())).toBe(true);
+    }, 60_000);
 
-    const second = await plan();
-    expect(second.assets.rows.project.map((r) => r.hash).sort()).toEqual([...hashes].sort());
-    await apply(second);
-    const after = await AssetStore.open(p.paths);
-    for (const hash of hashes) expect(after.has(hash)).toBe(false);
-    for (const hash of hashes) {
-      expect(await exists(join(p.paths.assetsDir, `${hash}.png`))).toBe(false);
-    }
-  });
+    describe(pins(collectApplyOrder), () => {
+      it('finishes the job when a collection stopped after its tombstones', async () => {
+        const { sceneId, hashes } = await framesOfAScene();
+        await unlink(p.paths.shotsFile(sceneId));
+        const first = await plan();
+        for (const task of first.assets.tombstones) await logTombstone(p.paths, task);
 
-  it('collects a file no manifest row lists', async () => {
-    const stray = join(p.paths.assetsDir, `${'ab'.repeat(32)}.png`);
-    await writeFile(stray, 'left behind');
-    const planned = await plan();
-    expect(planned.assets.files.map((f) => f.file)).toEqual([
-      `vngen/build/assets/${'ab'.repeat(32)}.png`,
-    ]);
-    await apply(planned);
-    expect(await exists(stray)).toBe(false);
-  });
-
-  it('keeps a picture another project made in a shared assets folder', async () => {
-    const store = await AssetStore.open(p.paths);
-    const theirs = await store.write(new TextEncoder().encode('theirs'), 'png', {
-      kind      : 'portrait',
-      sourceTask: 'f'.repeat(64),
-      modelId   : 'm',
-      satisfies : { characterId: 'someone_else' },
+        const second = await plan();
+        expect(second.assets.rows.project.map((r) => r.hash).sort()).toEqual([...hashes].sort());
+        await apply(second);
+        const after = await AssetStore.open(p.paths);
+        for (const hash of hashes) expect(after.has(hash)).toBe(false);
+        for (const hash of hashes) {
+          expect(await exists(join(p.paths.assetsDir, `${hash}.png`))).toBe(false);
+        }
+      });
     });
-    const planned = await plan();
-    expect(planned.assets.rows.base.map((r) => r.hash)).not.toContain(theirs.hash);
-    expect(collectsNothing(planned)).toBe(true);
-  });
 
-  it('removes the state of a deleted graph, and blobs no record of a live graph names', async () => {
-    const orphan = graphBlobDir(p.paths, 'gone');
-    await mkdir(orphan, { recursive: true });
-    await writeFile(join(orphan, `${'cd'.repeat(32)}.png`), 'blob');
-    await writeFile(graphJournalFile(p.paths, 'gone'), '{}\n');
+    it('collects a file no manifest row lists', async () => {
+      const stray = join(p.paths.assetsDir, `${'ab'.repeat(32)}.png`);
+      await writeFile(stray, 'left behind');
+      const planned = await plan();
+      expect(planned.assets.files.map((f) => f.file)).toEqual([
+        `vngen/build/assets/${'ab'.repeat(32)}.png`,
+      ]);
+      await apply(planned);
+      expect(await exists(stray)).toBe(false);
+    });
 
-    const graph = new Graph();
-    graph.add(new GenImageFile());
-    await writeGraphDoc(p.dir, 'kept', graph);
-    const blobs = graphBlobDir(p.paths, 'kept');
-    await mkdir(blobs, { recursive: true });
-    await writeFile(join(blobs, `${'ef'.repeat(32)}.png`), 'blob');
+    it('keeps a picture another project made in a shared assets folder', async () => {
+      const store = await AssetStore.open(p.paths);
+      const theirs = await store.write(new TextEncoder().encode('theirs'), 'png', {
+        kind      : 'portrait',
+        sourceTask: 'f'.repeat(64),
+        modelId   : 'm',
+        satisfies : { characterId: 'someone_else' },
+      });
+      const planned = await plan();
+      expect(planned.assets.rows.base.map((r) => r.hash)).not.toContain(theirs.hash);
+      expect(collectsNothing(planned)).toBe(true);
+    });
 
-    const planned = await plan();
-    expect(planned.graphs.orphans.map((o) => [o.slug, o.paths.sort()])).toEqual([
-      ['gone', ['vngen/state/graphs/gone', 'vngen/state/graphs/gone.jsonl']],
-    ]);
-    expect(planned.graphs.blobs.map((b) => b.file)).toEqual([
-      `vngen/state/graphs/kept/${'ef'.repeat(32)}.png`,
-    ]);
-    expect(describeCollection(planned, { uncommitted: 0 })).toMatch(
-      /^Removes the run history of 1 deleted graph \(gone\) and 1 graph intermediate no run record names \(/,
-    );
-    await apply(planned);
-    expect(await exists(orphan)).toBe(false);
-    expect(await readdir(blobs)).toEqual([]);
-  });
+    it('removes the state of a deleted graph, and blobs no record of a live graph names', async () => {
+      const orphan = graphBlobDir(p.paths, 'gone');
+      await mkdir(orphan, { recursive: true });
+      await writeFile(join(orphan, `${'cd'.repeat(32)}.png`), 'blob');
+      await writeFile(graphJournalFile(p.paths, 'gone'), '{}\n');
 
-  it('refuses over a sheet that does not load, since its entity would look unused', async () => {
-    await writeFile(p.paths.characterFile('aiko'), '---\nname: [unclosed\n---\n');
-    const { model } = await p.reload();
-    const inputs = await loadInputs(p.paths);
-    expect(unreadInputs([...inputs.diagnostics, ...model.diagnostics])).toMatch(
-      /^Nothing was collected: \d+ input problems? means? what the project uses cannot be known/,
-    );
+      const graph = new Graph();
+      graph.add(new GenImageFile());
+      await writeGraphDoc(p.dir, 'kept', graph);
+      const blobs = graphBlobDir(p.paths, 'kept');
+      await mkdir(blobs, { recursive: true });
+      await writeFile(join(blobs, `${'ef'.repeat(32)}.png`), 'blob');
+
+      const planned = await plan();
+      expect(planned.graphs.orphans.map((o) => [o.slug, o.paths.sort()])).toEqual([
+        ['gone', ['vngen/state/graphs/gone', 'vngen/state/graphs/gone.jsonl']],
+      ]);
+      expect(planned.graphs.blobs.map((b) => b.file)).toEqual([
+        `vngen/state/graphs/kept/${'ef'.repeat(32)}.png`,
+      ]);
+      expect(describeCollection(planned, { uncommitted: 0 })).toMatch(
+        /^Removes the run history of 1 deleted graph \(gone\) and 1 graph intermediate no run record names \(/,
+      );
+      await apply(planned);
+      expect(await exists(orphan)).toBe(false);
+      expect(await readdir(blobs)).toEqual([]);
+    });
+
+    it('refuses over a sheet that does not load, since its entity would look unused', async () => {
+      await writeFile(p.paths.characterFile('aiko'), '---\nname: [unclosed\n---\n');
+      const { model } = await p.reload();
+      const inputs = await loadInputs(p.paths);
+      expect(unreadInputs([...inputs.diagnostics, ...model.diagnostics])).toMatch(
+        /^Nothing was collected: \d+ input problems? means? what the project uses cannot be known/,
+      );
+    });
   });
 });

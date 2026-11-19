@@ -11,6 +11,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { planAssetCollection, type AssetCollection, type AssetRootName } from '@vn/artgen';
 import type { ProjectConfig } from '@vn/config';
+import { contract } from '@vn/contracts';
 import {
   AssetRoot,
   claimedByOthers,
@@ -370,6 +371,30 @@ export interface AppliedCollection {
   moved: string[];
   stuck: string[];
 }
+
+export const collectApplyOrder = contract({
+  id      : 'collect.applyOrder',
+  rule: '`applyCollection` writes in an order a crash cannot hurt: the tombstones, then both manifests, then the files, then graph state. A file the mover cannot take keeps its row, so a stuck picture is never left unlisted.',
+  prevents:
+    'A crash part way through leaving a manifest row that names a deleted file, or a task the graph still counts as done whose picture is gone.',
+  subjects: [
+    'function:packages/gengraph/src/collect.ts#applyCollection',
+    'function:packages/artgen/src/collect.ts#planAssetCollection',
+    'command:asset.collect',
+    'tool:collect_unused_assets',
+  ],
+  see: [
+    'docs/plans/archive/deleting-things.md',
+    'docs/reference/command-system.md#a-sidecar-keeps-what-the-snapshot-cannot',
+  ],
+  detail:
+    'A crash after the tombstones leaves files no row lists, which the next collection removes; ' +
+    'base-row candidacy reads the raw latest records, tombstones included, so it can. ' +
+    "Undoing a collection re-appends each tombstoned task's replaced record with " +
+    '`restored: <ISO time>` added, which the graph reads as the record itself; how the desktop ' +
+    'holds the files for that is in `command-system.md`. A claim is a document the undo snapshot ' +
+    'holds, so it is deleted rather than moved. What is collected is `collect.unusedRemoved`.',
+});
 
 /**
  * Removes what a plan names, in an order a crash cannot hurt: the tombstones, then both manifests,

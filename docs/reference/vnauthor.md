@@ -349,14 +349,14 @@ the agent makes them with its other tools first.
   reply, as the desktop's check lists it.
 - **None of these can be undone from the app.** The agent's writes reach history only
   through its commit, so the cards say that only git history brings the files back.
-- **`collect_unused_assets`** runs `asset.collect`'s rule
-  ([`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage)) and deletes what
-  it removes at once, in both hosts: agent tools never reach the command registry, so
-  there is no undo point to hold the files for. Its card gives the counts per root, how
-  many pictures no commit holds, and what they were drawn for. It refuses while the host
-  reports a pipeline run (`ToolContext.busy`, which the desktop fills and `vnauthor`
-  leaves absent) and while an input fails to load. Every removed path is in its `written`.
-  It never touches `vngen/state/collected/`, which belongs to a running app's undo.
+- **`collect_unused_assets`** runs `asset.collect`'s rule (`collect.unusedRemoved`,
+  `pnpm contracts collect`) and deletes what it removes at once, in both hosts: agent
+  tools never reach the command registry, so there is no undo point to hold the files for.
+  Its card gives the counts per root, how many pictures no commit holds, and what they
+  were drawn for. It refuses while the host reports a pipeline run (`ToolContext.busy`,
+  which the desktop fills and `vnauthor` leaves absent) and while an input fails to load.
+  Every removed path is in its `written`. It never touches `vngen/state/collected/`, which
+  belongs to a running app's undo.
 
 ### Generation graphs
 

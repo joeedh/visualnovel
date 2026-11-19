@@ -27,6 +27,8 @@ export interface Garden extends SolverFacts {
   fallow?: string[];
   /** Hashes the gardener's notebook names as a sprout's take. */
   notebook?: string[];
+  /** Seeds no longer planted, whose art a collection still keeps. */
+  dormant?: string[];
   /** Per row hash, the takes it was grafted from and the slot each was taken from. */
   grafts?: Record<string, { pin: string; from: string }[]>;
 }
@@ -95,6 +97,10 @@ export const garden: Family<Garden> = {
     for (const id of facts.seeds) yield slot(seedKind, { id });
     for (const s of facts.sprouts) yield slot(sproutKind, { id: s.id }, s.bed);
     yield* facts.again ?? [];
+  },
+  *kept(facts) {
+    yield* garden.enumerate(facts);
+    for (const id of facts.dormant ?? []) yield slot(seedKind, { id });
   },
   owed     : (facts) => facts.fallow ?? [],
   gates    : (bed, facts) => facts.beds?.[bed] ?? [],

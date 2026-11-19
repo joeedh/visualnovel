@@ -10,20 +10,63 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ProjectConfig } from '@vn/config';
-import {
-  angleOfTask,
-  keptSlots,
-  resolveSlot,
-  sheetAngleOf,
-  slotKey,
-  slotTaskHash,
-  slotsOf,
-} from '@vn/stills';
+import { angleOfTask, sheetAngleOf, slotKey, slotsOf, stillsFamily } from '@vn/stills';
+import { keepSet } from '@vn/constraint-solver';
+import { contract } from '@vn/contracts';
 import { AssetRoot, AssetStore, readProduction, workspacePath, type ProjectPaths } from '@vn/store';
 import { latestRecords, loadGraph, type TaskRecord } from '@vn/taskgraph';
 import type { AnyTask, Asset, ProjectModel, PromptOverride, TaskKind } from '@vn/types';
 
 export type AssetRootName = 'base' | 'project';
+
+export const collectUnusedRemoved = contract({
+  id      : 'collect.unusedRemoved',
+  rule: "A collection removes only the manifest rows nothing uses, decided per row and root. A row stays when it fills a slot the keep set lists, a kept slot's task drew it, the project or a graph file names it, it is a concept or a reference, or a kept row was drawn from it.",
+  prevents:
+    "Deleting art for slots no plan has reached yet, another project's pictures in a shared `assets/`, or an entity's art because its sheet failed to parse, while superseded takes pile up for ever.",
+  subjects: [
+    'function:packages/artgen/src/collect.ts#planAssetCollection',
+    'function:packages/constraint-solver/src/keep.ts#keepSet',
+    'function:packages/stills/src/kept.ts#keptSlots',
+    'function:packages/stills/src/family.ts#stillsFamily',
+    'function:packages/gengraph/src/collect.ts#collectProject',
+    'command:asset.collect',
+    'command:asset.recover',
+    'tool:collect_unused_assets',
+  ],
+  see: [
+    'docs/plans/archive/deleting-things.md',
+    'docs/reference/repos-and-commits.md#the-claims-ledger',
+    'docs/reference/history-pane.md#missing-pictures',
+  ],
+  detail:
+    '`collectProject` (`packages/gengraph/src/collect.ts`, over `planAssetCollection`) decides ' +
+    'everything before anything is written; `applyCollection` applies it through a mover the ' +
+    "host passes (`collect.applyOrder`). `asset.collect` and the agent's `collect_unused_assets` " +
+    'are its two callers. A row is kept when any of these holds: its `satisfies` binds it to a ' +
+    "slot the solver's `keepSet` lists from `stillsFamily.kept` (`keptSlots`): plates and " +
+    'portraits as the family enumerates them, sheets for every outfit a character defines or a ' +
+    'scene names, and shots from every persisted storyboard, so an unwired scene keeps its ' +
+    "frames; its hash is the output, or an attempt's output, of a kept slot's task " +
+    '(`KeepSet.outputs`); an `approved_portrait:`, a `Shot.image`, a pin, or a graph document or ' +
+    'group definition names it (graph files are scanned as raw text for hashes, so one that does ' +
+    'not parse still protects what it names); it is a `concept` or a `reference`; a kept row ' +
+    "lists it in `refs`, transitively. Every take of a kept slot is kept, so a deleted character's " +
+    'portrait stays while an older frame drawn from it does. A base row is a candidate only when ' +
+    "its `sourceTask` is in this project's `tasks.jsonl`, so a shared `assets/` never loses " +
+    "another project's pictures. A base picture another project claims in `assets/claims/` is " +
+    "kept, and this project's own claim on one it no longer uses is dropped. The collection also " +
+    'removes files in an object folder no row lists, the journal and blob folder of a graph whose ' +
+    'document is gone, and blobs no journal record names (with `oldAnswers`, blobs only ' +
+    'superseded records name). It tombstones each task whose output it removes, and each ' +
+    '`failed` or `needs_human` slot task no kept slot names (`KeepSet.tasks`). It refuses while ' +
+    'an input fails to load, because a sheet that does not parse drops its entity from the model ' +
+    "and that entity's art would look unused; a storyboard that does not parse keeps its scene's " +
+    'frames. `asset.recover` puts a collected picture back from git history and appends a copy ' +
+    "of the last `done` record whose output is its hash, stamped `restored`, when that task's " +
+    'latest record is a tombstone. The copy restates a record the log already holds, so it is ' +
+    'not a forged record: the picture it names is the one that task drew.',
+});
 
 /** One file the collection removes, workspace-relative and forward-slashed. */
 export interface CollectedFile {
@@ -73,7 +116,7 @@ const OBJECT_FILE = /^([0-9a-f]+)\.[A-Za-z0-9]+$/;
  * definitions, and the claims ledger.
  *
  * A row is kept when any of these holds:
- * - a binding ties it to a slot {@link keptSlots} lists;
+ * - a binding ties it to a slot the solver's `keepSet` lists for the stills family;
  * - its hash is the output, or an attempt's output, of a kept slot's task;
  * - an approved portrait, a shot's image, a pin on any rung, or `live` names its hash;
  * - it is a `concept` or a `reference`, which no slot claims by design;
@@ -108,20 +151,11 @@ export async function planAssetCollection(opts: {
   const assets = store.manifest();
   const angleOf = angleOfTask(graph);
 
-  const slots = keptSlots(model);
-  const keys = new Set(slots.map(slotKey));
-  const slotTasks = new Set<string>();
-  for (const slot of slots) {
-    const decided = resolveSlot(slot, { model, config, assets, graph });
-    if (decided.ok) slotTasks.add(slotTaskHash(decided.plan));
-  }
+  const keep = keepSet(stillsFamily, { model, config, assets, tasks: graph });
+  const keys = keep.slots;
+  const slotTasks = keep.tasks;
 
-  const named = new Set<string>(opts.live ?? []);
-  for (const hash of slotTasks) {
-    const task = graph.get(hash);
-    if (task?.output) named.add(task.output);
-    for (const attempt of task?.attempts ?? []) if (attempt.output) named.add(attempt.output);
-  }
+  const named = new Set<string>([...(opts.live ?? []), ...keep.outputs]);
   for (const character of model.characters.values()) {
     if (character.approvedPortrait) named.add(character.approvedPortrait);
     for (const pin of pinsOf(character.promptOverride)) named.add(pin);

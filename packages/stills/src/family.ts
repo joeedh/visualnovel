@@ -27,6 +27,7 @@ import { attachedRefs } from './upstream.js';
 import { refsOfSlot, slotOf } from './refcycle.js';
 import { parseSlot, slotKey, slotLabel } from './slotaddr.js';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
+import { keptSlots } from './kept.js';
 import { approvedPortraitOf } from './gate.js';
 import {
   planSlot,
@@ -476,6 +477,7 @@ export const stillsFamily: Family<StillsFacts> = {
   enumerate,
   owed,
   gates,
+  kept: (facts) => keptSlots(facts.model).flatMap((b) => (b.kind === 'asset' ? [] : [slotFor(b)])),
   slotOf: filledBy,
   drawnFrom,
 };

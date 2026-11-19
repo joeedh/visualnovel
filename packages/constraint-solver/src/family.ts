@@ -93,6 +93,11 @@ export interface Family<F extends SolverFacts> {
   readonly kinds: readonly SlotKind<F>[];
   /** Lists every slot the project implies and is live, in the order the family wants them read. */
   enumerate(facts: F): Iterable<Slot<F>>;
+  /**
+   * Lists every slot whose art a collection keeps. It is wider than `enumerate`, so art for slots
+   * no plan has reached yet is not lost.
+   */
+  kept(facts: F): Iterable<Slot<F>>;
   /** Lists the live units that have no slots yet, because nothing has decomposed them. */
   owed(facts: F): readonly string[];
   /**

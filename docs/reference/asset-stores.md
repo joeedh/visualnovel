@@ -201,11 +201,12 @@ because a zero-work summary is otherwise indistinguishable from a finished proje
       are two findings.
 - `asset.collect` (**Remove unused art…** on the document tree's Assets branch, and the
   palette) and the agent's `collect_unused_assets` remove the rows and files nothing uses
-  from both roots. Liveness, the order of the writes and the undo are in
-  [`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage). In a shared
-  `assets/`, a base row is only a candidate when this project's `tasks.jsonl` made it, so
-  another project's pictures are never removed, and never while another project claims it
-  in `assets/claims/` ([`repos-and-commits.md`](repos-and-commits.md#the-claims-ledger)).
+  from both roots. Liveness is the contract `collect.unusedRemoved`, declared in
+  [`collect.ts`](../../packages/artgen/src/collect.ts), and the order of the writes and
+  the undo are `collect.applyOrder` (`pnpm contracts collect`). In a shared `assets/`, a
+  base row is only a candidate when this project's `tasks.jsonl` made it, so another
+  project's pictures are never removed, and never while another project claims it in
+  `assets/claims/` ([`repos-and-commits.md`](repos-and-commits.md#the-claims-ledger)).
 - `asset.recover` and `asset.forget` answer a picture the project names whose file or row
   is gone: the first brings it back from git history, the second drops every reference to
   it. The History pane lists them ([`history-pane.md`](history-pane.md#missing-pictures)).

@@ -444,8 +444,8 @@ implementation. The testkit passes a mock.
 - **Pruning is the collector's.** `asset.collect` removes a blob no journal record names
   (with `oldAnswers`, also one only superseded records name), and the journal and blob
   folder of a graph whose document is gone. A blob a graph document or group definition
-  names is kept, as is one a kept asset row names. See
-  [`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage).
+  names is kept, as is one a kept asset row names. See `collect.unusedRemoved`
+  (`pnpm contracts collect`).
 - **The runner wrapper** lives in `@vn/pipeline` (`graphrun.ts`). When a task's slot is
   bound, the runner seeds the Derived-prompt and Task-refs inputs from the task, executes
   the graph against the slot's active output, and writes the terminal picture through the

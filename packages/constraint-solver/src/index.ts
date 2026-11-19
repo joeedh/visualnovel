@@ -6,6 +6,7 @@
  * {@link SolverFacts} and pass through the solver to the family's own functions unread.
  */
 export * from './family.js';
+export * from './keep.js';
 export * from './refuse.js';
 export * from './solve.js';
 export * from './suspend.js';

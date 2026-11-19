@@ -1,6 +1,6 @@
 /**
- * The slots whose art a collection keeps. `@vn/artgen`'s `planAssetCollection` reads the disk and
- * decides the rest.
+ * The slots whose art a collection keeps, which the stills family's `kept` lists for the solver's
+ * `keepSet`. `@vn/artgen`'s `planAssetCollection` reads the disk and decides the rest.
  */
 import { allCharacters, allLocationVariants } from '@vn/model';
 import type { ProjectModel, RefBinding } from '@vn/types';
