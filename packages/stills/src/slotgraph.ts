@@ -52,6 +52,8 @@ export type { Decided };
 export interface SlotResolveContext extends RungContext {
   config: ProjectConfig;
   assets?: readonly Asset[];
+  /** `usedOutfits(model)`, when the caller has it already; computed per call without it. */
+  outfits?: ReadonlyMap<string, ReadonlySet<string>>;
   /**
    * The task graph as loaded. Its absence is meaningful: without it no `shot:` slot can state an
    * identity and the result is pure shape, which is all a caller that has not read
@@ -209,7 +211,7 @@ export function planSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<Pla
       // draws its sheet from the id alone
       if (
         !character.outfits.some((o) => o.id === slot.outfit) &&
-        !usedOutfits(ctx.model).get(character.id)?.has(slot.outfit)
+        !(ctx.outfits ?? usedOutfits(ctx.model)).get(character.id)?.has(slot.outfit)
       )
         return gone(`${character.id} has no "${slot.outfit}" outfit`);
       if (!(MODEL_SHEET_ANGLES as readonly string[]).includes(slot.angle))

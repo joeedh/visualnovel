@@ -57,6 +57,16 @@ export interface PlanFacts extends StillsFacts {
   readonly config: ProjectConfig;
 }
 
+/** Each facts object's `usedOutfits`, which the enumeration and every sheet's plan read. */
+const wardrobes = new WeakMap<StillsFacts, Map<string, Set<string>>>();
+
+/** Answers `usedOutfits` for the facts' model, once per facts object. */
+function wardrobe(facts: StillsFacts): Map<string, Set<string>> {
+  let outfits = wardrobes.get(facts);
+  if (!outfits) wardrobes.set(facts, (outfits = usedOutfits(facts.model)));
+  return outfits;
+}
+
 /** Each facts object's slot plans by address, so a shot's `resolve` and `deps` share one walk. */
 const plans = new WeakMap<StillsFacts, Map<string, Decided<PlannedSlot>>>();
 
@@ -80,10 +90,11 @@ function planned(binding: RefBinding, facts: StillsFacts): Decided<PlannedSlot> 
     };
   }
   const ctx: SlotResolveContext = {
-    model : facts.model,
-    config: facts.config,
-    assets: facts.assets,
-    graph : facts.tasks,
+    model  : facts.model,
+    config : facts.config,
+    assets : facts.assets,
+    outfits: wardrobe(facts),
+    graph  : facts.tasks,
   };
   return planSlot(binding, ctx);
 }
@@ -178,9 +189,10 @@ export const planningSheetsOnlyWhenWorn = contract({
     '`stillsFamily` enumerates plates over `allLocationVariants`, portraits over ' +
     '`allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. ' +
     '`usedOutfits` gives everyone a live scene casts their default outfit, plus each ' +
-    '`[[outfit:]]` marker and shot override. The gate is a separate question: a live scene ' +
-    "waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved " +
-    "portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+    '`[[outfit:]]` marker and shot override, and is computed once per facts object. The gate is ' +
+    "a separate question: a live scene waits on its cast's portraits (`gate.perUnit`), so an " +
+    "uncast character's unapproved portrait halts nothing and shows in the document tree's " +
+    'Awaiting approval branch.',
 });
 
 export const gatePerUnit = contract({
@@ -298,7 +310,7 @@ function enumerate(facts: StillsFacts): Slot<StillsFacts>[] {
   for (const character of allCharacters(facts.model))
     out.push(slot(portraitKind, { kind: 'portrait', characterId: character.id }));
 
-  for (const [characterId, outfits] of usedOutfits(facts.model))
+  for (const [characterId, outfits] of wardrobe(facts))
     for (const outfit of outfits)
       for (const angle of MODEL_SHEET_ANGLES)
         out.push(slot(sheetKind, { kind: 'sheet', characterId, outfit, angle }));

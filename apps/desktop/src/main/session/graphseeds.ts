@@ -12,7 +12,7 @@ import type { GenExecuteOptions } from '@vn/gengraph/state';
 import type { AssetRef, RefBinding } from '@vn/types';
 import { shotsOf } from '@vn/types';
 import type { LoadedProject } from './core.js';
-import { withShots } from './core.js';
+import { sessionFacts, withShots } from './core.js';
 
 export type GraphSeeds = NonNullable<GenExecuteOptions['seeds']>;
 
@@ -75,7 +75,8 @@ export async function graphRunPlan(
     const scene = model.scenes.get(slot.sceneId);
     const shot = shotsOf(model, slot.sceneId).find((s) => s.id === slot.shotId);
     if (scene && shot?.sheet !== undefined) {
-      sheet = sheetSeeds(scene, shot.sheet, model, config, project.store.manifest());
+      const facts = sessionFacts(project, model);
+      sheet = sheetSeeds(scene, shot.sheet, facts.model, facts.config, facts.assets ?? []);
     }
   }
   return { ok: true, plan: { seeds: seedsOf(prompt, refs, sheet), slot } };

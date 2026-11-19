@@ -35,6 +35,7 @@ import {
 } from './graphrun.js';
 import type { GraphBinding, GraphDraw, GraphRunOptions } from './graphrun.js';
 import type { RunDeps } from './pipeline.js';
+import { waveFacts } from './facts.js';
 
 /** The type names of the two nodes a staging sheet is seeded through. */
 const SHEET_PROMPT = 'GenSheetPrompt';
@@ -136,17 +137,18 @@ async function drawThroughGraph(
 
 /**
  * What a staging sheet's graph is seeded with for this shot: the group's prompt and references,
- * derived from the project as the planner derived the member's key. A shot in no group, or one
- * whose group the scene no longer has, seeds nothing, and the graph's sheet nodes carry empty
- * values.
+ * derived from the facts `waveFacts` builds, as the planner derived the member's key. A shot in no
+ * group, or one whose group the scene no longer has, seeds nothing, and the graph's sheet nodes
+ * carry empty values.
  */
-function sheetSeedsFor(
+export function sheetSeedsFor(
   found: { shot: Shot; scene: Scene } | undefined,
-  deps: RunDeps,
+  deps: Pick<RunDeps, 'model' | 'store'>,
   config: ProjectConfig,
 ): SheetSeeds | undefined {
   if (found?.shot.sheet === undefined) return undefined;
-  return sheetSeeds(found.scene, found.shot.sheet, deps.model, config, deps.store.manifest());
+  const facts = waveFacts({ model: deps.model, config, assets: deps.store.manifest() });
+  return sheetSeeds(found.scene, found.shot.sheet, facts.model, facts.config, facts.assets ?? []);
 }
 
 function graphSeedsOf(seeds: SheetSeeds | undefined): Pick<GraphRunOptions, 'seeds'> {

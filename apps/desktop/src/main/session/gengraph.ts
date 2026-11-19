@@ -72,6 +72,7 @@ import {
   activeOutputOf,
   buildGenDeps,
   buildProviders,
+  sessionFacts,
 } from './core.js';
 
 /** What `gengraph.scaffoldSheet` is about to write, decided once for its check and its run. */
@@ -112,13 +113,8 @@ export class GengraphPart {
 
     const said = group.trim();
     const production = new Map([[sceneId, productionOf(loaded)]]);
-    const seeds = sheetSeeds(
-      scene,
-      said,
-      { ...project.model, production },
-      project.config,
-      project.store.manifest(),
-    );
+    const facts = sessionFacts(project, { ...project.model, production });
+    const seeds = sheetSeeds(scene, said, facts.model, facts.config, facts.assets ?? []);
     if (seeds === undefined) {
       return { refuse: `no shot in scene '${sceneId}' is in a sheet group '${said}'` };
     }

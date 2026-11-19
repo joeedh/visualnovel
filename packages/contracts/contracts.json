@@ -197,7 +197,7 @@
         "slot:sheet"
       ],
       "see"     : ["docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them"],
-      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: a live scene waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+      "detail": "`stillsFamily` enumerates plates over `allLocationVariants`, portraits over `allCharacters` and sheets over `usedOutfits`, and the planner plans from its slots. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override, and is computed once per facts object. The gate is a separate question: a live scene waits on its cast's portraits (`gate.perUnit`), so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
       "declared": "packages/stills/src/family.ts"
     },
     {
