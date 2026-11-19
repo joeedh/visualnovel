@@ -314,10 +314,8 @@ export interface SlotNode {
    */
   candidates: string[];
   /**
-   * Whether a human has approved what fills this slot. The test is deliberately asymmetric: a
-   * `portrait:` answers to the P3 gate (`isApproved`) and every other kind to the current row's
-   * `accepted`. These are two different acts under one word, and conflating them is the bug this
-   * graph exists to prevent.
+   * Whether a person accepted the take this slot holds: the row `hash` names has `accepted` set.
+   * Every kind answers this way, a portrait included; the P3 gate asks its own question.
    */
   approved: boolean;
 }

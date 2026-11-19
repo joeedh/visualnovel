@@ -23,10 +23,12 @@ export interface Facts {
   /** The authoring agent's and the debug agent's tool names. */
   tools: ReadonlySet<string>;
   taskKinds: ReadonlySet<string>;
-  /** Whether `prefix` is a slot address prefix `parseSlot` reads. */
-  slot(prefix: string): boolean;
+  /** The slot address prefixes the stills family's slot kinds declare. */
+  slots: ReadonlySet<string>;
   /** Contracts a command definition carries in its `contracts` field. */
   commandContracts: readonly { command: string; contracts: readonly Contract[] }[];
+  /** Contracts a slot kind carries in its `contracts` field, by the kind's prefix. */
+  slotContracts: readonly { prefix: string; contracts: readonly Contract[] }[];
 }
 
 /** The size past which the generator warns that the index should be split into shards. */
@@ -122,7 +124,7 @@ function subjectProblem(root: string, subject: string, facts: Facts): string | u
   if (!rest) return 'names nothing after its prefix';
   switch (prefix) {
     case 'slot':
-      return facts.slot(rest) ? undefined : 'is not a slot address prefix parseSlot reads';
+      return facts.slots.has(rest) ? undefined : 'is not a declared slot kind prefix';
     case 'task':
       return facts.taskKinds.has(rest) ? undefined : 'is not a TaskKind';
     case 'command':
@@ -206,14 +208,25 @@ export function buildIndex(
     }
   }
 
-  for (const { command, contracts } of facts.commandContracts) {
+  const carried = [
+    ...facts.commandContracts.map((c) => ({
+      by       : `command ${c.command}`,
+      subject  : `command:${c.command}`,
+      contracts: c.contracts,
+    })),
+    ...facts.slotContracts.map((k) => ({
+      by       : `slot kind ${k.prefix}`,
+      subject  : `slot:${k.prefix}`,
+      contracts: k.contracts,
+    })),
+  ];
+  for (const { by, subject, contracts } of carried) {
     for (const c of contracts) {
       const record = records.get(c.id);
       if (!record) {
-        problems.push(`${c.id}: command ${command} carries it, but no contracts.ts lists it`);
+        problems.push(`${c.id}: ${by} carries it, but no contracts.ts lists it`);
         continue;
       }
-      const subject = `command:${command}`;
       if (!record.subjects.includes(subject)) record.subjects.push(subject);
     }
   }

@@ -116,8 +116,9 @@ describe('buildIndex', () => {
     commands        : new Set(['story.assignLineIds']),
     tools           : new Set(['edit_scene']),
     taskKinds       : new Set(['shot_image']),
-    slot            : (prefix) => prefix === 'shot',
+    slots           : new Set(['shot']),
     commandContracts: [],
+    slotContracts   : [],
   };
   // A plain value rather than a declaration, so `declaredConsts` finds no const for it and only
   // the checks under test can fail

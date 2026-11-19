@@ -7,6 +7,7 @@
  * any of that, which is why the solver enumerates slots and attaches a hash only where it can.
  */
 import type { TaskInputs, TaskKind, TaskStatus } from '@vn/types';
+import { contract } from '@vn/contracts';
 import { taskHash } from '@vn/taskgraph';
 import type { Family, SolverFacts } from './family.js';
 
@@ -43,6 +44,27 @@ export interface Solution {
   /** Upstream before downstream: the order approval has to happen in. */
   order: string[];
 }
+
+export const identitySlotsBeforeTasks = contract({
+  id      : 'identity.slotsBeforeTasks',
+  rule: "`solve` enumerates a family's slots whether or not anything has been drawn, and attaches a task hash only to a slot whose kind can resolve its inputs now; any other slot carries the kind's sentence saying why. Edges come from each kind's `refs`, never from `Task.deps`.",
+  prevents:
+    'A graph of task hashes cannot show work not yet planned, because a downstream hash embeds its upstream outputs, so every surface would have to guess at it.',
+  subjects: [
+    'package:packages/constraint-solver',
+    'module:packages/constraint-solver/src/solve.ts',
+    'function:packages/constraint-solver/src/solve.ts#solve',
+  ],
+  see: [
+    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+  ],
+  detail:
+    'The first enumeration of an address wins and later ones are dropped. `Solution.order` is ' +
+    'upstream first, and a walk that meets a reference cycle already on disk stops rather than ' +
+    'hanging. A ref to an address with no slot is an opaque upstream, such as an authored pin. ' +
+    '`Task.deps` is incomplete and is not hashed, so edges are never derived from it. Each slot ' +
+    'kind that carries this contract adds its `slot:` prefix to the subjects in the index.',
+});
 
 /** Runs the family's slot kinds over every slot it enumerates. */
 export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solution {

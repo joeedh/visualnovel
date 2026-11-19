@@ -75,6 +75,25 @@
       "declared": "packages/stills/src/prompts.ts"
     },
     {
+      "id"      : "identity.slotsBeforeTasks",
+      "rule": "`solve` enumerates a family's slots whether or not anything has been drawn, and attaches a task hash only to a slot whose kind can resolve its inputs now; any other slot carries the kind's sentence saying why. Edges come from each kind's `refs`, never from `Task.deps`.",
+      "prevents": "A graph of task hashes cannot show work not yet planned, because a downstream hash embeds its upstream outputs, so every surface would have to guess at it.",
+      "subjects": [
+        "package:packages/constraint-solver",
+        "module:packages/constraint-solver/src/solve.ts",
+        "function:packages/constraint-solver/src/solve.ts#solve",
+        "slot:plate",
+        "slot:portrait",
+        "slot:sheet",
+        "slot:shot"
+      ],
+      "see": [
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+      ],
+      "detail": "The first enumeration of an address wins and later ones are dropped. `Solution.order` is upstream first, and a walk that meets a reference cycle already on disk stops rather than hanging. A ref to an address with no slot is an opaque upstream, such as an authored pin. `Task.deps` is incomplete and is not hashed, so edges are never derived from it. Each slot kind that carries this contract adds its `slot:` prefix to the subjects in the index.",
+      "declared": "packages/constraint-solver/src/solve.ts"
+    },
+    {
       "id"      : "identity.stagingSheet",
       "rule": "A shot in a staging-sheet group carries `params.extra.sheet`, a hash of the sheet's prompt, its reference hashes in order and the group seed, so anything the sheet is drawn from re-keys every member at once. A shot in no group carries no `extra`.",
       "prevents": "A member drawn from an old sheet while the others are cut from a new one, or a sheet change that re-renders nothing, because the sheet's inputs are not in any member's identity.",
@@ -121,6 +140,25 @@
       ],
       "detail": "`vn/element-types` lets only the scheduler and `@vn/artgen/adopt` import `@vn/taskgraph/write`, and a test refuses any other file passing `tasksLog` to `appendJsonl`. `adopt` hashes the inputs it is handed, derived from the project as it stands, so it can only mark done the node whose output these bytes now are. Its callers live in `adoptslot.ts`: `adoptSlot` (an author hands bytes to a slot), `fileGraphDraw` (the picture an interactive graph run ended on, `via: graph`), `holdPortrait` (an older portrait draft the gate approves, `via: restore`, so `repairCurrent` does not hand the slot back to the logged output) and `repinAdoption` (the desktop repin keeping its bytes). Adoption is refused for a `portrait:` slot (the gate owns it), for mock-marked bytes, and for superseding a render that already holds the slot without an explicit `replace`. `promoteConcept` is one caller of adoption. In `@vn/taskgraph/maintain`, `restoreDone` and `logRestored` append a copy of a record a tombstone replaced, and `logTombstone` and `logRequeue` write `pending`.",
       "declared": "packages/taskgraph/src/write.ts"
+    },
+    {
+      "id"      : "planning.sheetsOnlyWhenWorn",
+      "rule": "Every authored character has a portrait slot and every authored location variant a plate slot, cast or not. Sheet slots exist only for the outfits `usedOutfits` finds over live scenes, so an uncast character has none even once approved.",
+      "prevents": "Paying three sheet calls per outfit for a character no shot can show, or hiding the portrait an author drew before writing the scenes that cast them.",
+      "subjects": [
+        "function:packages/stills/src/family.ts#stillsFamily",
+        "module:packages/stills/src/slotgraph.ts",
+        "module:packages/pipeline/src/planner.ts",
+        "function:packages/model/src/used.ts#allCharacters",
+        "function:packages/model/src/used.ts#allLocationVariants",
+        "function:packages/model/src/used.ts#usedOutfits",
+        "slot:plate",
+        "slot:portrait",
+        "slot:sheet"
+      ],
+      "see"     : ["docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them"],
+      "detail": "The planner's P2 and P3 plan over `allLocationVariants` and `allCharacters`, and P4 fans sheets out over `usedOutfits`. `stillsFamily` and `buildSlotGraph` enumerate from the same three, and a test plans a mock project to exhaustion and asserts the slot graph promises exactly what was planned. `usedOutfits` gives everyone a live scene casts their default outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: `gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts nothing and shows in the document tree's Awaiting approval branch.",
+      "declared": "packages/stills/src/family.ts"
     },
     {
       "id"      : "planning.storyboardOnRequest",
@@ -525,6 +563,22 @@
       ],
       "detail": "Base art lives at `assets/objects/<hash>.<ext>`, frames at `vngen/build/assets/<hash>.<ext>`. Reads consult both roots, which is safe because a hash names the same bytes wherever it is. A hash both roots hold is a picture adopted across them, and the project row answers when it is a frame (`rowRoot`). A project written before the split still resolves, because its base art stays indexed in the project manifest. Writing a base kind while the base root is `unavailable` throws rather than writing there.",
       "declared": "packages/store/src/assetstore.ts"
+    },
+    {
+      "id"      : "takes.approvedMeansAccepted",
+      "rule": "A stills slot is approved when the take it holds (`pick`: its one current row, else its only row) is a row a person accepted. Every kind, the portrait included, answers through the one test on `SlotKind.approved`, `heldAccepted`.",
+      "prevents": "Each surface deciding approval its own way per kind, so the document tree, the gate pane and export disagree about whether a slot still waits for a person.",
+      "subjects": [
+        "function:packages/stills/src/family.ts#heldAccepted",
+        "function:packages/stills/src/slotgraph.ts#SlotNode",
+        "function:packages/stills/src/refs.ts#pick",
+        "slot:plate",
+        "slot:portrait",
+        "slot:sheet",
+        "slot:shot"
+      ],
+      "detail": "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the two differ in one case: a portrait slot whose only row is accepted but not current is approved here and not by the gate. `buildSlotGraph`'s `SlotNode.approved` uses the same test as the kinds.",
+      "declared": "packages/stills/src/family.ts"
     }
   ],
   "bySubject": {
@@ -563,6 +617,7 @@
     "function:packages/artgen/src/setnotes.ts#setArtModel": ["prompts.artRungsShared"],
     "function:packages/artgen/src/setnotes.ts#setArtNotes": ["prompts.artRungsShared"],
     "function:packages/artgen/src/setnotes.ts#setArtSeed": ["prompts.artRungsShared"],
+    "function:packages/constraint-solver/src/solve.ts#solve": ["identity.slotsBeforeTasks"],
     "function:packages/gengraph/src/edit.ts#decideGenEdit": ["graphs.instanceEditsOverride"],
     "function:packages/gengraph/src/execute.ts#sharedAncestors": ["identity.stagingSheet"],
     "function:packages/gengraph/src/migrate.ts#migrateGraphJSON": ["graphs.socketRenameMigrates"],
@@ -586,8 +641,13 @@
       "script.sceneRoundTrip"
     ],
     "function:packages/model/src/serialize.ts#sceneToFountain": ["script.sceneRoundTrip"],
+    "function:packages/model/src/used.ts#allCharacters": ["planning.sheetsOnlyWhenWorn"],
+    "function:packages/model/src/used.ts#allLocationVariants": ["planning.sheetsOnlyWhenWorn"],
     "function:packages/model/src/used.ts#liveScenes": ["script.livenessFromNarrative"],
-    "function:packages/model/src/used.ts#usedOutfits": ["script.outfitInherited"],
+    "function:packages/model/src/used.ts#usedOutfits": [
+      "planning.sheetsOnlyWhenWorn",
+      "script.outfitInherited"
+    ],
     "function:packages/pipeline/src/decompose.ts#decomposeAll": ["planning.storyboardOnRequest"],
     "function:packages/pipeline/src/decompose.ts#decomposeAllPreview": [
       "planning.storyboardOnRequest"
@@ -623,6 +683,8 @@
     "function:packages/stills/src/chunks.ts#composePrompt"               : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#effectiveChunks"             : ["prompts.clauseList"],
     "function:packages/stills/src/chunks.ts#renderPrompt"                : ["prompts.clauseList"],
+    "function:packages/stills/src/family.ts#heldAccepted": ["takes.approvedMeansAccepted"],
+    "function:packages/stills/src/family.ts#stillsFamily": ["planning.sheetsOnlyWhenWorn"],
     "function:packages/stills/src/gate.ts#gateStatus": ["script.livenessFromNarrative"],
     "function:packages/stills/src/prompts.ts#artClause": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildLocationChunks": ["prompts.artNotesAppended"],
@@ -643,10 +705,12 @@
     "function:packages/stills/src/refcycle.ts#firstCycle"                : ["prompts.refsAcyclic"],
     "function:packages/stills/src/refcycle.ts#refCycle"                  : ["prompts.refsAcyclic"],
     "function:packages/stills/src/refs.ts#authoredRefs"                  : ["prompts.refOnClause"],
+    "function:packages/stills/src/refs.ts#pick": ["takes.approvedMeansAccepted"],
     "function:packages/stills/src/refs.ts#refDrift"                      : ["prompts.refOnClause"],
     "function:packages/stills/src/sheet.ts#sheetKey": ["identity.stagingSheet"],
     "function:packages/stills/src/sheet.ts#sheetKeys": ["identity.stagingSheet"],
     "function:packages/stills/src/sheet.ts#sheetSeeds": ["identity.stagingSheet"],
+    "function:packages/stills/src/slotgraph.ts#SlotNode": ["takes.approvedMeansAccepted"],
     "function:packages/stills/src/storyboard.ts#decomposeScene": [
       "prompts.decomposeByLineId",
       "providers.textFallback"
@@ -687,6 +751,7 @@
     "module:packages/artgen/src/adopt.ts"                                : ["log.doneWriters"],
     "module:packages/artgen/src/concept.ts": ["identity.conceptNoNode"],
     "module:packages/artgen/src/setnotes.ts": ["prompts.artRungsShared"],
+    "module:packages/constraint-solver/src/solve.ts": ["identity.slotsBeforeTasks"],
     "module:packages/gengraph/src/edit.ts": ["graphs.instanceEditsOverride"],
     "module:packages/gengraph/src/migrate.ts": ["graphs.socketRenameMigrates"],
     "module:packages/gengraph/src/nodekey.ts"                            : ["graphs.groupNodeKey"],
@@ -697,6 +762,7 @@
     "module:packages/model/src/outfits.ts": ["script.outfitInherited"],
     "module:packages/model/src/serialize.ts": ["script.sceneRoundTrip"],
     "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
+    "module:packages/pipeline/src/planner.ts": ["planning.sheetsOnlyWhenWorn"],
     "module:packages/providers/src/factory.ts": ["providers.modelIdRoutes"],
     "module:packages/scriptedit/src/lineops.ts": ["script.lineIdsAllocated"],
     "module:packages/scriptedit/src/markers.ts": ["script.sceneEditAllOrNothing"],
@@ -706,6 +772,7 @@
     "module:packages/stills/src/prompts.ts": ["prompts.artNotesAppended"],
     "module:packages/stills/src/refcycle.ts"                             : ["prompts.refsAcyclic"],
     "module:packages/stills/src/sheet.ts": ["identity.stagingSheet"],
+    "module:packages/stills/src/slotgraph.ts": ["planning.sheetsOnlyWhenWorn"],
     "module:packages/stills/src/storyboard.ts": ["providers.textFallback"],
     "module:packages/store/src/assetstore.ts": ["storage.manifestQueue", "storage.twoRoots"],
     "module:packages/store/src/entities.ts"                              : ["script.entityByTag"],
@@ -714,8 +781,28 @@
     "module:packages/taskgraph/src/write.ts"                             : ["log.doneWriters"],
     "module:packages/types/src/prompt.ts": ["prompts.clauseList", "prompts.refOnClause"],
     "module:packages/types/src/script/narrative.ts": ["script.livenessFromNarrative"],
+    "package:packages/constraint-solver": ["identity.slotsBeforeTasks"],
     "package:packages/scheduler": ["providers.modelIdRoutes"],
-    "slot:shot": ["identity.stagingSheet"],
+    "slot:plate": [
+      "identity.slotsBeforeTasks",
+      "planning.sheetsOnlyWhenWorn",
+      "takes.approvedMeansAccepted"
+    ],
+    "slot:portrait": [
+      "identity.slotsBeforeTasks",
+      "planning.sheetsOnlyWhenWorn",
+      "takes.approvedMeansAccepted"
+    ],
+    "slot:sheet": [
+      "identity.slotsBeforeTasks",
+      "planning.sheetsOnlyWhenWorn",
+      "takes.approvedMeansAccepted"
+    ],
+    "slot:shot": [
+      "identity.slotsBeforeTasks",
+      "identity.stagingSheet",
+      "takes.approvedMeansAccepted"
+    ],
     "task:shot_image": [
       "identity.headingRekeysShots",
       "identity.stagingSheet",

@@ -5,8 +5,17 @@
  * sprouts. Manifest rows are matched to a slot by `sourceTask`, which the toy sets to the address.
  */
 import type { AnyTask, Asset, TaskInputs } from '@vn/types';
+import { pins } from '@vn/contracts';
 import { makeTask, taskHash } from '@vn/taskgraph';
-import { slot, solve, type Family, type Slot, type SlotKind, type SolverFacts } from '../index.js';
+import {
+  identitySlotsBeforeTasks,
+  slot,
+  solve,
+  type Family,
+  type Slot,
+  type SlotKind,
+  type SolverFacts,
+} from '../index.js';
 
 interface Sprout {
   id: string;
@@ -117,117 +126,131 @@ const planted = (over: Partial<Garden> = {}): Garden => ({
   ...over,
 });
 
-describe('solve over a toy family', () => {
-  it('enumerates every slot the family lists, once, with its unit', () => {
-    const solved = solve(garden, planted());
-    expect([...solved.slots.keys()]).toEqual(['seed:rose', 'seed:fern', 'sprout:r1', 'sprout:f1']);
-    expect(solved.slots.get('sprout:r1')).toMatchObject({
-      kind : 'sprout',
-      task : 'vision_review',
-      label: 'sprout r1',
-      unit : 'east',
+describe(pins(identitySlotsBeforeTasks), () => {
+  describe('solve over a toy family', () => {
+    it('enumerates every slot the family lists, once, with its unit', () => {
+      const solved = solve(garden, planted());
+      expect([...solved.slots.keys()]).toEqual([
+        'seed:rose',
+        'seed:fern',
+        'sprout:r1',
+        'sprout:f1',
+      ]);
+      expect(solved.slots.get('sprout:r1')).toMatchObject({
+        kind : 'sprout',
+        task : 'vision_review',
+        label: 'sprout r1',
+        unit : 'east',
+      });
+      expect(solved.slots.get('seed:rose')!.unit).toBeUndefined();
     });
-    expect(solved.slots.get('seed:rose')!.unit).toBeUndefined();
-  });
 
-  it('keeps the first enumeration of an address and drops the rest', () => {
-    const solved = solve(garden, planted({ again: [slot(sproutKind, { id: 'r1' }, 'north')] }));
-    expect(solved.slots.size).toBe(4);
-    expect(solved.slots.get('sprout:r1')!.unit).toBe('east');
-  });
-
-  it('states the identity a kind can resolve, and reads its status from the task log', () => {
-    const rose = makeTask('prompt_refine', seedInputs('rose'));
-    const solved = solve(garden, planted({ tasks: log({ ...rose, status: 'running' }) }));
-    const seed = solved.slots.get('seed:rose')!;
-    expect(seed.taskHash).toBe(rose.hash);
-    expect(seed.inputs).toEqual(seedInputs('rose'));
-    expect(seed.status).toBe('running');
-    expect(seed.blocked).toBeUndefined();
-    expect(solved.slots.get('seed:fern')!.status).toBeUndefined();
-  });
-
-  it('gives a downstream slot no identity until its upstream is done, and then one built on it', () => {
-    const before = solve(garden, planted()).slots.get('sprout:r1')!;
-    expect(before.taskHash).toBeUndefined();
-    expect(before.inputs).toBeUndefined();
-    expect(before.blocked).toBe('seed rose has not grown yet');
-
-    const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
-    const after = solve(garden, planted({ tasks: log({ ...rose, output: 'petal' }) })).slots.get(
-      'sprout:r1',
-    )!;
-    expect(after.blocked).toBeUndefined();
-    expect(after.taskHash).toBe(
-      taskHash('vision_review', { target: 'petal', spec: 'r1', refs: [], modelId: 'toy' }),
-    );
-  });
-
-  it('carries the sentence a kind refuses with', () => {
-    const solved = solve(garden, planted({ sprouts: [{ id: 'lost', seed: 'moss', bed: 'east' }] }));
-    expect(solved.slots.get('sprout:lost')!.blocked).toBe('sprout lost has no seed to grow from');
-  });
-
-  it('inverts the edges, keeping a ref to an address no slot has', () => {
-    const solved = solve(
-      garden,
-      planted({
-        sprouts: [
-          { id: 'r1', seed: 'rose', bed: 'east' },
-          { id: 'f1', seed: 'fern', bed: 'west', leans: ['r1', 'ghost'] },
-        ],
-      }),
-    );
-    expect(solved.slots.get('sprout:f1')!.refs).toEqual(['seed:fern', 'sprout:r1', 'sprout:ghost']);
-    expect(solved.dependents.get('seed:rose')).toEqual(['sprout:r1']);
-    expect(solved.dependents.get('sprout:r1')).toEqual(['sprout:f1']);
-    expect(solved.dependents.get('sprout:ghost')).toEqual(['sprout:f1']);
-    expect(solved.slots.has('sprout:ghost')).toBe(false);
-  });
-
-  it('orders upstream first, and names only enumerated slots', () => {
-    const order = solve(garden, planted()).order;
-    const at = (key: string): number => order.indexOf(key);
-    expect(at('seed:rose')).toBeLessThan(at('sprout:r1'));
-    expect(at('sprout:r1')).toBeLessThan(at('sprout:f1'));
-    expect(at('seed:fern')).toBeLessThan(at('sprout:f1'));
-    expect([...order].sort()).toEqual(['seed:fern', 'seed:rose', 'sprout:f1', 'sprout:r1']);
-  });
-
-  it('comes back from a cycle between slots instead of hanging on it', () => {
-    const solved = solve(
-      garden,
-      planted({
-        sprouts: [
-          { id: 'a', seed: 'rose', bed: 'east', leans: ['b'] },
-          { id: 'b', seed: 'rose', bed: 'east', leans: ['a'] },
-        ],
-      }),
-    );
-    expect([...solved.order].sort()).toEqual(['seed:fern', 'seed:rose', 'sprout:a', 'sprout:b']);
-  });
-
-  it('answers the take and approval through the kind, with the take it held', () => {
-    const assets = [
-      row('old', 'seed:rose', { accepted: true }),
-      row('new', 'seed:rose', { current: true, at: '2026-01-01' }),
-      row('kept', 'seed:fern', { current: true, accepted: true }),
-    ];
-    const solved = solve(garden, planted({ assets }));
-    expect(solved.slots.get('seed:rose')).toMatchObject({
-      pick      : 'new',
-      candidates: ['old', 'new'],
-      approved  : false,
+    it('keeps the first enumeration of an address and drops the rest', () => {
+      const solved = solve(garden, planted({ again: [slot(sproutKind, { id: 'r1' }, 'north')] }));
+      expect(solved.slots.size).toBe(4);
+      expect(solved.slots.get('sprout:r1')!.unit).toBe('east');
     });
-    expect(solved.slots.get('seed:fern')).toMatchObject({ pick: 'kept', approved: true });
-    expect(solved.slots.get('sprout:r1')!.pick).toBeUndefined();
-    expect(solved.slots.get('sprout:r1')!.candidates).toEqual([]);
-  });
 
-  it('reads an address back through the kind that wrote it', () => {
-    for (const kind of garden.kinds) {
-      expect(kind.parse(kind.key({ id: 'x' }))).toEqual({ id: 'x' });
-    }
-    expect(seedKind.parse('sprout:x')).toBeUndefined();
+    it('states the identity a kind can resolve, and reads its status from the task log', () => {
+      const rose = makeTask('prompt_refine', seedInputs('rose'));
+      const solved = solve(garden, planted({ tasks: log({ ...rose, status: 'running' }) }));
+      const seed = solved.slots.get('seed:rose')!;
+      expect(seed.taskHash).toBe(rose.hash);
+      expect(seed.inputs).toEqual(seedInputs('rose'));
+      expect(seed.status).toBe('running');
+      expect(seed.blocked).toBeUndefined();
+      expect(solved.slots.get('seed:fern')!.status).toBeUndefined();
+    });
+
+    it('gives a downstream slot no identity until its upstream is done, and then one built on it', () => {
+      const before = solve(garden, planted()).slots.get('sprout:r1')!;
+      expect(before.taskHash).toBeUndefined();
+      expect(before.inputs).toBeUndefined();
+      expect(before.blocked).toBe('seed rose has not grown yet');
+
+      const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
+      const after = solve(garden, planted({ tasks: log({ ...rose, output: 'petal' }) })).slots.get(
+        'sprout:r1',
+      )!;
+      expect(after.blocked).toBeUndefined();
+      expect(after.taskHash).toBe(
+        taskHash('vision_review', { target: 'petal', spec: 'r1', refs: [], modelId: 'toy' }),
+      );
+    });
+
+    it('carries the sentence a kind refuses with', () => {
+      const solved = solve(
+        garden,
+        planted({ sprouts: [{ id: 'lost', seed: 'moss', bed: 'east' }] }),
+      );
+      expect(solved.slots.get('sprout:lost')!.blocked).toBe('sprout lost has no seed to grow from');
+    });
+
+    it('inverts the edges, keeping a ref to an address no slot has', () => {
+      const solved = solve(
+        garden,
+        planted({
+          sprouts: [
+            { id: 'r1', seed: 'rose', bed: 'east' },
+            { id: 'f1', seed: 'fern', bed: 'west', leans: ['r1', 'ghost'] },
+          ],
+        }),
+      );
+      expect(solved.slots.get('sprout:f1')!.refs).toEqual([
+        'seed:fern',
+        'sprout:r1',
+        'sprout:ghost',
+      ]);
+      expect(solved.dependents.get('seed:rose')).toEqual(['sprout:r1']);
+      expect(solved.dependents.get('sprout:r1')).toEqual(['sprout:f1']);
+      expect(solved.dependents.get('sprout:ghost')).toEqual(['sprout:f1']);
+      expect(solved.slots.has('sprout:ghost')).toBe(false);
+    });
+
+    it('orders upstream first, and names only enumerated slots', () => {
+      const order = solve(garden, planted()).order;
+      const at = (key: string): number => order.indexOf(key);
+      expect(at('seed:rose')).toBeLessThan(at('sprout:r1'));
+      expect(at('sprout:r1')).toBeLessThan(at('sprout:f1'));
+      expect(at('seed:fern')).toBeLessThan(at('sprout:f1'));
+      expect([...order].sort()).toEqual(['seed:fern', 'seed:rose', 'sprout:f1', 'sprout:r1']);
+    });
+
+    it('comes back from a cycle between slots instead of hanging on it', () => {
+      const solved = solve(
+        garden,
+        planted({
+          sprouts: [
+            { id: 'a', seed: 'rose', bed: 'east', leans: ['b'] },
+            { id: 'b', seed: 'rose', bed: 'east', leans: ['a'] },
+          ],
+        }),
+      );
+      expect([...solved.order].sort()).toEqual(['seed:fern', 'seed:rose', 'sprout:a', 'sprout:b']);
+    });
+
+    it('answers the take and approval through the kind, with the take it held', () => {
+      const assets = [
+        row('old', 'seed:rose', { accepted: true }),
+        row('new', 'seed:rose', { current: true, at: '2026-01-01' }),
+        row('kept', 'seed:fern', { current: true, accepted: true }),
+      ];
+      const solved = solve(garden, planted({ assets }));
+      expect(solved.slots.get('seed:rose')).toMatchObject({
+        pick      : 'new',
+        candidates: ['old', 'new'],
+        approved  : false,
+      });
+      expect(solved.slots.get('seed:fern')).toMatchObject({ pick: 'kept', approved: true });
+      expect(solved.slots.get('sprout:r1')!.pick).toBeUndefined();
+      expect(solved.slots.get('sprout:r1')!.candidates).toEqual([]);
+    });
+
+    it('reads an address back through the kind that wrote it', () => {
+      for (const kind of garden.kinds) {
+        expect(kind.parse(kind.key({ id: 'x' }))).toEqual({ id: 'x' });
+      }
+      expect(seedKind.parse('sprout:x')).toBeUndefined();
+    });
   });
 });

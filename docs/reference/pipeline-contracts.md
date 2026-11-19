@@ -154,40 +154,6 @@ package.
       location plate) only appear after that upstream task is `done`.
     - `vngen cost` counts only the work that is plannable when it runs, and it undercounts
       tasks that become plannable after an earlier wave finishes.
-- The graph enumerates slots rather than task hashes, because a `shot_image` hash is not
-  known until its plate has rendered.
-    - A `shot_image` hash cannot be computed until its plate has rendered, because
-      `TaskInputs.shot_image.refs` embeds the upstream asset hashes and `taskHash` covers
-      the whole inputs object.
-    - So the project enumerates every picture it implies over the slot vocabulary that
-      already exists in `@vn/stills`' `refcycle.ts`: `portrait:<id>`,
-      `sheet:<id>/<outfit>/<angle>`, `plate:<loc>/<variant>`, `shot:<scene>/<shot>`.
-      `refsOfSlot` supplies the edge rule. The planner attaches a real task identity only
-      to the slots the project can currently state a task identity for.
-    - `buildSlotGraph` and the planner must enumerate the same set. That is why
-      `liveScenes`/`allCharacters`/`usedOutfits`/`allLocationVariants` were lifted into
-      `@vn/model`'s `used.ts`, and both sides call them. A test plans a mock project to
-      exhaustion and asserts the two agree in both directions.
-    - `SlotGraph.order` is topological, upstream first. Approval has to happen in that
-      same order.
-    - Never derive edges from `Task.deps`, which is documented as incomplete and is not
-      hashed.
-- Authoring a character or location produces a portrait or plate, because P2 and P3 plan
-  every authored entity regardless of casting. It does not produce a model sheet, because
-  P4 only fans out sheets for outfits actually used.
-    - P2 and P3 enumerate over `allLocationVariants`/`allCharacters` (every authored
-      location and character, cast or not) because a cast sheet is meant to be read and an
-      author draws the cast before writing scenes for it.
-    - P4 still fans out over `usedOutfits`, so an uncast character plans no sheets even
-      once approved. A portrait takes one image call and a sheet takes three per outfit,
-      and a sheet exists to be referenced by a shot that does not exist yet.
-    - The gate is unchanged. `gateStatus` keeps its own live-scene walk, so an unapproved
-      portrait for an uncast character halts nothing, and that portrait appears instead in
-      the tree's _Awaiting approval_ branch.
-    - Plan:
-      [`../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them`](../plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them).
-- `SlotNode.approved` means one thing for every slot kind: the take the slot holds is
-  accepted. A `portrait:` slot answers the same way, since the gate reads the row.
 - **Currency is exclusive per slot.** A manifest row carries two bits. `current` says the
   slot holds this take; `accepted` says a person approved it. They are set by different
   acts and neither clears the other.

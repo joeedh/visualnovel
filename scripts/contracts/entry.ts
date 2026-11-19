@@ -1,14 +1,14 @@
 /**
  * What `pnpm gen:contracts` bundles and the index tests import: every `contracts.ts` by path, and
  * the registries a subject is checked against (the desktop's commands, both agents' tools, the
- * task kinds and the slot address prefixes).
+ * task kinds and the stills family's slot kinds).
  *
  * A new package's `src/contracts.ts`, or an app's `contracts.ts` anywhere under its `src/`, is
  * added to {@link DECLARED}; a test fails while one on disk is missing from it.
  */
 import type { TaskKind } from '@vn/types';
 import { createRegistry } from '@vn/authoring';
-import { parseSlot } from '@vn/stills/slotaddr';
+import { stillsFamily } from '@vn/stills';
 import type { ContractIndex } from '@vn/contracts/query';
 import {
   createContractTools,
@@ -17,6 +17,7 @@ import {
 } from '../../packages/agentreport/src/index.js';
 import { createDesktopRegistry } from '../../apps/desktop/src/main/commands/index.js';
 import { CONTRACTS as artgen } from '../../packages/artgen/src/contracts.js';
+import { CONTRACTS as solver } from '../../packages/constraint-solver/src/contracts.js';
 import { CONTRACTS as gengraph } from '../../packages/gengraph/src/contracts.js';
 import { CONTRACTS as model } from '../../packages/model/src/contracts.js';
 import { CONTRACTS as pipeline } from '../../packages/pipeline/src/contracts.js';
@@ -31,6 +32,7 @@ import { buildIndex, type Declared, type Facts } from './build.js';
 /** Every `contracts.ts`, with the array it exports. */
 export const DECLARED: readonly Declared[] = [
   { file: 'packages/artgen/src/contracts.ts', contracts: artgen },
+  { file: 'packages/constraint-solver/src/contracts.ts', contracts: solver },
   { file: 'packages/gengraph/src/contracts.ts', contracts: gengraph },
   { file: 'packages/model/src/contracts.ts', contracts: model },
   { file: 'packages/pipeline/src/contracts.ts', contracts: pipeline },
@@ -68,11 +70,13 @@ export function facts(root: string): Facts {
     commands        : new Set(commands.map((c) => c.id)),
     tools           : new Set([...createRegistry().keys(), ...debugTools]),
     taskKinds       : new Set(Object.keys(TASK_KINDS)),
-    slot: (prefix) =>
-      ['a', 'a/b', 'a/b/c'].some((rest) => parseSlot(`${prefix}:${rest}`)?.kind === prefix),
+    slots           : new Set(stillsFamily.kinds.map((k) => k.prefix)),
     commandContracts: commands
       .filter((c) => c.contracts?.length)
       .map((c) => ({ command: c.id, contracts: c.contracts ?? [] })),
+    slotContracts: stillsFamily.kinds
+      .filter((k) => k.contracts?.length)
+      .map((k) => ({ prefix: k.prefix, contracts: k.contracts ?? [] })),
   };
 }
 

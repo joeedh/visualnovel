@@ -7,7 +7,9 @@
 import type { Asset, RefBinding, TaskInputs, TaskKind } from '@vn/types';
 import { shotsOf } from '@vn/types';
 import { allCharacters, allLocationVariants, liveScenes, usedOutfits } from '@vn/model';
+import { contract, type Contract } from '@vn/contracts';
 import {
+  identitySlotsBeforeTasks,
   slot,
   type Decided,
   type Family,
@@ -43,6 +45,47 @@ function inputsFor<K extends TaskKind>(
   return { ok: true, plan: decided.plan.inputs as TaskInputs[K] };
 }
 
+export const takesApprovedMeansAccepted = contract({
+  id      : 'takes.approvedMeansAccepted',
+  rule: 'A stills slot is approved when the take it holds (`pick`: its one current row, else its only row) is a row a person accepted. Every kind, the portrait included, answers through the one test on `SlotKind.approved`, `heldAccepted`.',
+  prevents:
+    'Each surface deciding approval its own way per kind, so the document tree, the gate pane and export disagree about whether a slot still waits for a person.',
+  subjects: [
+    'function:packages/stills/src/family.ts#heldAccepted',
+    'function:packages/stills/src/slotgraph.ts#SlotNode',
+    'function:packages/stills/src/refs.ts#pick',
+  ],
+  detail:
+    "The P3 gate's `approvedPortraitOf` asks for a row that is both current and accepted, so the " +
+    'two differ in one case: a portrait slot whose only row is accepted but not current is ' +
+    "approved here and not by the gate. `buildSlotGraph`'s `SlotNode.approved` uses the same " +
+    'test as the kinds.',
+});
+
+export const planningSheetsOnlyWhenWorn = contract({
+  id      : 'planning.sheetsOnlyWhenWorn',
+  rule: 'Every authored character has a portrait slot and every authored location variant a plate slot, cast or not. Sheet slots exist only for the outfits `usedOutfits` finds over live scenes, so an uncast character has none even once approved.',
+  prevents:
+    'Paying three sheet calls per outfit for a character no shot can show, or hiding the portrait an author drew before writing the scenes that cast them.',
+  subjects: [
+    'function:packages/stills/src/family.ts#stillsFamily',
+    'module:packages/stills/src/slotgraph.ts',
+    'module:packages/pipeline/src/planner.ts',
+    'function:packages/model/src/used.ts#allCharacters',
+    'function:packages/model/src/used.ts#allLocationVariants',
+    'function:packages/model/src/used.ts#usedOutfits',
+  ],
+  see     : ['docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them'],
+  detail:
+    "The planner's P2 and P3 plan over `allLocationVariants` and `allCharacters`, and P4 fans " +
+    'sheets out over `usedOutfits`. `stillsFamily` and `buildSlotGraph` enumerate from the same ' +
+    'three, and a test plans a mock project to exhaustion and asserts the slot graph promises ' +
+    'exactly what was planned. `usedOutfits` gives everyone a live scene casts their default ' +
+    'outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: ' +
+    "`gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts " +
+    "nothing and shows in the document tree's Awaiting approval branch.",
+});
+
 /** Says whether the take a slot holds is one a person accepted, the same test for every kind. */
 export function heldAccepted(_binding: unknown, _facts: StillsFacts, held: Held): boolean {
   return !!held.pick && held.rows.some((a) => a.hash === held.pick && a.accepted);
@@ -52,10 +95,12 @@ export function heldAccepted(_binding: unknown, _facts: StillsFacts, held: Held)
 function stillsKind<P extends SlotPrefix, K extends TaskKind>(
   prefix: P,
   task: K,
+  contracts: readonly Contract[],
 ): SlotKind<StillsFacts, Bound<P>, K> {
   return {
     prefix,
     task,
+    contracts,
     key       : slotKey,
     parse: (key) => {
       const binding = parseSlot(key);
@@ -79,10 +124,13 @@ function stillsKind<P extends SlotPrefix, K extends TaskKind>(
   };
 }
 
-export const plateKind = stillsKind('plate', 'location_ref');
-export const portraitKind = stillsKind('portrait', 'portrait');
-export const sheetKind = stillsKind('sheet', 'model_sheet');
-export const shotKind = stillsKind('shot', 'shot_image');
+const EVERY_KIND = [identitySlotsBeforeTasks, takesApprovedMeansAccepted];
+const AUTHORED = [...EVERY_KIND, planningSheetsOnlyWhenWorn];
+
+export const plateKind = stillsKind('plate', 'location_ref', AUTHORED);
+export const portraitKind = stillsKind('portrait', 'portrait', AUTHORED);
+export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
+export const shotKind = stillsKind('shot', 'shot_image', EVERY_KIND);
 
 /**
  * Lists the slots `buildSlotGraph` lists, in its order: every authored location variant's plate
