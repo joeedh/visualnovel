@@ -36,6 +36,7 @@ import type {
   TaskStatus,
 } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import type { Decided } from '@vn/constraint-solver';
 import { shotsOf } from '@vn/types';
 import { allCharacters, allLocationVariants, outfitFor, liveScenes, usedOutfits } from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
@@ -55,8 +56,7 @@ import {
 import { approvedPortraitOf } from './gate.js';
 import { sheetKeys } from './sheet.js';
 
-/** A decision that either carries a plan or names, in a sentence, why there is none. */
-export type Decided<T> = { ok: false; code: string; reason: string } | { ok: true; plan: T };
+export type { Decided };
 
 /**
  * The fields stating a slot's identity reads. The manifest enters through the approved portrait

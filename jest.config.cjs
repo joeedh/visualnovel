@@ -19,6 +19,7 @@ const PACKAGES = [
   'scriptedit',
   'bible',
   'artgen',
+  'constraint-solver',
   'stills',
   'git',
   'commands',

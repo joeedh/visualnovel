@@ -14,6 +14,7 @@
     "@vn/config": "workspace:*",
     "@vn/model": "workspace:*",
     "@vn/taskgraph": "workspace:*",
+    "@vn/constraint-solver": "workspace:*",
     "@vn/contracts": "workspace:*"
   }
 }

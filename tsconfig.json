@@ -17,6 +17,7 @@
       "@vn/bible"             : ["./packages/bible/src/index.ts"],
       "@vn/artgen"            : ["./packages/artgen/src/index.ts"],
       "@vn/artgen/adopt"      : ["./packages/artgen/src/adopt.ts"],
+      "@vn/constraint-solver" : ["./packages/constraint-solver/src/index.ts"],
       "@vn/stills"            : ["./packages/stills/src/index.ts"],
       "@vn/stills/slotaddr"   : ["./packages/stills/src/slotaddr.ts"],
       "@vn/stills/layout"     : ["./packages/stills/src/layout.ts"],

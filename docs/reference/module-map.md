@@ -16,6 +16,7 @@
 - [Layer 3 — rules packages (leaves by design; two hosts run each)](#layer-3--rules-packages-leaves-by-design-two-hosts-run-each)
     - [@vn/scriptedit — scene prose writes (`packages/scriptedit`)](#vnscriptedit--scene-prose-writes-packagesscriptedit)
     - [@vn/bible — retrieval over `wiki/` (`packages/bible`)](#vnbible--retrieval-over-wiki-packagesbible)
+    - [@vn/constraint-solver — the generic derivation rules (`packages/constraint-solver`)](#vnconstraint-solver--the-generic-derivation-rules-packagesconstraint-solver)
     - [@vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)](#vnstills--the-stills-family-prompts-slot-graph-approvals-packagesstills)
     - [@vn/artgen — on-demand art, adoption, and the stills rules' I/O (`packages/artgen`)](#vnartgen--on-demand-art-adoption-and-the-stills-rules-io-packagesartgen)
     - [@vn/gengraph — generation graphs (`packages/gengraph`)](#vngengraph--generation-graphs-packagesgengraph)
@@ -177,6 +178,16 @@ it ([`history-pane.md`](history-pane.md)).
 `index.ts` (`openBible`, the only entry point), `indexer.ts` (build/read index),
 `query.ts` (budgeted ranked query), `types.ts`.
 
+### @vn/constraint-solver — the generic derivation rules (`packages/constraint-solver`)
+
+Pure, and names nothing a family defines; `@vn/stills` is its first family.
+
+| module      | purpose                                                                        |
+| ----------- | ------------------------------------------------------------------------------ |
+| `family.ts` | `SolverFacts`, `SlotKind`, `Family`, `Slot` and `slot`, and `Decided`          |
+| `solve.ts`  | `solve`: every enumerated slot's identity or refusal, its edges, and the order |
+| `index.ts`  | barrel                                                                         |
+
 ### @vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)
 
 No I/O and no provider; `@vn/artgen` holds the halves that read or write the project.
@@ -191,6 +202,7 @@ No I/O and no provider; `@vn/artgen` holds the halves that read or write the pro
 | `upstream.ts`   | upstream attachment walk                                                        |
 | `slotaddr.ts`   | slot key parse/format; **side entry** `@vn/stills/slotaddr` (renderer-safe)     |
 | `slotgraph.ts`  | slot graph construction (`buildSlotGraph`)                                      |
+| `family.ts`     | the four slot kinds and their enumeration, for the solver (`stillsFamily`)      |
 | `refcycle.ts`   | reference cycle detection; `assetSlotLabel`                                     |
 | `prereq.ts`     | prerequisite refusals                                                           |
 | `overheld.ts`   | slots with more than one current row, and the holds that fix them               |

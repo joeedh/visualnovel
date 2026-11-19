@@ -364,6 +364,18 @@ importers:
         specifier: ^2.6.1
         version: 2.9.1
 
+  packages/constraint-solver:
+    dependencies:
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@vn/taskgraph':
+        specifier: workspace:*
+        version: link:../taskgraph
+      '@vn/types':
+        specifier: workspace:*
+        version: link:../types
+
   packages/contracts: {}
 
   packages/debug2d: {}
@@ -550,6 +562,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/constraint-solver':
+        specifier: workspace:*
+        version: link:../constraint-solver
       '@vn/contracts':
         specifier: workspace:*
         version: link:../contracts

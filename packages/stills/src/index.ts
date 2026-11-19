@@ -1,6 +1,7 @@
 /**
- * The stills family: slot addresses, the slot graph, the keep set, reference binding, prompt
- * composition, page layout, sheet planning, the storyboard decomposer and the portrait gate.
+ * The stills family: its slot kinds for `@vn/constraint-solver` (`stillsFamily`), slot addresses,
+ * the slot graph, the keep set, reference binding, prompt composition, page layout, sheet
+ * planning, the storyboard decomposer and the portrait gate.
  *
  * Everything here is derived from the model, the manifest and the task log. Nothing reads or writes
  * the disk, and the two model calls (`decomposeScene`, `condensePrompt`) go through the `@vn/types`
@@ -17,6 +18,7 @@ export * from './refs.js';
 export * from './slotaddr.js';
 export * from './refcycle.js';
 export * from './slotgraph.js';
+export * from './family.js';
 export * from './upstream.js';
 export * from './prereq.js';
 export * from './layout.js';

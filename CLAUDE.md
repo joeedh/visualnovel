@@ -120,7 +120,7 @@ types  util
   │     │
 config  parse
   │     │ │
-  │   model store ─ export scriptedit bible stills ─ artgen gengraph   git ──── commands
+  │   model store ─ export scriptedit bible constraint-solver ─ stills ─ artgen gengraph   git ──── commands
   │     │   │  │  ╲     │
   │     │  taskgraph ╲  │
 providers   │      ╲ ╲  │
@@ -150,6 +150,10 @@ providers   │      ╲ ╲  │
   so its importers name it directly; the CLI and the scheduler may not import it and reach
   the gate through `@vn/pipeline`'s re-exports. The renderer reaches it only through the
   `@vn/stills/slotaddr` and `@vn/stills/layout` subpaths.
+- `@vn/constraint-solver` sits below `@vn/stills` and runs the generic derivation rules
+  over the slot kinds a family declares (`solve`). It may import only `types`, `util`,
+  `taskgraph` and `contracts`, so it does no I/O, never sees path.ux, and names nothing a
+  family defines. `@vn/stills` is its first family (`stillsFamily`).
 - Two packages sit outside the graph. `@vn/debug2d` imports nothing from `packages/` and
   is dev-only in the renderer. `@vn/testkit` may import every layer, and nothing may
   import it.

@@ -24,6 +24,7 @@ export const PACKAGES = [
   'commands',
   'debug2d',
   'taskgraph',
+  'constraint-solver',
   'stills',
   'providers',
   'pipeline',

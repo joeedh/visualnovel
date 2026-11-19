@@ -40,6 +40,7 @@
               "bible"             : "packages/bible",
               "artgen"            : "packages/artgen",
               "artgen-adopt"      : "packages/artgen/src/adopt.ts",
+              "constraint-solver" : "packages/constraint-solver",
               "stills"            : "packages/stills",
               "gengraph"          : "packages/gengraph",
               "git"               : "packages/git",
@@ -72,6 +73,7 @@
               "export"            : ["types", "util", "parse", "model", "store", "contracts"],
               "scriptedit"        : ["types", "util", "parse", "model", "store", "contracts"],
               "bible"             : ["types", "util", "parse", "store", "contracts"],
+              "constraint-solver" : ["types", "util", "taskgraph", "contracts"],
               "stills": [
                 "types",
                 "util",
@@ -80,6 +82,7 @@
                 "model",
                 "store",
                 "taskgraph",
+                "constraint-solver",
                 "contracts"
               ],
               "artgen": [
