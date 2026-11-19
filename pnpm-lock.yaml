@@ -252,6 +252,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../config
+      '@vn/constraint-solver':
+        specifier: workspace:*
+        version: link:../constraint-solver
       '@vn/contracts':
         specifier: workspace:*
         version: link:../contracts

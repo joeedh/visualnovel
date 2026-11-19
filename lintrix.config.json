@@ -94,6 +94,7 @@
                 "store",
                 "taskgraph",
                 "stills",
+                "constraint-solver",
                 "providers",
                 "artgen-adopt",
                 "contracts"

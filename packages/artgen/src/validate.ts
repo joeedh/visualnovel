@@ -18,7 +18,8 @@ import {
 } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { exists, readText } from '@vn/util';
-import { overHeld, angleOfTask } from '@vn/stills';
+import { angleOfTask, stillsFamily, type StillsFacts } from '@vn/stills';
+import { overHeld } from '@vn/constraint-solver';
 
 /**
  * `blocking` means the next run or a read of the project would fail; `information` is stale
@@ -76,6 +77,8 @@ async function objectFiles(dir: string): Promise<Map<string, string>> {
 }
 
 const short = (hash: string): string => hash.slice(0, 8);
+
+const NO_TASKS: StillsFacts['tasks'] = { get: () => undefined };
 
 /**
  * Builds the finding for a file, or a value inside one, that did not parse, so nothing it names
@@ -230,7 +233,14 @@ export async function validateAssets(
 
   const assets = store.manifest();
   const withShots = { ...model, production: read.production };
-  for (const fix of overHeld({ model: withShots, assets, angleOf: angleOfTask(graph) })) {
+  // No config and no task log, so the keep rule reads only the storyboards and the rows' stamps
+  const facts: StillsFacts = {
+    model: withShots,
+    assets,
+    angleOf: angleOfTask(graph),
+    tasks  : NO_TASKS,
+  };
+  for (const fix of overHeld(stillsFamily, facts)) {
     const held = [fix.keep, ...fix.drop].map(short).join(', ');
     findings.push({
       severity: 'blocking',

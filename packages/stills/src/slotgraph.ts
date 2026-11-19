@@ -288,19 +288,6 @@ export function heldBy(asset: Asset, ctx: BindingContext): string[] {
   return [...out];
 }
 
-/**
- * A slot's takes newest first: by the row's `at`, most recently held first, with rows never
- * stamped last in hash order so the list is stable and makes no recency claim for them.
- */
-export function newestFirst(candidates: readonly Asset[]): Asset[] {
-  return [...candidates].sort((a, b) => {
-    if (a.at !== undefined && b.at !== undefined) return b.at.localeCompare(a.at);
-    if (a.at !== undefined) return -1;
-    if (b.at !== undefined) return 1;
-    return a.hash.localeCompare(b.hash);
-  });
-}
-
 /** One picture this project implies, whether or not anything has drawn it. */
 export interface SlotNode {
   /** `slotKey(binding)` — the identity, stable across re-plans and the address a command names. */
@@ -318,7 +305,7 @@ export interface SlotNode {
   /** The asset that settles this slot: `pick`'s answer, which declines whenever it is not certain. */
   hash?: string;
   /**
-   * Every manifest asset bound here, newest first ({@link newestFirst}). An empty list is what
+   * Every manifest asset bound here, newest first (the solver's `newestFirst`). An empty list is what
    * "not yet rendered" means, and `hash === undefined` is not: a portrait resolves off the gate
    * and so is unset before approval even with three drafts filed, and `pick` declines when no row
    * is current and two candidates tie. Either case would report real bytes as unrendered.

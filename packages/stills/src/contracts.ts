@@ -5,7 +5,12 @@ import {
   promptsArtNotesAppended,
   promptsReviewerSpec,
 } from './prompts.js';
-import { gatePerUnit, planningSheetsOnlyWhenWorn, takesApprovedMeansAccepted } from './family.js';
+import {
+  gatePerUnit,
+  planningSheetsOnlyWhenWorn,
+  takesApprovedMeansAccepted,
+  takesCurrencyExclusive,
+} from './family.js';
 import { promptsRefsAcyclic } from './refcycle.js';
 import { identityStagingSheet } from './sheet.js';
 import { promptsDecomposeByLineId, providersTextFallback } from './storyboard.js';
@@ -20,5 +25,6 @@ export const CONTRACTS: readonly Contract[] = [
   providersTextFallback,
   planningSheetsOnlyWhenWorn,
   takesApprovedMeansAccepted,
+  takesCurrencyExclusive,
   gatePerUnit,
 ];

@@ -1,7 +1,7 @@
 /**
  * The stills family as `@vn/constraint-solver` sees it: four slot kinds, the slots a project
  * implies, and the P3 gate each scene waits on. Each kind wraps the slot functions the rest of the
- * package shares (`slotKey`, `refsOfSlot`, `planSlot`, `candidatesFor`, `pick`), and
+ * package shares (`slotKey`, `refsOfSlot`, `planSlot`, `candidatesFor`), and
  * `solve(stillsFamily, facts)` is what the planner plans from.
  */
 import type { Asset, ProjectModel, RefBinding, TaskInputs, TaskKind } from '@vn/types';
@@ -21,13 +21,12 @@ import {
   type SlotKind,
   type SolverFacts,
 } from '@vn/constraint-solver';
-import { type BindingContext, candidatesFor, pick } from './refs.js';
-import { refsOfSlot } from './refcycle.js';
+import { type BindingContext, candidatesFor, sheetAngleOf } from './refs.js';
+import { refsOfSlot, slotOf } from './refcycle.js';
 import { parseSlot, slotKey, slotLabel } from './slotaddr.js';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 import { approvedPortraitOf } from './gate.js';
 import {
-  newestFirst,
   planSlot,
   type PlannedSlot,
   type SlotGraph,
@@ -163,12 +162,81 @@ export const takesApprovedMeansAccepted = contract({
   subjects: [
     'function:packages/stills/src/family.ts#heldAccepted',
     'function:packages/stills/src/slotgraph.ts#SlotNode',
-    'function:packages/stills/src/refs.ts#pick',
+    'function:packages/constraint-solver/src/take.ts#pick',
   ],
   detail:
     "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and " +
     '`gate.perUnit` lists the cases where the two answers differ. ' +
     "`slotGraph`'s `SlotNode.approved` is the kinds' answer.",
+});
+
+export const takesCurrencyExclusive = contract({
+  id      : 'takes.currencyExclusive',
+  rule: "A slot holds one take: its one `current` row, else its only row (the solver's `pick`). Two current rows hold nothing, and `overHeld` says which stays. `current` (the slot holds it) and `accepted` (a person approved it) are set by different acts, and neither clears the other.",
+  prevents:
+    'A slot read as holding two pictures, so the Task Graph pane, every pinned reference and everything drawn from the slot disagree about the take, or an approval that silently follows a re-render.',
+  subjects: [
+    'function:packages/constraint-solver/src/take.ts#pick',
+    'function:packages/constraint-solver/src/take.ts#newestFirst',
+    'function:packages/constraint-solver/src/take.ts#loggedTake',
+    'function:packages/constraint-solver/src/take.ts#overHeld',
+    'function:packages/stills/src/slotgraph.ts#heldBy',
+    'function:packages/artgen/src/takes.ts#repairCurrent',
+    'function:packages/artgen/src/takes.ts#migrateCurrent',
+    'function:packages/artgen/src/adoptslot.ts#adoptSlot',
+    'command:asset.restore',
+    'command:asset.accept',
+  ],
+  see: [
+    'docs/plans/archive/slot-history-on-the-manifest-row.md',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+  ],
+  detail:
+    '`pick` reads `current` and never `accepted`: one current row is the take, two resolve to ' +
+    'nothing (the slot reads as empty and everything drawn from it becomes unsettled), and a slot ' +
+    'with a single row and no current one resolves to that row. `AssetStore.hold(hash, ' +
+    'supersede, stamp)` sets `current` on one row and clears it on the takes being replaced in ' +
+    'the same manifest write; `heldBy` computes that list from every slot the row serves. It ' +
+    'restamps `at` (the hold time) and writes `via` (`run | graph | adopt | promote | upload | ' +
+    'migrated`) only where the row has none. `AssetStore.accept(hash)` sets `accepted` alone. ' +
+    'Every writer holds: the runners on a clean output and on the last output of a `needs_human` ' +
+    'task (the flawed frame stays on screen), adoption, promotion, upload and restore through ' +
+    '`adoptSlot`, and the gate and `vngen approve`, which hold and then accept. A run accepts ' +
+    'nothing. A re-render leaves the approved take behind as history, `accepted` and not ' +
+    'current. Approved, for a plate, sheet or frame, is `assetApproved`: current and accepted. ' +
+    'The prerequisite check reads `assetBlessed` (`accepted` alone), because a frame drawn from a ' +
+    'plate that was approved and has since been superseded was still drawn from an approved ' +
+    'plate. A portrait reads the same two bits. `acceptRefusal` refuses to accept a take its slot ' +
+    'does not hold, naming `asset.restore`, which holds and then accepts. A sheet binding written ' +
+    'since takes were held carries its `angle`; an older row is told apart from its siblings ' +
+    "through its task's inputs (`angleOf`), and a row with neither releases nothing when held, " +
+    'since four angles share one binding. `current` is a cache of the task log (`loggedTake`): ' +
+    "where a slot's identity is `done`, its `output` is the take; where it is `needs_human`, its " +
+    'last output is; otherwise (`pending` after a re-key, `running`, `failed`) the row is ' +
+    'authoritative. `repairCurrent` (`@vn/artgen`, re-exported from `@vn/pipeline`) runs on every ' +
+    "open and every non-dry run, from the CLI's and `vnauthor`'s project load too: it rewrites " +
+    'the bit to what the log says and puts any slot left with two current rows back to one by ' +
+    "`overHeld`'s keep rule (a row the kind names, which for a shot is the storyboard's take, " +
+    "else the identity's logged output, else the newest `at` or last render, else the lowest " +
+    'hash), logged as `manifest.repair`. A clean manifest is not written. Validation is the one ' +
+    'project read that skips the repair. `validateProject` (`@vn/gengraph/state`, with its asset ' +
+    "half `validateAssets` in `@vn/artgen`) and the desktop's `readProject` open the manifests " +
+    'and the task log as they are on disk, so a slot with two current rows is reported rather ' +
+    "than fixed. `project.validate` and the agent's `validate_project` write nothing. " +
+    '`migrateCurrent` runs first, once per manifest, keyed on a row with no `current` field, and ' +
+    "stamps every row: the identity's output, else the last `needs_human` output, else the one " +
+    'accepted candidate, else the newest by attempt time then lowest hash, else the sole ' +
+    "candidate, with `via: 'migrated'`; every other row gets `current: false`. Logged as " +
+    '`manifest.migrate`, naming characters whose approved portrait is no longer the take the ' +
+    "slot holds. The row's `at` orders a slot's takes newest first (`newestFirst`, which the " +
+    "solver applies to every slot's candidates); rows never stamped sort last, in hash order, and " +
+    'no surface may present one of those as the latest. Publishing an unapproved current take is ' +
+    'refused; watching one is not. `buildPlayable` projects what each slot holds and asks ' +
+    'nothing, so the in-app player shows it; `unapprovedTakes` (`@vn/export`) lists every frame ' +
+    'and cast portrait that would show unapproved, and `story.export`, `project.installPages` ' +
+    "and `vngen export` refuse on the first of them with one sentence, the command's `check` and " +
+    "its `run` (`VnError('UNAPPROVED')`) alike. `vngen accept --hash | --all` and the testkit's " +
+    '`acceptAll` accept through `acceptTake`, the same rule `asset.accept` applies.',
 });
 
 export const planningSheetsOnlyWhenWorn = contract({
@@ -266,10 +334,24 @@ function stillsKind<P extends SlotPrefix, K extends TaskKind>(
       const planned = planOf(binding, facts);
       return planned.ok ? planned.plan.deps : [];
     },
-    candidates: (binding, facts) => newestFirst(candidatesFor(binding, bindingCtx(binding, facts))),
-    pick      : (_binding, _facts, rows) => pick(rows),
+    candidates: (binding, facts) => candidatesFor(binding, bindingCtx(binding, facts)),
     approved  : heldAccepted,
   };
+}
+
+/** Each facts object's shot images, which every shot slot's `named` answers with. */
+const images = new WeakMap<StillsFacts, Set<string>>();
+
+/** Lists the image of every shot in the production map, once per facts object. */
+function shotImages(_binding: Bound<'shot'>, facts: StillsFacts): ReadonlySet<string> {
+  let named = images.get(facts);
+  if (!named) {
+    named = new Set();
+    for (const board of facts.model.production.values())
+      for (const shot of board.shots) if (shot.image) named.add(shot.image);
+    images.set(facts, named);
+  }
+  return named;
 }
 
 /**
@@ -284,7 +366,7 @@ function portraitClears(binding: Bound<'portrait'>, facts: StillsFacts): boolean
   return approvedPortraitOf(character, rows) !== undefined;
 }
 
-const EVERY_KIND = [identitySlotsBeforeTasks, takesApprovedMeansAccepted];
+const EVERY_KIND = [identitySlotsBeforeTasks, takesApprovedMeansAccepted, takesCurrencyExclusive];
 const AUTHORED = [...EVERY_KIND, planningSheetsOnlyWhenWorn];
 
 export const plateKind = stillsKind('plate', 'location_ref', AUTHORED);
@@ -293,7 +375,30 @@ export const portraitKind: SlotKind<StillsFacts, Bound<'portrait'>, 'portrait'> 
   clears: portraitClears,
 };
 export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
-export const shotKind = stillsKind('shot', 'shot_image', [...EVERY_KIND, gatePerUnit]);
+export const shotKind: SlotKind<StillsFacts, Bound<'shot'>, 'shot_image'> = {
+  ...stillsKind('shot', 'shot_image', [...EVERY_KIND, gatePerUnit]),
+  named: shotImages,
+};
+
+/** Pairs a binding with the kind its prefix names. */
+function slotFor(binding: Bound<SlotPrefix>): Slot<StillsFacts> {
+  switch (binding.kind) {
+    case 'plate':
+      return slot(plateKind, binding);
+    case 'portrait':
+      return slot(portraitKind, binding);
+    case 'sheet':
+      return slot(sheetKind, binding);
+    case 'shot':
+      return slot(shotKind, binding);
+  }
+}
+
+/** Answers the slot a row's first binding names; a sheet row's angle may come off its task. */
+function filledBy(row: Asset, facts: StillsFacts): Slot<StillsFacts> | undefined {
+  const binding = slotOf(row, sheetAngleOf(row, facts));
+  return binding && binding.kind !== 'asset' ? slotFor(binding) : undefined;
+}
 
 /**
  * Lists every authored location variant's plate and every authored character's portrait, a sheet
@@ -340,6 +445,7 @@ export const stillsFamily: Family<StillsFacts> = {
   enumerate,
   owed,
   gates,
+  slotOf: filledBy,
 };
 
 /** The character-approval gate (report §P3): who is still holding a live scene back. */

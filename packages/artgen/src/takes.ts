@@ -11,7 +11,7 @@
  * row so it runs once. It lives here rather than in `@vn/pipeline` because `vnauthor` may not
  * import the pipeline and has to run it too.
  */
-import type { Asset, AssetStore, Logger, ProjectModel, RefBinding, TaskGraph } from '@vn/types';
+import type { Asset, AssetStore, Logger, ProjectModel, TaskGraph } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { AssetStore as DiskStore, withProduction, type ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
@@ -22,17 +22,18 @@ import {
   assetSlotLabel,
   slotGraph,
   candidatesFor,
+  stillsFamily,
+  type PrereqContext,
+  type SlotGraphContext,
+  type StillsFacts,
+} from '@vn/stills';
+import {
   lastRenderedAt,
   loggedTake,
   newestFirst,
   overHeld,
-  resolveSlot,
-  slotTaskHash,
   type OverHeld,
-  type OverHeldContext,
-  type PrereqContext,
-  type SlotGraphContext,
-} from '@vn/stills';
+} from '@vn/constraint-solver';
 
 export interface TakeDeps {
   /**
@@ -180,18 +181,17 @@ export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
     fixes.push({ slot: key, keep: wanted, drop });
   }
 
-  const identityOutput = (slot: RefBinding): string | undefined => {
-    const decided = resolveSlot(slot, ctx);
-    return decided.ok ? loggedTake(deps.graph.get(slotTaskHash(decided.plan))) : undefined;
+  // The manifest is read again, because the holds above changed which rows are current. A slot's
+  // identity is still resolved over the manifest as it was before them
+  const before: StillsFacts = {
+    model  : ctx.model,
+    config : ctx.config,
+    assets : ctx.assets,
+    angleOf: angleOfTask(deps.graph),
+    tasks  : deps.graph,
   };
-  // Read again, because the holds above changed which rows are current
-  const rest: OverHeldContext = {
-    ...ctx,
-    assets: deps.store.manifest(),
-    identityOutput,
-    renderedAt: lastRenderedAt(deps.graph),
-  };
-  for (const fix of overHeld(rest)) {
+  const after: StillsFacts = { ...before, assets: deps.store.manifest() };
+  for (const fix of overHeld(stillsFamily, after, before)) {
     await deps.store.hold(fix.keep, fix.drop);
     fixes.push(fix);
   }

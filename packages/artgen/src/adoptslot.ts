@@ -49,8 +49,8 @@ import {
   resolveSlot,
   slotTaskHash,
   angleOfTask,
-  loggedTake,
 } from '@vn/stills';
+import { loggedTake } from '@vn/constraint-solver';
 import { adopt, adoptionOf, type AdoptContext } from './adopt.js';
 import { baseRefusal } from './base.js';
 

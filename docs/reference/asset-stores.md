@@ -99,8 +99,7 @@ took it) and `via` (`run | graph | adopt | promote | upload | migrated`, written
 sheet's binding carries its `angle`, so a runner with no task log can tell which of an
 outfit's four sheets a row is. A row written before these fields existed has none of them,
 and that absence is what `migrateCurrent` keys on
-([pipeline-contracts.md](pipeline-contracts.md#scheduling), _Currency is exclusive per
-slot_).
+(`pnpm contracts takes.currencyExclusive`).
 
 **A portrait's accept writes the sheet.** `accept` on a `portrait` row the slot holds
 (`current`) also writes the character sheet's mirror — `status: approved` and

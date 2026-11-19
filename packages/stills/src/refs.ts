@@ -16,6 +16,7 @@ import {
   type PromptOverride,
   type RefBinding,
 } from '@vn/types';
+import { pick } from '@vn/constraint-solver';
 import { effectiveChunks } from './chunks.js';
 
 /**
@@ -51,20 +52,6 @@ export interface BindingContext {
    * `sheet` binding resolves only when the outfit has exactly one sheet.
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
-}
-
-/**
- * Pick the one asset a slot holds, or `undefined` when the answer is not certain.
- *
- * The current row wins outright: a hold is exclusive per slot, so two current rows are a manifest
- * in need of repair and the slot declines. With none, the slot answers only when exactly one
- * candidate serves it. Every caller reads `undefined` as "no claim", never as "the slot is empty".
- */
-export function pick(candidates: readonly Asset[]): string | undefined {
-  const current = candidates.filter((a) => a.current);
-  if (current.length === 1) return current[0]!.hash;
-  if (current.length > 1) return undefined;
-  return candidates.length === 1 ? candidates[0]!.hash : undefined;
 }
 
 /**

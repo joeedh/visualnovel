@@ -17,11 +17,11 @@ export interface SolverFacts {
   readonly tasks: { get(hash: string): AnyTask | undefined };
 }
 
-/** The take a slot holds, as its kind reported it, which `approved` is decided from. */
+/** The take a slot holds, by the solver's `pick`, which `approved` is decided from. */
 export interface Held {
   /** The row the slot settles on, where the answer is certain. */
   readonly pick?: string;
-  /** Every manifest row bound to the slot, in the kind's order. */
+  /** Every manifest row bound to the slot, newest first. */
   readonly rows: readonly Asset[];
 }
 
@@ -49,13 +49,13 @@ export interface SlotKind<F extends SolverFacts, B = unknown, K extends TaskKind
    * slot that resolved; a kind without it runs after nothing.
    */
   deps?(binding: B, facts: F): readonly string[];
-  /** Lists every manifest row bound to the slot. */
+  /** Lists every manifest row bound to the slot, in manifest order. */
   candidates(binding: B, facts: F): readonly Asset[];
   /**
-   * Answers the row the slot holds, out of the `rows` its `candidates` listed, or `undefined` when
-   * the answer is not certain.
+   * Lists the hashes the family's own records name as this slot's take. When the slot holds more
+   * than one current row, the first of them that is current stays current.
    */
-  pick(binding: B, facts: F, rows: readonly Asset[]): string | undefined;
+  named?(binding: B, facts: F): ReadonlySet<string>;
   /** Says whether a person has approved what fills this slot. */
   approved(binding: B, facts: F, held: Held): boolean;
   /**
@@ -97,4 +97,6 @@ export interface Family<F extends SolverFacts> {
    * not decomposed and none of its slots is ready.
    */
   gates(unit: string, facts: F): readonly string[];
+  /** Answers the slot a manifest row fills, or `undefined` for a row that fills none. */
+  slotOf(row: Asset, facts: F): Slot<F> | undefined;
 }

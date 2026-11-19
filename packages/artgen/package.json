@@ -16,6 +16,7 @@
     "@vn/store": "workspace:*",
     "@vn/taskgraph": "workspace:*",
     "@vn/stills": "workspace:*",
+    "@vn/constraint-solver": "workspace:*",
     "@vn/providers": "workspace:*",
     "@vn/contracts": "workspace:*"
   }

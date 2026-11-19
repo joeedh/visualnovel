@@ -10,6 +10,7 @@ import type { TaskInputs, TaskKind, TaskStatus } from '@vn/types';
 import { contract } from '@vn/contracts';
 import { taskHash } from '@vn/taskgraph';
 import type { Family, Held, SlotKind, SolverFacts } from './family.js';
+import { newestFirst, pick } from './take.js';
 
 /** What the solver answers for one slot. */
 export interface SlotState {
@@ -31,9 +32,9 @@ export interface SlotState {
   /** The kind's sentence saying why no identity can be stated. */
   blocked?: string;
   status?: TaskStatus;
-  /** The row the slot holds, where its kind is certain which. */
+  /** The row the slot holds, by {@link pick}, where the answer is certain. */
   pick?: string;
-  /** Every manifest row bound here, in the kind's order. */
+  /** Every manifest row bound here, newest first ({@link newestFirst}). */
   candidates: readonly string[];
   approved: boolean;
   /** Has an identity, and its unit, if it has one, is open. The planner adds exactly these. */
@@ -89,11 +90,11 @@ interface Enumerated<F extends SolverFacts> {
   held?: Held;
 }
 
-/** Asks a kind for the take a slot holds. */
+/** Answers the take a slot holds, from the rows its kind binds to it. */
 function heldBy<F extends SolverFacts>(kind: SlotKind<F>, binding: unknown, facts: F): Held {
-  const rows = kind.candidates(binding, facts);
-  const pick = kind.pick(binding, facts, rows);
-  return pick ? { pick, rows } : { rows };
+  const rows = newestFirst(kind.candidates(binding, facts));
+  const take = pick(rows);
+  return take ? { pick: take, rows } : { rows };
 }
 
 /**

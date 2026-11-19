@@ -20,7 +20,6 @@ import {
   locationInputs,
   heldBy,
   imageParams,
-  newestFirst,
   resolveSlot,
   sheetKeys,
   slotGraph,
@@ -393,17 +392,5 @@ describe('heldBy', () => {
     const angles: Record<string, string> = { 'task-front': 'front', 'task-side': 'front' };
     const seeing = ctx({ assets: bare, angleOf: (task) => (task ? angles[task] : undefined) });
     expect(heldBy(sheet('front'), seeing)).toEqual(['side']);
-  });
-});
-
-describe('newestFirst', () => {
-  it('orders by `at` descending, unstamped rows last in hash order', () => {
-    const rows = [
-      { ...asset('c', 'shot_image', []) },
-      { ...asset('a', 'shot_image', []), at: '2026-01-01T00:00:00.000Z' },
-      { ...asset('b', 'shot_image', []) },
-      { ...asset('d', 'shot_image', []), at: '2026-02-01T00:00:00.000Z' },
-    ];
-    expect(newestFirst(rows).map((r) => r.hash)).toEqual(['d', 'a', 'b', 'c']);
   });
 });
