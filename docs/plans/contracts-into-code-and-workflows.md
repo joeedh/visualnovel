@@ -1126,6 +1126,126 @@ commit that adds this note.** As built:
       own rule.
     - `oracle.ts` and `oracle.test.ts` still run, beside `plannerwaves.test.ts`, until 6e.
 
+**6c landed 2026-11-18 on the `gate` branch, as `378aa8f5`, `b560d51f` and `244390cb` and
+the commit that adds this note.** As built:
+
+- **The solver's unit gate.**
+    - `Family.gates(unit, facts)` lists the addresses of the slots a unit waits on.
+      `SlotKind.clears` (optional) says whether a slot lets a unit that waits on it go
+      ahead; a kind without it answers with `approved`.
+    - `Solution.units` maps every unit a slot names or `Family.owed` lists to a
+      `UnitGate`, `{ gates, holding, open }`, where `holding` is the gates that have not
+      cleared.
+    - `SlotState.ready` is true for a slot with an identity whose unit, if it has one, is
+      open. The plan's third condition ("every upstream slot it needs is done") is already
+      part of having an identity, in stills and in the toy family, so `ready` does not
+      test it again.
+    - `unitGates(family, facts)` answers `Solution.units` without resolving any slot. It
+      enumerates, so it sees the same units, and asks only the gating slots' `candidates`,
+      `pick` and `clears`. `solve` and `unitGates` share one function, and a test holds
+      them equal.
+    - A gating address is looked up among the enumerated slots, not parsed. An address the
+      family does not enumerate holds the unit, which is how a cast member with no
+      character sheet holds a scene.
+    - The toy family's beds wait on seeds. The seed kind's `clears` is looser than its
+      `approved` (any accepted row), so a test can tell which one the solver asked.
+- **Stills' gates.** `stillsFamily.gates(sceneId)` lists the portrait of every member of
+  `scene.characters`. The portrait kind's `clears` is `portraitClears`, which calls
+  `approvedPortraitOf(character, rows)` over the manifest rows that name the character
+  (the group `candidatesFor` already reads), or with `undefined` when the facts carry no
+  manifest, so it reads the sheet's mirror. That keeps the gate's stricter reading.
+  Removing `clears` from the portrait kind fails the oracle's fixtures that plan without a
+  manifest.
+- **The planner.** `planTasks` asks `unitGates` before decomposing, only when something is
+  owed, and decomposes the open units. After decomposing it builds new facts, solves, and
+  adds the task of every `ready` slot. The shots files it writes after the loop are those
+  of the open units in `Solution.units`. Its facts come from `waveFacts`, new in
+  `packages/pipeline/src/facts.ts`. `sceneUnblocked` is deleted.
+- **`gateStatus`** moved from `gate.ts` to `family.ts`, because `gate.ts` cannot import
+  the family (`family.ts` → `slotgraph.ts` → `gate.ts`). It reads
+  `unitGates(stillsFamily, …)` and keeps `(model, assets)`; `@vn/pipeline` still
+  re-exports it by name, so the CLI and the scheduler did not change. It has no config to
+  give, so `StillsFacts.config` became optional: without it every slot's `resolve` refuses
+  with `NO_CONFIG`, which the gate never asks. `PlanFacts` is `StillsFacts` with `config`
+  required, the type each host's builder returns.
+- **`usedOutfits` once.** The family computes it once per facts object (`wardrobe`), for
+  the sheet enumeration and for `planSlot`, which takes it through a new optional
+  `SlotResolveContext.outfits`. A `resolveSlot` caller that does not pass it computes it
+  per call, as before.
+- **`sheetSeeds`'s three callers** take their arguments from their host's one builder: the
+  planner (through `planSlot` and `sheetKeys`) and the scheduled runner's `sheetSeedsFor`
+  from `waveFacts`, and `gengraph.run` (`graphRunPlan`) and the sheet scaffold
+  (`planSheet`) from the desktop's new `sessionFacts` in `session/core.ts`. The signature
+  stays positional, because `oracle.ts` calls it that way and may not change.
+- **Tests.**
+    - `packages/pipeline/src/tests/plannergate.test.ts`, pinning `gate.perUnit`: a scene
+      whose unapproved cast member is in no shot is neither decomposed nor planned until
+      that member is approved; the oracle's "a gate held by a non-subject" fixture plans
+      no shot for `held` with or without a manifest, while `held__1` has a task hash and
+      is not ready; the gate opens only on a row both current and accepted, stays shut on
+      an accepted row that is not current although the slot calls it approved, reads the
+      mirror without a manifest and the lock whatever the slot holds; a cast member with
+      no sheet holds the scene. `gateStatus` is compared with a copy of the walk it
+      replaced over the oracle's fixtures (with no manifest, `ROWS` and an empty one), a
+      scene left out of the story, and every testkit script at four points.
+    - `apps/desktop/src/main/tests/sheetseeds.test.ts`: for a staging-sheet group on disk,
+      the planner's `params.extra.sheet` on a member equals `sheetKey` of the runner's
+      seeds, and `gengraph.run`'s sheet prompt and references equal the runner's.
+    - `slotplan.test.ts`'s `promised` reads `ready` instead of a copy of the gate.
+- **Behaviour visible to hosts.** None intended, and none found. `gateStatus` answers what
+  the walk answered on every case the tests cover. The planner's hashes, deps, stamps and
+  shots-file writes are unchanged. `SlotState` gains `ready` and `Solution` gains `units`,
+  which `slotGraph` drops, so the document tree, the gate pane and the Task Graph pane
+  receive the same `SlotNode`s.
+- **Timing.** Per wave, from the 6b script: each run takes the median of 51 plans, and the
+  table gives the median of three runs per side, master and 6c interleaved on one machine.
+  This machine ran slower than 6b's did, so the master column is not comparable with 6b's
+  table. Task counts match on every row.
+
+    | Project             | Wave | Tasks | Master  | 6c      | Ratio |
+    | ------------------- | ---- | ----- | ------- | ------- | ----- |
+    | branching, drawn    | 0    | 19    | 0.82 ms | 0.79 ms | 0.96  |
+    | branching, drawn    | 1    | 19    | 0.76 ms | 0.78 ms | 1.03  |
+    | branching, fresh    | 0    | 12    | 0.52 ms | 0.55 ms | 1.06  |
+    | branching, fresh    | 1    | 19    | 0.76 ms | 0.75 ms | 0.99  |
+    | branching, fresh    | 2    | 19    | 0.68 ms | 0.62 ms | 0.91  |
+    | mySampleRepo, drawn | 0    | 27    | 2.41 ms | 2.64 ms | 1.10  |
+    | mySampleRepo, drawn | 1    | 27    | 2.26 ms | 2.33 ms | 1.03  |
+    | mySampleRepo, fresh | 0    | 17    | 1.58 ms | 1.74 ms | 1.10  |
+    | mySampleRepo, fresh | 1    | 27    | 2.08 ms | 2.15 ms | 1.03  |
+    | mySampleRepo, fresh | 2    | 27    | 2.00 ms | 2.19 ms | 1.09  |
+
+    Over every wave of all five testkit scripts and the sample, 6c takes 1.03x master's
+    time. The extra `unitGates` call runs only on a wave with an owed scene (wave 0 of a
+    fresh project), and `usedOutfits` is now computed once per facts object rather than
+    once per sheet slot.
+
+- **Contracts.** One, so the index holds 37 and `contracts.json` is 77 KB: `gate.perUnit`
+  in `packages/stills/src/family.ts`, carried by the portrait and shot kinds and pinned by
+  `plannergate.test.ts`. Its `detail` holds what the document's bullet said (the mirror,
+  the lock, `repairCurrent`, the halted run, `holdPortrait`) and the four cases where the
+  portrait slot's `approved` and the gate's `clears` differ: an only row accepted but not
+  current, no manifest, a lock, and two current rows. The bullet is gone from
+  `pipeline-contracts.md`, and `asset-stores.md` and `docs/index.md` no longer point at
+  it. Reworded: `planning.incremental` (rule and detail), `planning.sheetsOnlyWhenWorn`
+  and `takes.approvedMeansAccepted` (detail). `script.livenessFromNarrative` names
+  `gateStatus` in `family.ts`.
+- **For 6d:**
+    - `clears` is a second approval test beside `approved`. If 6d's take rule makes the
+      portrait slot's `approved` read currency the way `approvedPortraitOf` does, the two
+      can merge and the four cases in `gate.perUnit`'s detail go away; until then the
+      difference is deliberate.
+    - `unitGates` enumerates every slot to find the units. The planner calls it only on a
+      wave with something owed.
+    - `sessionFacts` has two callers. The desktop's other solver readers (the eight
+      `slotGraph` calls 6b lists) still assemble their own context; 6e moves them.
+      `graphRunPlan` resolves its slot with no manifest, so a shot's portrait reference
+      comes from the sheet's mirror there and from the row in the planner; the two agree
+      while `AssetStore.accept` keeps the mirror, but 6e should pass `sessionFacts` to
+      `resolveSlot` as well.
+    - `oracle.ts` and `oracle.test.ts` still run, and still copy `sceneUnblocked`, until
+      6e.
+
 The plan as written before 6a landed:
 
 The core of the plan. It runs as five commits, each green.
