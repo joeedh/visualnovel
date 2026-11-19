@@ -1387,6 +1387,150 @@ the commit that adds this note.** As built:
       of `graphs.editInvalidates`' `detail`.
     - `oracle.ts` and `oracle.test.ts` still run until 6e.
 
+**6e landed 2026-11-19 on the `readers` branch, as `ec1ee3eb`, `84cf47a0`, `c3feaff0`,
+`cd2a5c9b`, `c4f17b4a` and `f69279f3` and the commit that adds this note.** As built:
+
+- **Every reader solves** (`ec1ee3eb`).
+    - `slotGraph` and its `SlotGraph` and `SlotNode` shapes are deleted from `@vn/stills`.
+      Each former reader calls `solve(stillsFamily, facts)` and reads `SlotState`.
+    - The document tree takes the solver's slots and order through `SlotsRead`
+      (`doctree.ts`), and reads `kind` and `pick` where it read `binding.kind` and `hash`.
+    - The gate pane's `approvable` and `approvedAssets` walk `Solution.order`.
+    - The Task Graph pane keeps its wire shape: `SlotNode` moved to `shared/ipc.ts`
+      unchanged, and `slotNodes` projects it from the solver's states, `pick` as `hash`.
+    - `@vn/artgen`'s `migrateCurrent`, `repairCurrent`'s first loop, `catchUpMirrors` and
+      `acceptableTakes` build their facts with one internal builder, `storeFacts`.
+      `repairCurrent` still resolves identities over the manifest as read before its own
+      holds, through a copy of those facts, since the kinds memoise on the object.
+    - `unrenderedBoundSlots` (`@vn/pipeline` `graphload.ts`) solves over `waveFacts`,
+      which takes an optional `angleOf`. The planner passes none, so its facts are
+      unchanged.
+    - On the desktop every reader builds its facts with `sessionFacts`, which now carries
+      `angleOf` (`angleOfTask` over the task log), equivalent to the one the readers' own
+      contexts built. `angleOf` changes no answer of `resolveSlot`, `sheetSeeds` or
+      `planSheet`.
+    - `graphRunPlan` resolves its slot over `sessionFacts`, so it reads the manifest as
+      the planner does.
+    - The desktop may import `@vn/constraint-solver` (lintrix, `package.json`,
+      `pnpm-lock.yaml` by hand; `pnpm install --offline --frozen-lockfile` accepts it).
+    - `validateProject` already read the solver's `overHeld` (6d). The agent tools that
+      derive slot state reach it through `approvable`, `approvedAssets`, `acceptableTakes`
+      and `repairCurrent`, which all solve now. The collector already read `keepSet` (6d),
+      so row 115 needed nothing more.
+- **The 6d wrappers are gone** (`84cf47a0`).
+    - `@vn/artgen`'s `suspend.ts` is deleted. The desktop's `suspensionsOf` maps the
+      solver's `suspensions` over `sessionFacts`; `vngen status` counts them over
+      `waveFacts`. Suspension reads neither the task log nor the config, so both answers
+      are the ones the wrapper gave.
+    - `@vn/pipeline`'s `drift.ts` is deleted. The planner, the document tree,
+      `driftedFrames` and Shot Coverage import `driftOf` and `proseHash` from
+      `@vn/stills`.
+    - `@vn/artgen`'s `base.ts` is deleted, and `planner.ts` no longer re-exports
+      `baseRefusal`. Adoption, concept art, promotion, upload and the desktop's asset part
+      import it from the solver.
+    - The CLI and the scheduler may import neither the solver nor `@vn/stills`, so
+      `@vn/pipeline`'s barrel re-exports `baseRefusal`, `suspensions`, `Suspension`,
+      `stillsFamily`, `unapprovedTakes` and `UnapprovedTake` by name.
+- **Export takes its list from the host** (`c3feaff0`). `unapprovedTakes` moved to
+  `@vn/stills`' `unapproved.ts` unchanged, except that it takes manifest rows rather than
+  the store, and it still walks every scene. `@vn/export` keeps `unapprovedSentence`,
+  which takes the list. The desktop imports `unapprovedTakes` from `@vn/stills`;
+  `vngen export` reaches it through `@vn/pipeline`. No import edge was added to
+  `@vn/export`.
+- **The oracle is deleted, in two commits.**
+    - `cd2a5c9b` records what the oracle planned on master (`5bc32739`) in
+      `packages/pipeline/src/tests/__fixtures__/waves/`: `fixtures.json` for the nine
+      fixture cases, and one file per testkit script with its `before`, `after` and
+      `drawn` runs. The recording was made twice on an untouched master checkout with
+      identical output. In that commit `plannerwaves.test.ts` held both the planner and
+      the oracle equal to the recording at every point.
+    - `c4f17b4a` deletes `oracle.ts` and the oracle's half of each comparison.
+      `oracle.test.ts` became `plannerpins.test.ts`: the pinned hashes and the "reaches
+      what each fixture is named for" case are unchanged, and the six wave cases compare
+      the planner with the recording, deps stripped.
+    - No pinned hash or recorded wave moved, and `prompthash.test.ts` is untouched.
+- **The index is sharded** (`f69279f3`).
+    - `packages/contracts/contracts.json` holds the summaries (id, rule, subjects) and
+      `bySubject`, 49 KB. `packages/contracts/contracts/<area>.json` holds the full
+      records, one file per area in `CONTRACT_AREAS`, empty ones included: `script` 21 KB,
+      `prompts` 13, `takes` 9, `graphs` 8, `identity` and `storage` 6 each, `collect` and
+      `planning` 5 each, `providers` 4, `gate` 3, `log` 2, and `execution` empty.
+    - `pnpm gen:contracts` writes the thirteen files through `splitIndex` and warns when
+      the summary file passes 100 KB.
+    - `@vn/contracts/query` imports the summary file and every shard and rebuilds the full
+      index with `joinIndex`. Text search reads `prevents` and `detail`, so every host
+      loads every shard; a model reading files reads the summary file and one shard.
+    - The regeneration test compares all thirteen files, and checks that the joined index
+      equals the unsplit one. Twelve `pnpm contracts` queries printed the same bytes
+      before and after the split.
+- **Decisions.**
+    - **`driftOf` stays the reader of prose drift in three places.** The document tree's
+      Stale branch, the approval queue's `driftedFrames` and Shot Coverage walk every
+      scene, unreachable ones included, and key a frame by `shot.image`. Shot Coverage
+      also shows `unknown` and `unrendered`. `SlotState.drift` covers the shot slots of
+      live scenes only and reports `drifted` alone, so reading it would drop rows from all
+      three.
+    - **`graphDrift` stays behind `reportGraphs`' `drifted` list and `boundSlotsToDraw`.**
+      `graphDrift` reports the edited arm only, over every output node, active or not,
+      with an empty slot for an inactive one. `boundDrift` reports per bound slot, and
+      also reports a slot drawn before its graph existed when the graph is not the default
+      one. Moving either would change what `vngen status` prints and which slots
+      `vngen cost` prices.
+    - **`unapprovedTakes` keeps its own walk** rather than reading the solver's slots,
+      because the playable carries every scene and the solver enumerates live ones.
+- **Behaviour visible to hosts.**
+    - `graphRunPlan` resolves its slot over the manifest, as the planner does. Before, it
+      resolved without the manifest, so the approved portrait a sheet or a shot references
+      was the hash the character sheet names, and a staging-sheet shot's sheet key was
+      computed over no rows. The portrait answers differ only when the sheet's mirror
+      disagrees with the accepted row, which `AssetStore.accept` and `catchUpMirrors`
+      prevent. `graphRunPlan`'s seeds now match the planner's task inputs in both cases.
+    - Nothing else. The panes, `vngen status`, the scheduler, the agent tools and the
+      collector read the same answers. No control's offer changed: `ux-model.json` equals
+      a regeneration, and no editor under `renderer/pathux/editors/` changed. The
+      `story.export` command's notes name `@vn/stills`, and `pnpm gen:command-table` was
+      run for it.
+    - `vngen cost` still prices from `boundSlotsToDraw`, which misses the slots
+      `boundDrift`'s second arm adds, so its total can be lower than what `requeueDrifted`
+      redraws. That predates 6e.
+- **Contracts.** None added; the index holds 44.
+    - `takes.approvedMeansAccepted` names `SlotState` in place of `SlotNode`.
+    - `takes.suspensionDerived` drops `@vn/artgen`'s `suspend.ts`.
+    - `storage.baseUnavailable` names `adoptslot.ts` in place of `base.ts`.
+    - `script.proseDriftReported` names the desktop's `session/story.ts` in place of
+      `@vn/pipeline`'s `drift.ts`, and its detail says which readers call `driftOf`.
+    - `takes.currencyExclusive`'s detail says `unapprovedTakes` is in `@vn/stills` and the
+      host hands its list to `unapprovedSentence`.
+    - Every contract keeps a pinning test; the coverage test passes.
+- **Planner timing.** The planner's code path did not change: it imports `proseHash` from
+  `@vn/stills` and builds its facts as before. No timing was taken.
+- **Tests rewritten**, by tests and assertions:
+    - `slotgraph.test.ts` lost its `slotGraph` case (1, 7); `slotnodes.test.ts` holds it
+      against `slotNodes` (1, 7).
+    - `suspend.test.ts` calls `suspensions` directly: 6 and 12, before and after.
+    - `unapprovedTakes`' cases moved from `playable.test.ts` (3, 7) to
+      `unapproved.test.ts` (3, 5) and one `unapprovedSentence` case (1, 2).
+    - `plannerwaves.test.ts`: 14 and 38 before; 14 and 62 while it checked the oracle; 14
+      and 38 after.
+    - `oracle.test.ts` (13, 22) became `plannerpins.test.ts` (13, 22).
+    - The index test gained a case for the joined index (one test, three assertions).
+- **For 7:**
+    - The CLI and the scheduler reach the solver and `@vn/stills` through six re-exports
+      in `@vn/pipeline`'s barrel. Stage 7's host registry in `@vn/pipeline` is the place
+      to decide whether they stay.
+    - `sessionFacts` still carries no `graphs`, so no desktop surface shows graph drift
+      from `SlotState.drift`. `reportGraphs` and `boundSlotsToDraw` still read
+      `graphDrift`; moving them to `boundDrift` changes what `vngen status` and
+      `vngen cost` report, and needs its own decision.
+    - The desktop solves once per read (the tree, `approvable`, `approvedAssets`, the Task
+      Graph pane, `suspensionsOf`), each over fresh `sessionFacts`. Nothing has measured
+      whether a shared solve per session snapshot is worth it.
+    - Every host loads every contract shard, because text search reads the full records.
+      If the index grows, `search` could read the shards lazily.
+    - Stage 8 can still give `requeueDrifted` its own declaration (from 6d's list).
+    - `.claude/comment-audit-ledger.json` still lists the deleted `base.ts` and
+      `pipeline/src/drift.ts`.
+
 The plan as written before 6a landed:
 
 The core of the plan. It runs as five commits, each green.
