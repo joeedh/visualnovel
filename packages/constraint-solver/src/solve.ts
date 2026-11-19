@@ -10,6 +10,7 @@ import type { TaskInputs, TaskKind, TaskStatus } from '@vn/types';
 import { contract } from '@vn/contracts';
 import { taskHash } from '@vn/taskgraph';
 import type { Family, Held, SlotKind, SolverFacts } from './family.js';
+import { projectRefusal } from './refuse.js';
 import { newestFirst, pick } from './take.js';
 
 /** What the solver answers for one slot. */
@@ -37,7 +38,10 @@ export interface SlotState {
   /** Every manifest row bound here, newest first ({@link newestFirst}). */
   candidates: readonly string[];
   approved: boolean;
-  /** Has an identity, and its unit, if it has one, is open. The planner adds exactly these. */
+  /**
+   * True for a slot with an identity whose unit, if it has one, is open, in a project nothing
+   * refuses. The planner adds exactly these.
+   */
   ready: boolean;
 }
 
@@ -60,6 +64,8 @@ export interface Solution {
   order: string[];
   /** Every unit a slot names or the family owes, with what it waits on. */
   units: Map<string, UnitGate>;
+  /** Why `projectRefusal` refuses the whole project, when it does; no slot is ready then. */
+  refusal?: string;
 }
 
 export const identitySlotsBeforeTasks = contract({
@@ -189,8 +195,10 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
   const named: string[] = [];
   for (const state of slots.values()) if (state.unit !== undefined) named.push(state.unit);
   const units = gateUnits(family, facts, enumerated, [...named, ...family.owed(facts)]);
+  const refusal = projectRefusal(facts);
   for (const state of slots.values()) {
     state.ready =
+      refusal === undefined &&
       state.taskHash !== undefined &&
       (state.unit === undefined || units.get(state.unit)?.open === true);
   }
@@ -214,5 +222,5 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
   };
   for (const key of slots.keys()) walk(key);
 
-  return { slots, dependents, order, units };
+  return { slots, dependents, order, units, ...(refusal === undefined ? {} : { refusal }) };
 }

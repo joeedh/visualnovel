@@ -20,8 +20,7 @@ import { contract } from '@vn/contracts';
 import { liveScenes } from '@vn/model';
 import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
-import { solve, unitGates } from '@vn/constraint-solver';
-import { baseRefusal } from '@vn/artgen';
+import { projectRefusal, solve, unitGates } from '@vn/constraint-solver';
 import { cycleRefusal, firstCycle, layoutDefect, stillsFamily } from '@vn/stills';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
@@ -149,16 +148,9 @@ function observedBoxes(
   return matched ?? measured[0];
 }
 
-/**
- * Why planning is refused, or `undefined` to plan normally.
- *
- * An `unavailable` base root — the directory is there, its manifest is not — is the shape a
- * clone without the base repo leaves behind. The four base kinds would be re-generated from
- * scratch, and every shot references a location plate and a portrait whose bytes are equally
- * gone, so nothing is plannable. The sentence lives in `@vn/artgen` because generating one
- * image on demand must refuse in exactly the same words.
- */
-export { baseRefusal } from '@vn/artgen';
+// Re-exported by name so the CLI and the scheduler, which may not import the solver, reach the
+// sentence the planner refuses with (`storage.baseUnavailable`)
+export { baseRefusal } from '@vn/constraint-solver';
 
 type ShotSlot = Extract<RefBinding, { kind: 'shot' }>;
 
@@ -213,7 +205,7 @@ export const planningIncremental = contract({
  * With `paths`, decompositions are persisted under `work/shots/` and preferred over
  * re-decomposing; without it planning is pure, which is what the unit tests want.
  *
- * An `unavailable` base root plans nothing — see {@link baseRefusal}.
+ * A project the solver refuses (`projectRefusal`, an `unavailable` base root) plans nothing.
  */
 export async function planTasks(opts: {
   model: ProjectModel;
@@ -238,16 +230,16 @@ export async function planTasks(opts: {
   assets?: readonly Asset[];
 }): Promise<AnyTask[]> {
   const { model, graph, config, providers, paths, logger, base, readOnlyShots } = opts;
-  const refusal = baseRefusal(base);
+  // Built again after decomposing, because the kinds memoise on the facts object
+  const facts = () => waveFacts({ model, config, tasks: graph, assets: opts.assets, base });
+  const before = facts();
+  const refusal = projectRefusal(before);
   if (refusal) {
     logger?.error('plan.refused', { reason: refusal, root: base?.root });
     return [];
   }
-  // Built again after decomposing, because the kinds memoise on the facts object
-  const facts = () => waveFacts({ model, config, tasks: graph, assets: opts.assets });
 
   // Storyboards first, so the solve below sees the shot slots of every scene the gate lets through
-  const before = facts();
   const owed = stillsFamily.owed(before);
   const gates = owed.length ? unitGates(stillsFamily, before) : undefined;
   for (const sceneId of owed) {

@@ -557,6 +557,25 @@
       "declared": "packages/scriptedit/src/shotorder.ts"
     },
     {
+      "id"      : "storage.baseUnavailable",
+      "rule": "A base asset root whose directory exists without a readable manifest is `unavailable`, and the project is refused: `solve` reports the refusal with no slot ready, the planner plans nothing, and every act that would write to the root refuses in the same sentence.",
+      "prevents": "Regenerating an approved library at cost over a checkout that is missing the base repo, which a check that only counts assets cannot tell from a root where nothing has been generated yet.",
+      "subjects": [
+        "function:packages/constraint-solver/src/refuse.ts#baseRefusal",
+        "function:packages/constraint-solver/src/refuse.ts#projectRefusal",
+        "function:packages/constraint-solver/src/solve.ts#solve",
+        "function:packages/pipeline/src/planner.ts#planTasks",
+        "module:packages/scheduler/src/scheduler.ts",
+        "module:packages/artgen/src/base.ts"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#base-and-project-asset-stores",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+      ],
+      "detail": "A checkout missing the base repo leaves the same state behind. The planner produces no plan when the root is `unavailable`, because the work downstream of base art references it, and it logs `plan.refused` with the root. The run stops before its wave loop and reports a single sentence, `baseRefusal`, that names the root and says to restore it rather than regenerate. On-demand art, adoption, promotion and upload refuse with the same sentence. An `absent` root (a new or legacy project) and a `ready` one refuse nothing, and facts with no base root have no opinion.",
+      "declared": "packages/constraint-solver/src/refuse.ts"
+    },
+    {
       "id"      : "storage.manifestQueue",
       "rule": "Each asset root writes its manifest through one queue: a write waits for the previous one, re-reads the file, and applies only the rows its own instance changed.",
       "prevents": "Two parallel tasks renaming onto `manifest.json` at once, which fails on Windows (EPERM), and a stale instance writing back rows another instance removed.",
@@ -693,9 +712,12 @@
     "function:packages/artgen/src/setnotes.ts#setArtSeed": ["prompts.artRungsShared"],
     "function:packages/artgen/src/takes.ts#migrateCurrent": ["takes.currencyExclusive"],
     "function:packages/artgen/src/takes.ts#repairCurrent": ["takes.currencyExclusive"],
+    "function:packages/constraint-solver/src/refuse.ts#baseRefusal": ["storage.baseUnavailable"],
+    "function:packages/constraint-solver/src/refuse.ts#projectRefusal": ["storage.baseUnavailable"],
     "function:packages/constraint-solver/src/solve.ts#solve": [
       "identity.slotsBeforeTasks",
-      "planning.incremental"
+      "planning.incremental",
+      "storage.baseUnavailable"
     ],
     "function:packages/constraint-solver/src/solve.ts#unitGates"         : ["gate.perUnit"],
     "function:packages/constraint-solver/src/take.ts#loggedTake": ["takes.currencyExclusive"],
@@ -745,6 +767,7 @@
     "function:packages/pipeline/src/planner.ts#planTasks": [
       "gate.perUnit",
       "planning.incremental",
+      "storage.baseUnavailable",
       "storage.storyboardKept"
     ],
     "function:packages/providers/src/factory.ts#createImageBackend": ["providers.modelIdRoutes"],
@@ -849,6 +872,7 @@
     "module:apps/desktop/renderer/pathux/doctree/sheetform.ts": ["prompts.artRungsShared"],
     "module:apps/desktop/src/main/session/prompt.ts"                     : ["prompts.refsAcyclic"],
     "module:packages/artgen/src/adopt.ts"                                : ["log.doneWriters"],
+    "module:packages/artgen/src/base.ts": ["storage.baseUnavailable"],
     "module:packages/artgen/src/concept.ts": ["identity.conceptNoNode"],
     "module:packages/artgen/src/setnotes.ts": ["prompts.artRungsShared"],
     "module:packages/constraint-solver/src/solve.ts": ["identity.slotsBeforeTasks"],
@@ -867,6 +891,7 @@
       "planning.sheetsOnlyWhenWorn"
     ],
     "module:packages/providers/src/factory.ts": ["providers.modelIdRoutes"],
+    "module:packages/scheduler/src/scheduler.ts": ["storage.baseUnavailable"],
     "module:packages/scriptedit/src/lineops.ts": ["script.lineIdsAllocated"],
     "module:packages/scriptedit/src/markers.ts": ["script.sceneEditAllOrNothing"],
     "module:packages/scriptedit/src/shotfallout.ts": ["script.headingRestagesShots"],

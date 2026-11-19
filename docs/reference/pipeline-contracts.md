@@ -67,13 +67,6 @@ package.
         - Plan:
           [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md),
           stage 2.
-- A base root that exists without a manifest is marked `unavailable`, and the run stops.
-    - A checkout missing the base repo leaves the same state behind, and a check that only
-      counts assets cannot distinguish it from "nothing generated yet".
-    - The planner produces no plan when the root is `unavailable`, because every shot
-      references a base plate.
-    - The run reports a single sentence that names the root, rather than regenerating an
-      approved library at cost.
 - **The collector removes what nothing uses, and decides liveness per row.**
     - `collectProject` (`packages/gengraph/src/collect.ts`, over `planAssetCollection` in
       `@vn/artgen`) decides everything before anything is written; `applyCollection`

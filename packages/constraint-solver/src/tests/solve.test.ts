@@ -4,7 +4,14 @@
  */
 import { pins } from '@vn/contracts';
 import { makeTask, taskHash } from '@vn/taskgraph';
-import { identitySlotsBeforeTasks, slot, solve, unitGates } from '../index.js';
+import {
+  identitySlotsBeforeTasks,
+  projectRefusal,
+  slot,
+  solve,
+  storageBaseUnavailable,
+  unitGates,
+} from '../index.js';
 import {
   garden,
   log,
@@ -215,5 +222,29 @@ describe('the unit gate over a toy family', () => {
     expect([...solved.units.keys()]).toEqual(['east', 'west', 'north']);
     expect(solved.units.get('north')).toMatchObject({ holding: ['seed:fern'] });
     expect(unitGates(garden, facts)).toEqual(solved.units);
+  });
+});
+
+describe(pins(storageBaseUnavailable), () => {
+  const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
+  const unavailable = { state: 'unavailable' as const, root: '/p/assets', count: 0 };
+
+  it('refuses a project whose base root is unavailable, and makes no slot ready', () => {
+    const facts = planted({ tasks: log({ ...rose, output: 'petal' }), base: unavailable });
+    const solved = solve(garden, facts);
+    expect(solved.refusal).toBe(projectRefusal(facts));
+    expect(solved.refusal).toContain('/p/assets');
+    // Identities are still stated, so a reader can show what is there
+    expect(solved.slots.get('sprout:r1')!.taskHash).toBeDefined();
+    expect([...solved.slots.values()].some((s) => s.ready)).toBe(false);
+  });
+
+  it('refuses nothing for a ready or absent root, or none at all', () => {
+    for (const state of ['ready', 'absent'] as const) {
+      const solved = solve(garden, planted({ base: { state, root: '/p/assets', count: 0 } }));
+      expect(solved.refusal).toBeUndefined();
+      expect(solved.slots.get('seed:rose')!.ready).toBe(true);
+    }
+    expect(solve(garden, planted()).refusal).toBeUndefined();
   });
 });

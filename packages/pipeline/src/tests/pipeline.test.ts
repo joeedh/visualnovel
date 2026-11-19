@@ -2,6 +2,7 @@ import { pins } from '@vn/contracts';
 import { projectConfig, type Defect, type ProjectModel, type Shot } from '@vn/types';
 import { TaskGraph } from '@vn/taskgraph';
 import { createMockProviders } from '@vn/providers';
+import { storageBaseUnavailable } from '@vn/constraint-solver';
 import {
   promptsArtNotesAppended,
   promptsDecomposeByLineId,
@@ -757,37 +758,39 @@ describe('planTasks (the outfits a run needs)', () => {
   });
 });
 
-describe('planTasks (unavailable base assets)', () => {
-  const approved = () =>
-    model(
-      [character('aiko', 'approved', 'portrait-hash')],
-      [scene('s1', ['aiko'], 'class')],
-      [location('class')],
-    );
+describe(pins(storageBaseUnavailable), () => {
+  describe('planTasks (unavailable base assets)', () => {
+    const approved = () =>
+      model(
+        [character('aiko', 'approved', 'portrait-hash')],
+        [scene('s1', ['aiko'], 'class')],
+        [location('class')],
+      );
 
-  // The expensive case is a checkout without the base repo, where planning normally would
-  // regenerate every portrait and model sheet the project already paid for.
-  it('plans nothing at all, because every shot references base art too', async () => {
-    const graph = new TaskGraph();
-    await planTasks({
-      model: approved(),
-      graph,
-      config,
-      providers: createMockProviders(),
-      base     : { state: 'unavailable', root: '/p/assets', count: 0 },
+    // The expensive case is a checkout without the base repo, where planning normally would
+    // regenerate every portrait and model sheet the project already paid for.
+    it('plans nothing at all, because every shot references base art too', async () => {
+      const graph = new TaskGraph();
+      await planTasks({
+        model: approved(),
+        graph,
+        config,
+        providers: createMockProviders(),
+        base     : { state: 'unavailable', root: '/p/assets', count: 0 },
+      });
+      expect(graph.all()).toEqual([]);
     });
-    expect(graph.all()).toEqual([]);
-  });
 
-  it('names the root and says restore, not regenerate', () => {
-    const why = baseRefusal({ state: 'unavailable', root: '/p/assets', count: 0 });
-    expect(why).toContain('/p/assets');
-    expect(why).toContain('restore');
-    // Neither of the other two states produces a refusal. `absent` covers a brand-new or legacy
-    // project.
-    expect(baseRefusal({ state: 'absent', root: '/p/assets', count: 0 })).toBeUndefined();
-    expect(baseRefusal({ state: 'ready', root: '/p/assets', count: 4 })).toBeUndefined();
-    expect(baseRefusal(undefined)).toBeUndefined();
+    it('names the root and says restore, not regenerate', () => {
+      const why = baseRefusal({ state: 'unavailable', root: '/p/assets', count: 0 });
+      expect(why).toContain('/p/assets');
+      expect(why).toContain('restore');
+      // Neither of the other two states produces a refusal. `absent` covers a brand-new or legacy
+      // project.
+      expect(baseRefusal({ state: 'absent', root: '/p/assets', count: 0 })).toBeUndefined();
+      expect(baseRefusal({ state: 'ready', root: '/p/assets', count: 4 })).toBeUndefined();
+      expect(baseRefusal(undefined)).toBeUndefined();
+    });
   });
 });
 

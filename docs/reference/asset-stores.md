@@ -12,8 +12,8 @@ Plan:
 [`../plans/archive/INDEX.md#base-and-project-asset-stores`](../plans/archive/INDEX.md#base-and-project-asset-stores).
 The invariants in short form are the `storage.*` contracts declared in
 [`assetstore.ts`](../../packages/store/src/assetstore.ts) (`pnpm contracts storage`), and
-the base root's `unavailable` state is in
-[`pipeline-contracts.md`](pipeline-contracts.md#identity-and-storage).
+the base root's `unavailable` state is `storage.baseUnavailable`, declared in
+[`refuse.ts`](../../packages/constraint-solver/src/refuse.ts).
 
 <!-- toc -->
 

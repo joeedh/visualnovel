@@ -3,7 +3,7 @@
  * reads only {@link SolverFacts}; everything else a family's facts carry passes through it to the
  * family's own functions unread.
  */
-import type { AnyTask, Asset, TaskInputs, TaskKind } from '@vn/types';
+import type { AnyTask, Asset, BaseAssets, TaskInputs, TaskKind } from '@vn/types';
 import type { Contract } from '@vn/contracts';
 
 /** A decision that either carries a plan or names, in a sentence, why there is none. */
@@ -15,6 +15,8 @@ export interface SolverFacts {
   readonly assets?: readonly Asset[];
   /** The latest record per task hash, so a dry run sees its own requeues. */
   readonly tasks: { get(hash: string): AnyTask | undefined };
+  /** The base asset root. An `unavailable` one refuses the project; absent means no opinion. */
+  readonly base?: BaseAssets;
 }
 
 /** The take a slot holds, by the solver's `pick`, which `approved` is decided from. */
