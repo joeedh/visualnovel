@@ -1,9 +1,10 @@
 /**
  * What an interactive run seeds a graph with, derived for the slot its target output binds, so
  * `gengraph.run` draws what the scheduled run would draw. The prompt and the references are the
- * slot's own task inputs, as `resolveSlot` states them and the planner hashes them, so the record
- * the run files names the pictures the graph was actually shown. A shot in a staging-sheet group
- * seeds the sheet's prompt and references beside its own.
+ * slot's own task inputs, as `resolveSlot` states them over the session's facts and the planner
+ * hashes them, so a portrait reference is the manifest row the gate approved and the record the
+ * run files names the pictures the graph was actually shown. A shot in a staging-sheet group seeds
+ * the sheet's prompt and references beside its own.
  */
 import { parseSlot, resolveSlot, sheetSeeds, type Decided } from '@vn/stills';
 import { genNodeSpec } from '@vn/gengraph';
@@ -63,9 +64,9 @@ export async function graphRunPlan(
   const slot = boundSlot(graph, target);
   if (slot === undefined) return { ok: true, plan: { seeds: {} } };
 
-  const { config } = project;
   const model = await withShots(project);
-  const resolved = resolveSlot(slot, { model, config, graph: project.graph });
+  const facts = sessionFacts(project, model);
+  const resolved = resolveSlot(slot, { ...facts, graph: facts.tasks });
   if (!resolved.ok) return resolved;
   const { prompt, refs } = resolved.plan.inputs;
 
@@ -75,7 +76,6 @@ export async function graphRunPlan(
     const scene = model.scenes.get(slot.sceneId);
     const shot = shotsOf(model, slot.sceneId).find((s) => s.id === slot.shotId);
     if (scene && shot?.sheet !== undefined) {
-      const facts = sessionFacts(project, model);
       sheet = sheetSeeds(scene, shot.sheet, facts.model, facts.config, facts.assets ?? []);
     }
   }

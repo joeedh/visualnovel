@@ -105,14 +105,15 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   rendered" lists slots with zero candidates. The group is not called "unresolved",
   because `pick` declines whenever the answer is not certain, and a slot holding three
   drafts would then be listed as unrendered while its three drafts sat in the other group.
-  Both groups walk `SlotGraph.order`, upstream before downstream, so the top of each list
-  holds the work that can be done now. A project with nothing outstanding has no branch at
-  all rather than an empty one, and a caller that did not pass a slot graph gets no branch
-  either. A drifted frame is left out of "Awaiting approval" and filed under Stale assets
-  instead, because it needs a redraw rather than approval, and approving it would accept a
-  picture of something the scene no longer describes. The menu bar's pending-approval
-  dropdown and the agent's `approve_assets` both list from `session.approvable()`, which
-  applies the same filter, so the two views cannot disagree.
+  Both groups walk `Solution.order` from `solve(stillsFamily, sessionFacts(…))`, upstream
+  before downstream, so the top of each list holds the work that can be done now. A
+  project with nothing outstanding has no branch at all rather than an empty one, and a
+  caller that did not pass the solver's slots gets no branch either. A drifted frame is
+  left out of "Awaiting approval" and filed under Stale assets instead, because it needs a
+  redraw rather than approval, and approving it would accept a picture of something the
+  scene no longer describes. The menu bar's pending-approval dropdown and the agent's
+  `approve_assets` both list from `session.approvable()`, which applies the same filter,
+  so the two views cannot disagree.
 - **Stale assets** lists the frames whose scene has changed since they were drawn.
   `driftOf` is re-derived on every read, as it is for every other reading of drift. The
   rows reuse the `asset:<hash>` ids and are ordered by name, because drift itself defines
@@ -142,9 +143,9 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   pictures produce one row, which shows the take the slot holds now — its `current` row.
   The other three sit underneath it, newest first by the row's `at` (rows never stamped
   last, in hash order), and start collapsed, because `defaultExpanded` opens only the
-  roots. The rows are alphabetical. `SlotGraph.order` still decides which of two slots
+  roots. The rows are alphabetical. `Solution.order` still decides which of two slots
   claiming one picture keeps it, and the topology answers no other question here. A row
-  opens on the current take, on `SlotNode.hash` where a slot with no current row still
+  opens on the current take, on `SlotState.pick` where a slot with no current row still
   resolved (a sole candidate), and on the newest candidate otherwise, saying that nothing
   is settled there.
 - **An asset gets a display name, and colliding names get a hash suffix.** `labelAssets`

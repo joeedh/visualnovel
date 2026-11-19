@@ -15,7 +15,8 @@ import {
 import { bindSlots, registerGenRuntimes, type Graph as GenGraph } from '@vn/gengraph';
 import { exists } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { slotGraph } from '@vn/stills';
+import { solve } from '@vn/constraint-solver';
+import { stillsFamily } from '@vn/stills';
 import {
   PROJECT_SKILLS_DIR,
   cloneSkill,
@@ -54,6 +55,7 @@ import {
   walkDirs,
   walkFiles,
   loadProject,
+  sessionFacts,
 } from './core.js';
 
 /** Why a kind other than a note cannot be filed in a folder of the author's choosing. */
@@ -92,14 +94,9 @@ export class DocsPart {
       // Always an array, never undefined: the branch is drawn even with nothing in it, and only a
       // caller outside the app (a test, the CLI) leaves it out.
       skills     : await this.session.skillEntries(),
-      // The same walk the Task Graph pane reads, over the same load: the tree's two unapproved
+      // The same solve the Task Graph pane reads, over the same load: the tree's two unapproved
       // groups are projections of it, so nothing here enumerates slots a second time.
-      slots: slotGraph({
-        ...labels,
-        assets: manifest,
-        config: project.config,
-        graph : project.graph,
-      }),
+      slots      : solve(stillsFamily, sessionFacts(project, model)),
       boundGraphs: bound,
       graphs,
     });

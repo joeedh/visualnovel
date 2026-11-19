@@ -11,8 +11,9 @@ const NO_TASKS: StillsFacts['tasks'] = { get: () => undefined };
 /**
  * Builds the facts for one wave, or for one runner, from what the caller holds. Without `tasks` no
  * shot states an identity; without `assets` approval reads each character sheet's mirror; without
- * `base` nothing refuses the project. The kinds memoise on the object returned, so a caller builds
- * new facts after changing the model or the task log.
+ * `base` nothing refuses the project; without `angleOf` a sheet row whose binding names no angle is
+ * a candidate for every angle of its outfit. The kinds memoise on the object returned, so a caller
+ * builds new facts after changing the model or the task log.
  */
 export function waveFacts(opts: {
   model: ProjectModel;
@@ -20,6 +21,7 @@ export function waveFacts(opts: {
   tasks?: StillsFacts['tasks'];
   assets?: readonly Asset[];
   base?: BaseAssets;
+  angleOf?: StillsFacts['angleOf'];
 }): PlanFacts {
   return {
     model : opts.model,
@@ -27,5 +29,6 @@ export function waveFacts(opts: {
     tasks : opts.tasks ?? NO_TASKS,
     ...(opts.assets ? { assets: opts.assets } : {}),
     ...(opts.base ? { base: opts.base } : {}),
+    ...(opts.angleOf ? { angleOf: opts.angleOf } : {}),
   };
 }

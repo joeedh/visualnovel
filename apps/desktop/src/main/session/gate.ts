@@ -2,13 +2,14 @@ import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { entityFile, setCharacterLocked } from '@vn/store';
 import { isApproved } from '@vn/pipeline';
 import { holdPortrait, type Suspension } from '@vn/artgen';
+import { solve } from '@vn/constraint-solver';
 import {
   assetApproved,
   assetPrereqs,
-  slotGraph,
   prereqRefusal,
   resolveSlot,
   slotTaskHash,
+  stillsFamily,
 } from '@vn/stills';
 import { chatBackendFor, chatRoute, type ChatBackend } from '@vn/providers';
 import { TRIAGE_MODEL, type Approvable } from '@vn/authoring';
@@ -18,7 +19,14 @@ import type { ApproveResult, AssetFailure, GateCandidate } from '../../shared/ip
 import { reorderApprovals, type ApprovalQueue } from '../workspace/approvals.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession, LoadedProject } from './core.js';
-import { suspensionsOf, driftedFrames, withShots, loadProject, relPath } from './core.js';
+import {
+  suspensionsOf,
+  driftedFrames,
+  withShots,
+  loadProject,
+  relPath,
+  sessionFacts,
+} from './core.js';
 
 export class GatePart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -185,19 +193,14 @@ export class GatePart {
     const manifest = project.store.manifest();
     const model = await withShots(project);
     const labels = labelContext(model, project.graph);
-    const slots = slotGraph({
-      ...labels,
-      assets: manifest,
-      config: project.config,
-      graph : project.graph,
-    });
+    const solved = solve(stillsFamily, sessionFacts(project, model));
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
     const drifted = driftedFrames(model);
     const out: Approvable[] = [];
     const seen = new Set<string>();
-    for (const key of slots.order) {
-      const slot = slots.nodes.get(key);
+    for (const key of solved.order) {
+      const slot = solved.slots.get(key);
       if (!slot) continue;
       for (const hash of slot.candidates) {
         const asset = byHash.get(hash);
@@ -248,18 +251,13 @@ export class GatePart {
     const manifest = project.store.manifest();
     const model = await withShots(project);
     const labels = labelContext(model, project.graph);
-    const slots = slotGraph({
-      ...labels,
-      assets: manifest,
-      config: project.config,
-      graph : project.graph,
-    });
+    const solved = solve(stillsFamily, sessionFacts(project, model));
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
     const out: Approvable[] = [];
     const seen = new Set<string>();
-    for (const key of [...slots.order].reverse()) {
-      const slot = slots.nodes.get(key);
+    for (const key of [...solved.order].reverse()) {
+      const slot = solved.slots.get(key);
       if (!slot) continue;
       for (const hash of slot.candidates) {
         const asset = byHash.get(hash);
@@ -340,12 +338,8 @@ export class GatePart {
    * enough for every read of the asset pane.
    */
   slotTask(project: LoadedProject, binding: RefBinding, model: ProjectModel): string | undefined {
-    const decided = resolveSlot(binding, {
-      model,
-      config: project.config,
-      assets: project.store.manifest(),
-      graph : project.graph,
-    });
+    const facts = sessionFacts(project, model);
+    const decided = resolveSlot(binding, { ...facts, graph: facts.tasks });
     return decided.ok ? slotTaskHash(decided.plan) : undefined;
   }
 

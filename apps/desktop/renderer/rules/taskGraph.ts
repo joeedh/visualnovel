@@ -206,7 +206,7 @@ export function barrierFor(
   const cast = new Map((story?.scenes ?? []).map((s) => [s.id, s.characters]));
   const ids = slotNodeIds(status);
 
-  // `slots` arrives in `SlotGraph.order`, upstream first, so one forward pass closes the walk.
+  // `slots` arrives in the solver's order, upstream first, so one forward pass closes the walk.
   const gated = new Set<string>();
   const seeds = new Set(status.gatePending.map((c) => `portrait:${c}`));
   const below = new Set<string>();

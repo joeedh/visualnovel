@@ -8,7 +8,8 @@ import { relative } from 'node:path';
 import type { LoadedInputs } from '@vn/parse';
 import { bindsTo, shotsOf, type Asset, type AssetKind, type ProjectModel } from '@vn/types';
 import { isBaseKind } from '@vn/store';
-import { assetApproved, sheetAngleOf, slotKey, slotOf, type SlotGraph } from '@vn/stills';
+import { assetApproved, sheetAngleOf, slotKey, slotOf } from '@vn/stills';
+import type { SlotState } from '@vn/constraint-solver';
 import { allLocationVariants, usedOutfits } from '@vn/model';
 import { driftOf } from '@vn/pipeline';
 import type { BibleFile } from '@vn/bible';
@@ -16,6 +17,20 @@ import type { DocNode, DocTree, EntityLinks, SkillEntry } from '../../shared/ipc
 
 /** Most children a branch prints before the remainder is folded into a counted `more` node. */
 export const DEFAULT_CAP = 50;
+
+/** One slot as the tree reads it from the solver's answer. */
+export type SlotRead = Pick<
+  SlotState,
+  'kind' | 'label' | 'candidates' | 'pick' | 'status' | 'blocked'
+>;
+
+/** The solver's answer as far as the tree reads it, which a whole `Solution` satisfies. */
+export interface SlotsRead {
+  /** Every slot, by address. */
+  slots: ReadonlyMap<string, SlotRead>;
+  /** Upstream before downstream. */
+  order: readonly string[];
+}
 
 /** Everything the tree is built from — all of it already loaded by the caller. */
 export interface DocTreeInput {
@@ -49,11 +64,11 @@ export interface DocTreeInput {
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
   /**
-   * Every picture the project implies, from `slotGraph`. Optional: when it is absent the
-   * Unapproved root is left out rather than drawn empty, so a caller that has not built the graph
-   * never claims nothing is waiting.
+   * Every picture the project implies, from `solve(stillsFamily, facts)`. Optional: when it is
+   * absent the Unapproved root is left out rather than drawn empty, so a caller that has not
+   * solved never claims nothing is waiting.
    */
-  slots?: SlotGraph;
+  slots?: SlotsRead;
   /**
    * The generation graph each slot is drawn by, keyed by `slotKey`. Slots absent from the map are
    * drawn by the fixed task pipeline, and a caller that has read no graphs passes nothing.
@@ -351,12 +366,12 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     else byKind.set(kind, [n]);
   };
 
-  // Slots first, walked in `SlotGraph.order` — upstream before downstream. That order decides
+  // Slots first, walked in the solver's order — upstream before downstream. That order decides
   // which of two slots claiming one picture gets to keep it; the rows themselves are sorted by
   // name further down.
   const claimed = new Set<string>();
   for (const key of input.slots?.order ?? []) {
-    const slot = input.slots?.nodes.get(key);
+    const slot = input.slots?.slots.get(key);
     if (!slot) continue;
     // Only takes that no earlier slot claimed: one picture can satisfy two slots, and filing it
     // twice would make one render read as two. Left in candidate order, which is newest first by
@@ -370,8 +385,8 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
     // and says it holds none of them, because naming one of several drafts as the current picture
     // is the answer `pick` declined to give.
     const held = takes.find((hash) => byHash.get(hash)!.current === true);
-    const settled = held !== undefined || (slot.hash !== undefined && takes.includes(slot.hash));
-    const current = held ?? (settled ? slot.hash! : takes[0]!);
+    const settled = held !== undefined || (slot.pick !== undefined && takes.includes(slot.pick));
+    const current = held ?? (settled ? slot.pick! : takes[0]!);
     const others = takes.filter((hash) => hash !== current);
     const count = `${others.length} other take${others.length === 1 ? '' : 's'}`;
     add(
@@ -407,10 +422,10 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
 
   for (const asset of input.manifest) if (!claimed.has(asset.hash)) add(asset.kind, row(asset));
 
-  // Both levels are ordered by the name on the row. `SlotGraph.order` did its work above, deciding
-  // which slot claims a picture two of them could; it says nothing a reader needs once every row in
-  // a group is the same kind, and a list nobody can scan for a name is worse than one that loses
-  // the topology. The takes folded under a row keep their own order, which is newest first.
+  // Both levels are ordered by the name on the row. The solver's order did its work above,
+  // deciding which slot claims a picture two of them could; it says nothing a reader needs once
+  // every row in a group is the same kind, and a list nobody can scan for a name is worse than one
+  // that loses the topology. The takes folded under a row keep their own order, newest first.
   const groups = [...byKind.entries()]
     .sort(([a], [b]) => BY_LABEL.compare(ASSET_KIND_LABELS[a], ASSET_KIND_LABELS[b]))
     // The heading counts rows rather than pictures, because rows are what it heads: a kind with
@@ -430,15 +445,15 @@ function assetBranch(input: DocTreeInput, cap: number): DocNode {
 
 /**
  * Everything still standing between this project and a finished set of pictures, in two groups the
- * slot graph makes disjoint by construction.
+ * solver's slots make disjoint by construction.
  *
  * This branch indexes nodes that already exist rather than introducing new ones: an "Awaiting
  * approval" row reuses the `asset:<hash>` id the Assets branch uses, so selection, routing and the
  * right-click menu all work here with no renderer change. Only "Not yet rendered" is new, because
  * a slot with nothing in it is the one row in the tree that has no bytes behind it.
  *
- * Both groups walk `SlotGraph.order` — upstream before downstream — so the top of each list is what
- * can be worked on now, which is the same order approval has to happen in.
+ * Both groups walk the solver's order — upstream before downstream — so the top of each list is
+ * what can be worked on now, which is the same order approval has to happen in.
  */
 function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined {
   const slots = input.slots;
@@ -451,9 +466,9 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
   const seen = new Set<string>();
 
   for (const key of slots.order) {
-    const slot = slots.nodes.get(key);
+    const slot = slots.slots.get(key);
     if (!slot) continue;
-    // The test is zero candidates rather than `hash === undefined`, because `pick` declines for
+    // The test is zero candidates rather than `pick === undefined`, because `pick` declines for
     // want of certainty: a slot holding three drafts resolves to nothing and would read as
     // unrendered, while those three drafts are what the other group lists
     if (slot.candidates.length === 0) {
@@ -481,7 +496,7 @@ function unapprovedBranch(input: DocTreeInput, cap: number): DocNode | undefined
       seen.add(hash);
       waiting.push(
         node(`asset:${hash}`, 'asset', assetLabelOf(input, asset), {
-          badge: slot.binding.kind,
+          badge: slot.kind,
           slot : key,
           ...boundGraphOf(input, key),
           note: `Waiting on approval for ${slot.label}.`,
@@ -555,7 +570,7 @@ function graphBranch(input: DocTreeInput, cap: number): DocNode | undefined {
   const rows = graphs.map((graph) => {
     const slots = (drawn.get(graph.slug) ?? []).sort((a, b) => BY_LABEL.compare(a, b));
     const children = slots.map((key) =>
-      node(`slot:${key}`, 'slot', input.slots?.nodes.get(key)?.label ?? key, {
+      node(`slot:${key}`, 'slot', input.slots?.slots.get(key)?.label ?? key, {
         boundGraph: graph.slug,
         note      : `Drawn by the ${graph.slug} generation graph.`,
       }),

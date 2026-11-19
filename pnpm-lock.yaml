@@ -149,6 +149,9 @@ importers:
       '@vn/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@vn/constraint-solver':
+        specifier: workspace:*
+        version: link:../../packages/constraint-solver
       '@vn/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

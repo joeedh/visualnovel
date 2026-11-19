@@ -5,16 +5,35 @@ import { fileCache } from '../workspace/filecache.js';
 import { gateStatus, readTaskLog } from '@vn/pipeline';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
-import { slotGraph } from '@vn/stills';
+import { solve, type Solution } from '@vn/constraint-solver';
+import { stillsFamily } from '@vn/stills';
 import { buildPlayable, unapprovedSentence, unapprovedTakes, withSceneShots } from '@vn/export';
-import type { Playable } from '@vn/types';
-import type { PipelineStatus, TaskLogView } from '../../shared/ipc.js';
+import type { Playable, RefBinding } from '@vn/types';
+import type { PipelineStatus, SlotNode, TaskLogView } from '../../shared/ipc.js';
 import { taskLogView } from './tasklogview.js';
 import { narrowTask } from '../agent/reviews.js';
-import { labelContext } from '../assets/assetlabel.js';
 import type { WorkspaceSession } from './core.js';
-import { relPath, withShots, loadProject } from './core.js';
+import { relPath, withShots, loadProject, sessionFacts } from './core.js';
 import { taskActivity } from '../../shared/taskactivity.js';
+
+/** Lists every slot the solver answered, in its order, in the shape the Task Graph pane reads. */
+export function slotNodes(solved: Solution): SlotNode[] {
+  return solved.order.map((key) => {
+    const state = solved.slots.get(key)!;
+    return {
+      key,
+      binding: state.binding as RefBinding,
+      label  : state.label,
+      refs   : [...state.refs],
+      ...(state.taskHash ? { taskHash: state.taskHash } : {}),
+      ...(state.status ? { status: state.status } : {}),
+      ...(state.blocked === undefined ? {} : { blocked: state.blocked }),
+      ...(state.pick ? { hash: state.pick } : {}),
+      candidates: [...state.candidates],
+      approved  : state.approved,
+    };
+  });
+}
 
 export class PipelinePart {
   constructor(private readonly session: WorkspaceSession) {}
@@ -90,14 +109,9 @@ export class PipelinePart {
     const manifest = project.store.manifest();
     const gate = gateStatus(project.model, manifest);
     const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
-    // The same walk `docTree` reads. Emitted in `order`, so the wire carries the topology the
-    // pane needs without shipping the two Maps: upstream is always earlier in the array.
-    const slots = slotGraph({
-      ...labelContext(await withShots(project), project.graph),
-      assets: manifest,
-      config: project.config,
-      graph : project.graph,
-    });
+    // The same solve `docTree` reads. Emitted in order, so the wire carries the topology the pane
+    // needs without shipping the two Maps: upstream is always earlier in the array.
+    const solved = solve(stillsFamily, sessionFacts(project, await withShots(project)));
     return {
       tasks: taskActivity(
         [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),
@@ -105,7 +119,7 @@ export class PipelinePart {
       ),
       gatePending  : gate.pending,
       blockedOnGate: !gate.cleared,
-      slots        : slots.order.map((key) => slots.nodes.get(key)!),
+      slots        : slotNodes(solved),
     };
   }
 

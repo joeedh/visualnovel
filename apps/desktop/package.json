@@ -30,6 +30,7 @@
     "@vn/bible": "workspace:*",
     "@vn/commands": "workspace:*",
     "@vn/config": "workspace:*",
+    "@vn/constraint-solver": "workspace:*",
     "@vn/contracts": "workspace:*",
     "@vn/debug2d": "workspace:*",
     "@vn/export": "workspace:*",

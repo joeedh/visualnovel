@@ -7,7 +7,6 @@ import { join } from 'node:path';
 import { SCRIPTS, liveOnly, makeProject, type TestProject } from '@vn/testkit';
 import { BUILTIN_SKILL_IDS } from '@vn/types';
 import { userSkillsDir } from '@vn/config';
-import type { SlotGraph, SlotNode } from '@vn/stills';
 import type { Asset, ProductionData, ProjectModel, RefBinding, Shot } from '@vn/types';
 import type { LoadedInputs } from '@vn/parse';
 import type { DocNode } from '../../shared/ipc.js';
@@ -17,7 +16,12 @@ import {
   fileTree,
   type DocTreeInput,
   type SkillEntry,
+  type SlotRead,
+  type SlotsRead,
 } from '../doctree/doctree.js';
+
+/** A slot as the tree reads it, with the address it is filed under. */
+type Slot = SlotRead & { key: string };
 import { WorkspaceSession, type SessionDeps } from '../session.js';
 
 const deps: SessionDeps = {
@@ -280,22 +284,19 @@ describe('buildDocTree', () => {
 describe('the Unapproved branch', () => {
   const HASH_A = 'a'.repeat(64);
 
-  const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
+  const slot = (key: string, binding: RefBinding, over: Partial<SlotRead> = {}): Slot => ({
     key,
-    binding,
+    kind      : binding.kind,
     label     : key,
-    refs      : [],
     candidates: [],
-    approved  : false,
     ...over,
   });
 
-  // The projection is what is under test, so the graph is handed over rather than built — what
-  // `slotGraph` puts in these fields is `slotgraph.test.ts`'s job.
-  const slots = (nodes: SlotNode[]): SlotGraph => ({
-    nodes     : new Map(nodes.map((n) => [n.key, n])),
-    dependents: new Map(),
-    order     : nodes.map((n) => n.key),
+  // The projection is what is under test, so the solver's answer is handed over rather than
+  // solved — what `solve` puts in these fields is `slotgraph.test.ts`'s job.
+  const slots = (nodes: Slot[]): SlotsRead => ({
+    slots: new Map(nodes.map((n) => [n.key, n])),
+    order: nodes.map((n) => n.key),
   });
 
   const portrait = slot(
@@ -309,7 +310,7 @@ describe('the Unapproved branch', () => {
     { blocked: 'The gate has no approved look yet.' },
   );
 
-  const treeWith = (graph: SlotGraph, over: Partial<DocTreeInput> = {}): DocNode | undefined =>
+  const treeWith = (graph: SlotsRead, over: Partial<DocTreeInput> = {}): DocNode | undefined =>
     buildDocTree(makeInput({ slots: graph, ...over })).roots.find(
       (n) => n.id === 'branch:unapproved',
     );
@@ -544,18 +545,14 @@ describe('the Skills branch', () => {
   it('sits after Wiki and before the two lenses on the manifest', () => {
     // One slot waiting, so the Unapproved branch is drawn too — otherwise there is no second
     // root between Skills and Assets to be ordered against.
-    const waiting: SlotNode = {
-      key       : 'portrait:aiko',
-      binding   : { kind: 'portrait', characterId: 'aiko' },
+    const waiting: SlotRead = {
+      kind      : 'portrait',
       label     : 'portrait:aiko',
-      refs      : [],
       candidates: ['a'.repeat(64)],
-      approved  : false,
     };
-    const graph: SlotGraph = {
-      nodes     : new Map([[waiting.key, waiting]]),
-      dependents: new Map(),
-      order     : [waiting.key],
+    const graph: SlotsRead = {
+      slots: new Map([['portrait:aiko', waiting]]),
+      order: ['portrait:aiko'],
     };
     const roots = buildDocTree(makeInput({ skills: [], slots: graph })).roots;
     expect(roots.map((n) => n.id)).toEqual([
@@ -622,34 +619,31 @@ describe('the Assets branch, one row per slot', () => {
   const HASH_B = 'b'.repeat(64);
   const OLD = 'c'.repeat(64);
 
-  const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
+  const slot = (key: string, binding: RefBinding, over: Partial<SlotRead> = {}): Slot => ({
     key,
-    binding,
+    kind      : binding.kind,
     label     : key,
-    refs      : [],
     candidates: [],
-    approved  : false,
     ...over,
   });
 
-  const slots = (nodes: SlotNode[]): SlotGraph => ({
-    nodes     : new Map(nodes.map((n) => [n.key, n])),
-    dependents: new Map(),
-    order     : nodes.map((n) => n.key),
+  const slots = (nodes: Slot[]): SlotsRead => ({
+    slots: new Map(nodes.map((n) => [n.key, n])),
+    order: nodes.map((n) => n.key),
   });
 
   /**
    * The default manifest plus one older portrait take, and the slot that moved on from it. With
    * `held` false no row of the slot is current, which is the shape a slot left unresolved has.
    */
-  const withOldTake = (over: Partial<SlotNode> = {}, held = true) => {
+  const withOldTake = (over: Partial<SlotRead> = {}, held = true) => {
     const base = makeInput();
     const portrait = slot(
       'portrait:aiko',
       { kind: 'portrait', characterId: 'aiko' },
       {
         candidates: [HASH_A, OLD],
-        hash      : HASH_A,
+        pick      : HASH_A,
         ...over,
       },
     );
@@ -683,7 +677,7 @@ describe('the Assets branch, one row per slot', () => {
   it('says nothing is settled where no row of the slot is current', () => {
     // `pick` declines when no row is current, so the slot names no take; the row is headed by the
     // newest take and says so.
-    const portraits = kinds(withOldTake({ hash: undefined }, false))[0]!;
+    const portraits = kinds(withOldTake({ pick: undefined }, false))[0]!;
     expect(portraits.label).toBe('Portraits (1)');
     expect(portraits.children![0]!.note).toContain('nothing is settled here');
     expect(portraits.children![0]!.note).toContain('1 other take');
@@ -691,10 +685,10 @@ describe('the Assets branch, one row per slot', () => {
 
   it('files a picture two slots claim under the first of them', () => {
     // A sheet bound to two outfits is one render; drawing it twice would make the manifest look
-    // twice the size it is, and `SlotGraph.order` is what decides which row gets it.
+    // twice the size it is, and the solver's order is what decides which row gets it.
     const base = makeInput();
     const both = ['portrait:aiko', 'portrait:aiko-again'].map((key) =>
-      slot(key, { kind: 'portrait', characterId: 'aiko' }, { candidates: [HASH_A], hash: HASH_A }),
+      slot(key, { kind: 'portrait', characterId: 'aiko' }, { candidates: [HASH_A], pick: HASH_A }),
     );
     const portraits = kinds(buildDocTree({ ...base, slots: slots(both) }))[0]!;
     expect(portraits.label).toBe('Portraits (1)');
@@ -725,12 +719,12 @@ describe('the Assets branch, one row per slot', () => {
       [hashes[1]!, 'Shot 9'],
       [hashes[2]!, 'Aiko'],
     ]);
-    // Handed over in `SlotGraph.order`, which here is not the order an author reads them in.
+    // The slots arrive in the solver's order, and that differs from the alphabetical order of names
     const nodes = hashes.map((hash, i) =>
       slot(
         `portrait:s${i}`,
         { kind: 'portrait', characterId: 'aiko' },
-        { candidates: [hash], hash },
+        { candidates: [hash], pick: hash },
       ),
     );
     const tree = buildDocTree({

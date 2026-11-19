@@ -1,25 +1,16 @@
 /**
  * A slot's identity: the task the planner adds for it, or the sentence saying why the project
- * cannot state one yet (`planSlot`, `resolveSlot`), and the shapes the slot graph's readers take.
+ * cannot state one yet (`planSlot`, `resolveSlot`), and the context the stills family reads.
  *
  * A `shot_image`'s inputs embed its plate's and its cast's asset hashes, and `taskHash` covers the
  * whole inputs object, so a shot has no identity until those have rendered. Its slot exists before
  * that, under an address `refcycle.ts` speaks, and carries the sentence instead. Adoption refuses
  * with the same sentence, because it answers the same question.
  *
- * `solve(stillsFamily, facts)` enumerates the slots, and `slotGraph` in `family.ts` answers them in
- * the {@link SlotGraph} shape.
+ * `solve(stillsFamily, facts)` enumerates the slots, and every reader takes its slot states from
+ * that one answer.
  */
-import type {
-  AnyTask,
-  Asset,
-  AssetRef,
-  RefBinding,
-  Scene,
-  Shot,
-  TaskInputs,
-  TaskStatus,
-} from '@vn/types';
+import type { AnyTask, Asset, AssetRef, RefBinding, Scene, Shot, TaskInputs } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Decided } from '@vn/constraint-solver';
 import { shotsOf } from '@vn/types';
@@ -286,43 +277,4 @@ export function heldBy(asset: Asset, ctx: BindingContext): string[] {
     }
   }
   return [...out];
-}
-
-/** One picture this project implies, whether or not anything has drawn it. */
-export interface SlotNode {
-  /** `slotKey(binding)` — the identity, stable across re-plans and the address a command names. */
-  key: string;
-  binding: RefBinding;
-  /** `slotLabel(binding)` — ids, because this names a picture's place rather than the art. */
-  label: string;
-  /** Upstream slot keys. May name a slot `nodes` has no entry for, such as an authored pin. */
-  refs: string[];
-  /** The planner's identity, where the project can state one. */
-  taskHash?: string;
-  status?: TaskStatus;
-  /** {@link resolveSlot}'s sentence saying why no identity can be stated. */
-  blocked?: string;
-  /** The asset that settles this slot: `pick`'s answer, which declines whenever it is not certain. */
-  hash?: string;
-  /**
-   * Every manifest asset bound here, newest first (the solver's `newestFirst`). An empty list is what
-   * "not yet rendered" means, and `hash === undefined` is not: a portrait resolves off the gate
-   * and so is unset before approval even with three drafts filed, and `pick` declines when no row
-   * is current and two candidates tie. Either case would report real bytes as unrendered.
-   */
-  candidates: string[];
-  /**
-   * Whether a person accepted the take this slot holds: the row `hash` names has `accepted` set.
-   * Every kind answers this way, a portrait included; the P3 gate asks its own question.
-   */
-  approved: boolean;
-}
-
-/** Every slot, keyed by address, in the shape the slot graph's readers take. */
-export interface SlotGraph {
-  nodes: Map<string, SlotNode>;
-  /** The reverse index `TaskGraph` has never had — slot key → the slots drawn from it. */
-  dependents: Map<string, string[]>;
-  /** Upstream before downstream: the order approval has to happen in. */
-  order: string[];
 }

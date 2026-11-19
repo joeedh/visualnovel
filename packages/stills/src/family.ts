@@ -12,7 +12,6 @@ import { contract, type Contract } from '@vn/contracts';
 import {
   identitySlotsBeforeTasks,
   slot,
-  solve,
   unitGates,
   type Decided,
   type DrawnFrom,
@@ -34,9 +33,7 @@ import { approvedPortraitOf } from './gate.js';
 import {
   planSlot,
   type PlannedSlot,
-  type SlotGraph,
   type SlotGraphContext,
-  type SlotNode,
   type SlotResolveContext,
 } from './slotgraph.js';
 
@@ -166,13 +163,14 @@ export const takesApprovedMeansAccepted = contract({
     'Each surface deciding approval its own way per kind, so the document tree, the gate pane and export disagree about whether a slot still waits for a person.',
   subjects: [
     'function:packages/stills/src/family.ts#heldAccepted',
-    'function:packages/stills/src/slotgraph.ts#SlotNode',
+    'function:packages/constraint-solver/src/solve.ts#SlotState',
     'function:packages/constraint-solver/src/take.ts#pick',
   ],
   detail:
     "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and " +
-    '`gate.perUnit` lists the cases where the two answers differ. ' +
-    "`slotGraph`'s `SlotNode.approved` is the kinds' answer.",
+    '`gate.perUnit` lists the cases where the two answers differ. `SlotState.approved` is the ' +
+    "kinds' answer, which the document tree, the gate pane and the Task Graph pane read from " +
+    '`solve(stillsFamily, facts)`.',
 });
 
 export const takesCurrencyExclusive = contract({
@@ -528,30 +526,4 @@ export function gateStatus(model: ProjectModel, assets?: readonly Asset[]): Gate
     approved: [...approved].sort(),
     cleared : pending.size === 0,
   };
-}
-
-/**
- * Answers `solve(stillsFamily, ctx)` in the `SlotGraph` shape that the document tree, the gate pane,
- * the Task Graph pane, takes and the gen-graph loader read. A context with no task log reads as an
- * empty one, so no shot slot states an identity.
- */
-export function slotGraph(ctx: SlotGraphContext): SlotGraph {
-  const { graph, ...rest } = ctx;
-  const solved = solve(stillsFamily, { ...rest, tasks: graph ?? { get: () => undefined } });
-  const nodes = new Map<string, SlotNode>();
-  for (const [key, state] of solved.slots) {
-    nodes.set(key, {
-      key,
-      binding: state.binding as RefBinding,
-      label  : state.label,
-      refs   : [...state.refs],
-      ...(state.taskHash ? { taskHash: state.taskHash } : {}),
-      ...(state.status ? { status: state.status } : {}),
-      ...(state.blocked === undefined ? {} : { blocked: state.blocked }),
-      ...(state.pick ? { hash: state.pick } : {}),
-      candidates: [...state.candidates],
-      approved  : state.approved,
-    });
-  }
-  return { nodes, dependents: solved.dependents, order: solved.order };
 }

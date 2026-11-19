@@ -55,7 +55,7 @@ import { readModelCatalog } from '@vn/gengraph/state';
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
 import { driftOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
 import { suspensionMap, type AdoptVia, type ProjectFinding, type Suspension } from '@vn/artgen';
-import { slotLabel, type PlanFacts, type PromptRung } from '@vn/stills';
+import { angleOfTask, slotLabel, type PlanFacts, type PromptRung } from '@vn/stills';
 import {
   chatBackendFor,
   chatRoute,
@@ -386,15 +386,17 @@ export async function withShots(project: LoadedProject): Promise<ProjectModel> {
 
 /**
  * Builds the facts the session solves the stills family over and seeds sheets from: the loaded
- * project's config, task log and manifest, over `model` (usually {@link withShots}'s). The kinds
- * memoise on the object returned, so a caller builds new facts after changing either.
+ * project's config, task log and manifest, over `model` (usually {@link withShots}'s), with a
+ * sheet row's angle read off its task. The kinds memoise on the object returned, so a caller
+ * builds new facts after changing either.
  */
 export function sessionFacts(project: LoadedProject, model: ProjectModel): PlanFacts {
   return {
     model,
-    config: project.config,
-    tasks : project.graph,
-    assets: project.store.manifest(),
+    config : project.config,
+    tasks  : project.graph,
+    assets : project.store.manifest(),
+    angleOf: angleOfTask(project.graph),
   };
 }
 

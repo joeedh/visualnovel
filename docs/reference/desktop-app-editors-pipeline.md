@@ -125,16 +125,16 @@ data in three ways. Each fix is a "pure" (side-effect-free) function tested in n
   dashed. A ref that no task produced (an author-supplied image) draws no edge.
 - **A slot and the task that fills it are drawn as a single node.** Planning is
   incremental, so a shot task does not exist until its plate is `done`. The slot exists
-  before then, and `PipelineStatus.slots` carries every one of them in `SlotGraph.order`
-  (upstream first, so the wire keeps the topology without shipping a `Map`). `slotNodeIds`
-  keys a slot by its task hash where the planner emitted that task, and by a `slot:<key>`
-  id otherwise, so no slot is drawn twice (once as a slot and once as a task). A
-  computable `taskHash` that does not appear in the graph is still unplanned.
-  `buildSlotEdges` adds only the couplings that `deps` and `refs` do not express, deduped
-  by endpoints so a pair renders once as the firmer of the two. An unplanned slot draws
-  hatched and dashed, and it is addressable. Clicking it moves the selection to its
-  subject, and to its asset hash when something already fills the slot. Nothing estimates
-  a count any more.
+  before then, and `PipelineStatus.slots` carries every one of them in `Solution.order`
+  (upstream first, so the wire keeps the topology without shipping a `Map`), projected
+  from the solver's slot states by `slotNodes`. `slotNodeIds` keys a slot by its task hash
+  where the planner emitted that task, and by a `slot:<key>` id otherwise, so no slot is
+  drawn twice (once as a slot and once as a task). A computable `taskHash` that does not
+  appear in the graph is still unplanned. `buildSlotEdges` adds only the couplings that
+  `deps` and `refs` do not express, deduped by endpoints so a pair renders once as the
+  firmer of the two. An unplanned slot draws hatched and dashed, and it is addressable.
+  Clicking it moves the selection to its subject, and to its asset hash when something
+  already fills the slot. Nothing estimates a count any more.
 
 - **The overview is clustered, and the layered layout is kept for the cases that are small
   by construction.** Every shot that uses a shared portrait `refs` it, and `rankNodes`

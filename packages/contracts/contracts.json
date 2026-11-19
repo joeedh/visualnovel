@@ -709,14 +709,14 @@
       "prevents": "Each surface deciding approval its own way per kind, so the document tree, the gate pane and export disagree about whether a slot still waits for a person.",
       "subjects": [
         "function:packages/stills/src/family.ts#heldAccepted",
-        "function:packages/stills/src/slotgraph.ts#SlotNode",
+        "function:packages/constraint-solver/src/solve.ts#SlotState",
         "function:packages/constraint-solver/src/take.ts#pick",
         "slot:plate",
         "slot:portrait",
         "slot:sheet",
         "slot:shot"
       ],
-      "detail": "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and `gate.perUnit` lists the cases where the two answers differ. `slotGraph`'s `SlotNode.approved` is the kinds' answer.",
+      "detail": "The P3 gate does not ask this: the portrait kind's `clears` reads `approvedPortraitOf`, and `gate.perUnit` lists the cases where the two answers differ. `SlotState.approved` is the kinds' answer, which the document tree, the gate pane and the Task Graph pane read from `solve(stillsFamily, facts)`.",
       "declared": "packages/stills/src/family.ts"
     },
     {
@@ -824,6 +824,7 @@
     "function:packages/constraint-solver/src/keep.ts#keepSet": ["collect.unusedRemoved"],
     "function:packages/constraint-solver/src/refuse.ts#baseRefusal": ["storage.baseUnavailable"],
     "function:packages/constraint-solver/src/refuse.ts#projectRefusal": ["storage.baseUnavailable"],
+    "function:packages/constraint-solver/src/solve.ts#SlotState": ["takes.approvedMeansAccepted"],
     "function:packages/constraint-solver/src/solve.ts#solve": [
       "graphs.editInvalidates",
       "identity.slotsBeforeTasks",
@@ -957,7 +958,6 @@
     "function:packages/stills/src/sheet.ts#sheetKey": ["identity.stagingSheet"],
     "function:packages/stills/src/sheet.ts#sheetKeys": ["identity.stagingSheet"],
     "function:packages/stills/src/sheet.ts#sheetSeeds": ["identity.stagingSheet"],
-    "function:packages/stills/src/slotgraph.ts#SlotNode": ["takes.approvedMeansAccepted"],
     "function:packages/stills/src/slotgraph.ts#heldBy": ["takes.currencyExclusive"],
     "function:packages/stills/src/slotgraph.ts#planSlot"                 : ["planning.incremental"],
     "function:packages/stills/src/storyboard.ts#decomposeScene": [

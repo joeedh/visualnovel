@@ -233,6 +233,7 @@
                 "bible",
                 "artgen",
                 "stills",
+                "constraint-solver",
                 "gengraph",
                 "git",
                 "commands",

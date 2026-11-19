@@ -33,6 +33,7 @@ import type {
   PagePanel,
   PanelBox,
   Playable,
+  RefBinding,
   SceneLine,
   TakeVia,
   Task as PipelineTask,
@@ -40,6 +41,7 @@ import type {
   TaskKind,
   TaskLogLine,
   TaskLogReview,
+  TaskStatus,
 } from '@vn/types';
 import type {
   CheckpointHandle,
@@ -281,8 +283,8 @@ export type {
 export type { BibleFile, Excerpt } from '@vn/bible';
 // Type-only for the same reason: `@vn/stills` reads prompts off the model, and the renderer names
 // this shape only as data that already crossed the wire.
-import type { Prereq, SlotNode } from '@vn/stills';
-export type { Prereq, SlotNode };
+import type { Prereq } from '@vn/stills';
+export type { Prereq };
 export type {
   PagePanel,
   PanelBox,
@@ -358,6 +360,39 @@ export interface ConfirmRequest {
   detail: string;
 }
 
+/**
+ * One picture the project implies, whether or not anything has drawn it: the solver's `SlotState`
+ * as it crosses the wire to the Task Graph pane.
+ */
+export interface SlotNode {
+  /** `slotKey(binding)` — the identity, stable across re-plans and the address a command names. */
+  key: string;
+  binding: RefBinding;
+  /** `slotLabel(binding)` — ids, because this names a picture's place rather than the art. */
+  label: string;
+  /** Upstream slot keys. May name a slot the list has no entry for, such as an authored pin. */
+  refs: string[];
+  /** The planner's identity, where the project can state one. */
+  taskHash?: string;
+  status?: TaskStatus;
+  /** The sentence saying why no identity can be stated. */
+  blocked?: string;
+  /** The asset that settles this slot: `pick`'s answer, which declines whenever it is not certain. */
+  hash?: string;
+  /**
+   * Every manifest asset bound here, newest first (the solver's `newestFirst`). An empty list is what
+   * "not yet rendered" means, and `hash === undefined` is not: `pick` declines when two rows are
+   * current, or when none is and there is more than one. Either case would report real bytes as
+   * unrendered.
+   */
+  candidates: string[];
+  /**
+   * Whether a person accepted the take this slot holds: the row `hash` names has `accepted` set.
+   * Every kind answers this way, a portrait included; the P3 gate asks its own question.
+   */
+  approved: boolean;
+}
+
 /** A snapshot of pipeline state for the Floor view. */
 export interface PipelineStatus {
   tasks: Task[];
@@ -365,9 +400,9 @@ export interface PipelineStatus {
   gatePending: string[];
   blockedOnGate: boolean;
   /**
-   * Every picture the project implies, in `SlotGraph.order` — upstream before downstream. `tasks`
-   * holds only what was plannable at the last wave, so a view drawn from tasks alone would have
-   * to guess at the rest. This list covers the whole graph.
+   * Every picture the project implies, in the solver's order — upstream before downstream.
+   * `tasks` holds only what was plannable at the last wave, so a view drawn from tasks alone would
+   * have to guess at the rest. This list covers every slot.
    */
   slots: SlotNode[];
 }

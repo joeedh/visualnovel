@@ -96,7 +96,7 @@ const status = (
   slots,
 });
 
-/** A slot with only what the derivation reads. Callers pass `refs` in `SlotGraph.order`. */
+/** A slot with only what the derivation reads. Callers pass `refs` in the solver's order. */
 const slot = (key: string, binding: RefBinding, over: Partial<SlotNode> = {}): SlotNode => ({
   key,
   binding,

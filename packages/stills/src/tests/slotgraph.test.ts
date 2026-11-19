@@ -1,6 +1,6 @@
 /**
  * The stills slots: every picture the project implies, before anything has drawn one, as
- * `solve(stillsFamily, facts)` answers them and as `slotGraph` hands them to its readers.
+ * `solve(stillsFamily, facts)` answers them to every reader.
  *
  * A slot exists whether or not it can state a task identity. Most assertions are therefore about
  * what is enumerated and about the reason each slot gives for having no hash yet, rather than
@@ -22,7 +22,6 @@ import {
   imageParams,
   resolveSlot,
   sheetKeys,
-  slotGraph,
   slotTaskHash,
   stillsFamily,
   type SlotGraphContext,
@@ -242,31 +241,6 @@ describe('solve over the stills family', () => {
     const graph = solved(c);
     expect(graph.slots.has('plate:cafe/day')).toBe(true);
     expect(graph.order).toContain('plate:cafe/night');
-  });
-});
-
-describe('slotGraph', () => {
-  it("answers the solver's slots, edges and order in the readers' shape", () => {
-    const c = ctx();
-    const graph = slotGraph(c);
-    const states = solved(c);
-    expect([...graph.nodes.keys()]).toEqual([...states.slots.keys()]);
-    expect(graph.dependents).toEqual(states.dependents);
-    expect(graph.order).toEqual(states.order);
-    // The row a slot holds is `pick` on the state and `hash` on the node
-    const portrait = graph.nodes.get('portrait:aiko')!;
-    expect(portrait.hash).toBe(states.slots.get('portrait:aiko')!.pick);
-    expect(portrait).toEqual({
-      key       : 'portrait:aiko',
-      binding   : { kind: 'portrait', characterId: 'aiko' },
-      label     : states.slots.get('portrait:aiko')!.label,
-      refs      : [],
-      taskHash  : states.slots.get('portrait:aiko')!.taskHash,
-      hash      : 'p-aiko',
-      candidates: ['p-aiko'],
-      approved  : true,
-    });
-    expect(graph.nodes.get('shot:arrival/arrival__a')!.blocked).toContain('has not been rendered');
   });
 });
 

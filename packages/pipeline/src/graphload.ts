@@ -9,7 +9,8 @@
 import type { AnyTask, Asset, ProjectModel } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
-import { slotGraph } from '@vn/stills';
+import { solve } from '@vn/constraint-solver';
+import { angleOfTask, stillsFamily } from '@vn/stills';
 import {
   activeOutputs,
   bindSlots,
@@ -43,6 +44,7 @@ import {
 import type { GenServicesDeps } from './genservices.js';
 import { createGenServices } from './genservices.js';
 import { indexGraphs, type GraphIndex, type LoadedGraph } from './graphrun.js';
+import { waveFacts } from './facts.js';
 
 // Re-exported so a host that builds its providers through this package reads the listing the
 // router takes without a dependency on the graph package's state entry.
@@ -252,20 +254,20 @@ export interface ProjectSlotInputs {
  * and a slot a later wave unlocks would otherwise be priced at nothing.
  */
 export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
-  const slots = slotGraph({
-    model  : inputs.model,
-    config : inputs.config,
-    assets : inputs.assets,
-    graph  : inputs.graph,
-    angleOf: (sourceTask) => {
-      const task = sourceTask === undefined ? undefined : inputs.graph.get(sourceTask);
-      return task && 'angle' in task.inputs ? task.inputs.angle : undefined;
-    },
-  });
+  const solved = solve(
+    stillsFamily,
+    waveFacts({
+      model  : inputs.model,
+      config : inputs.config,
+      assets : inputs.assets,
+      tasks  : inputs.graph,
+      angleOf: angleOfTask(inputs.graph),
+    }),
+  );
 
-  return slots.order.filter((key) => {
-    const node = slots.nodes.get(key);
-    return report.bound.has(key) && node !== undefined && node.candidates.length === 0;
+  return solved.order.filter((key) => {
+    const state = solved.slots.get(key);
+    return report.bound.has(key) && state !== undefined && state.candidates.length === 0;
   });
 }
 

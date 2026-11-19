@@ -11,7 +11,7 @@
  * row so it runs once. It lives here rather than in `@vn/pipeline` because `vnauthor` may not
  * import the pipeline and has to run it too.
  */
-import type { Asset, AssetStore, Logger, ProjectModel, TaskGraph } from '@vn/types';
+import type { Asset, AssetStore, Logger, ProjectModel, RefBinding, TaskGraph } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { AssetStore as DiskStore, withProduction, type ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
@@ -20,11 +20,10 @@ import {
   angleOfTask,
   assetApproved,
   assetSlotLabel,
-  slotGraph,
   candidatesFor,
   stillsFamily,
+  type PlanFacts,
   type PrereqContext,
-  type SlotGraphContext,
   type StillsFacts,
 } from '@vn/stills';
 import {
@@ -32,6 +31,7 @@ import {
   loggedTake,
   newestFirst,
   overHeld,
+  solve,
   type OverHeld,
 } from '@vn/constraint-solver';
 
@@ -73,11 +73,16 @@ export interface Migration {
   unapprovedPortraits: string[];
 }
 
-function contextOf(deps: TakeDeps): SlotGraphContext {
+/**
+ * Builds the facts this module solves the stills family over: the model, the config, the task log,
+ * the manifest as it stands now, and each sheet row's angle off its task. A host's bound graphs are
+ * not among them, so no slot reports graph drift.
+ */
+function storeFacts(deps: TakeDeps): PlanFacts & { readonly assets: readonly Asset[] } {
   return {
     model  : deps.model,
     config : deps.config,
-    graph  : deps.graph,
+    tasks  : deps.graph,
     assets : deps.store.manifest(),
     angleOf: angleOfTask(deps.graph),
   };
@@ -87,7 +92,7 @@ const isSheet = (asset: Asset): boolean =>
   asset.kind === 'model_sheet' || asset.kind === 'outfit_sheet';
 
 /**
- * Stamps `current` onto a manifest written before takes were held, once. For every slot the graph
+ * Stamps `current` onto a manifest written before takes were held, once. For every slot the solver
  * enumerates, upstream first, the current row is the identity's output when its task is `done`,
  * else its last output when `needs_human`, else the one accepted candidate, else the most recently
  * rendered candidate (then the lowest hash), else the sole candidate. A row bound to two slots is
@@ -96,21 +101,22 @@ const isSheet = (asset: Asset): boolean =>
  */
 export async function migrateCurrent(deps: TakeDeps): Promise<Migration | undefined> {
   if (!deps.store.unstamped) return undefined;
-  const ctx = contextOf(deps);
-  const slots = slotGraph(ctx);
+  const facts = storeFacts(deps);
+  const solved = solve(stillsFamily, facts);
   const renderedAt = lastRenderedAt(deps.graph);
   const chosen = new Map<string, string | undefined>();
   const held: Record<string, string> = {};
 
-  for (const key of slots.order) {
-    const node = slots.nodes.get(key)!;
-    const candidates = candidatesFor(node.binding, ctx);
+  for (const key of solved.order) {
+    const state = solved.slots.get(key)!;
+    // In manifest order, which decides the row a slot that shares one with an earlier slot names
+    const candidates = candidatesFor(state.binding as RefBinding, facts);
     const already = candidates.find((a) => chosen.has(a.hash));
     if (already) {
       held[key] = already.hash;
       continue;
     }
-    const task = node.taskHash ? deps.graph.get(node.taskHash) : undefined;
+    const task = state.taskHash ? deps.graph.get(state.taskHash) : undefined;
     const pick = migrationPick(candidates, loggedTake(task), renderedAt);
     if (!pick) continue;
     chosen.set(pick.hash, renderedAt(pick.sourceTask));
@@ -165,16 +171,16 @@ function migrationPick(
  */
 export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
   await migrateCurrent(deps);
-  const ctx = contextOf(deps);
-  const slots = slotGraph(ctx);
-  const byHash = new Map(ctx.assets.map((a) => [a.hash, a]));
+  const facts = storeFacts(deps);
+  const solved = solve(stillsFamily, facts);
+  const byHash = new Map(facts.assets.map((a) => [a.hash, a]));
   const fixes: OverHeld[] = [];
 
-  for (const key of slots.order) {
-    const node = slots.nodes.get(key)!;
-    const wanted = loggedTake(node.taskHash ? deps.graph.get(node.taskHash) : undefined);
-    if (wanted === undefined || !node.candidates.includes(wanted)) continue;
-    const current = node.candidates.filter((h) => byHash.get(h)?.current);
+  for (const key of solved.order) {
+    const state = solved.slots.get(key)!;
+    const wanted = loggedTake(state.taskHash ? deps.graph.get(state.taskHash) : undefined);
+    if (wanted === undefined || !state.candidates.includes(wanted)) continue;
+    const current = state.candidates.filter((h) => byHash.get(h)?.current);
     if (current.length === 1 && current[0] === wanted) continue;
     const drop = current.filter((h) => h !== wanted);
     await deps.store.hold(wanted, drop);
@@ -182,15 +188,10 @@ export async function repairCurrent(deps: TakeDeps): Promise<OverHeld[]> {
   }
 
   // The manifest is read again, because the holds above changed which rows are current. A slot's
-  // identity is still resolved over the manifest as it was before them
-  const before: StillsFacts = {
-    model  : ctx.model,
-    config : ctx.config,
-    assets : ctx.assets,
-    angleOf: angleOfTask(deps.graph),
-    tasks  : deps.graph,
-  };
-  const after: StillsFacts = { ...before, assets: deps.store.manifest() };
+  // identity is still resolved over the rows read before them, through a new facts object, since
+  // the kinds memoise on one
+  const before: StillsFacts = { ...facts };
+  const after: StillsFacts = { ...facts, assets: deps.store.manifest() };
   for (const fix of overHeld(stillsFamily, after, before)) {
     await deps.store.hold(fix.keep, fix.drop);
     fixes.push(fix);
@@ -213,7 +214,7 @@ async function catchUpMirrors(deps: TakeDeps): Promise<OverHeld[]> {
     const hash = character.approvedPortrait;
     if (hash === undefined) continue;
     if (character.status !== 'approved' && character.status !== 'locked') continue;
-    const rows = candidatesFor({ kind: 'portrait', characterId: character.id }, contextOf(deps));
+    const rows = candidatesFor({ kind: 'portrait', characterId: character.id }, storeFacts(deps));
     if (rows.some((a) => a.accepted) || !rows.some((a) => a.hash === hash)) continue;
     const drop = rows.filter((a) => a.current && a.hash !== hash).map((a) => a.hash);
     await deps.store.hold(hash, drop);
@@ -245,19 +246,19 @@ function prereqContextOf(deps: TakeDeps): PrereqContext {
 /**
  * Every current take nobody has approved, upstream first, so accepting them in this order lets
  * one pass finish a whole chain. Portraits are left out: their approval is the gate's. Rows the
- * gate or `approvable` would list are the same rows, since both walk the slot graph.
+ * gate or `approvable` would list are the same rows, since both read the solver's slots.
  */
 export function acceptableTakes(deps: TakeDeps): Acceptable[] {
-  const ctx = contextOf(deps);
+  const facts = storeFacts(deps);
   const prereqs = prereqContextOf(deps);
-  const byHash = new Map(ctx.assets.map((a) => [a.hash, a]));
+  const byHash = new Map(facts.assets.map((a) => [a.hash, a]));
   const out: Acceptable[] = [];
   const seen = new Set<string>();
-  const slots = slotGraph(ctx);
-  for (const key of slots.order) {
+  const solved = solve(stillsFamily, facts);
+  for (const key of solved.order) {
     if (key.startsWith('portrait:')) continue;
-    const node = slots.nodes.get(key)!;
-    for (const hash of node.candidates) {
+    const state = solved.slots.get(key)!;
+    for (const hash of state.candidates) {
       const asset = byHash.get(hash);
       if (!asset?.current || seen.has(hash) || assetApproved(asset)) continue;
       seen.add(hash);
