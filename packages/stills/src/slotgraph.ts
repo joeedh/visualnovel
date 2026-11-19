@@ -38,7 +38,14 @@ import type {
 import type { ProjectConfig } from '@vn/config';
 import type { Decided } from '@vn/constraint-solver';
 import { shotsOf } from '@vn/types';
-import { allCharacters, allLocationVariants, outfitFor, liveScenes, usedOutfits } from '@vn/model';
+import {
+  allCharacters,
+  allLocationVariants,
+  outfitFor,
+  liveScenes,
+  usedOutfits,
+  variantIds,
+} from '@vn/model';
 import { makeTask } from '@vn/taskgraph';
 import { type BindingContext, candidatesFor, resolveBinding, sheetAngleOf } from './refs.js';
 import { refsOfSlot, slotsOf } from './refcycle.js';
@@ -103,10 +110,18 @@ export function slotTaskHash(r: ResolvedSlot): string {
   }
 }
 
-/** The upstream art a shot's identity is built on, in the order the planner puts it in. */
-function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decided<AssetRef[]> {
+/** What a shot is drawn from: the upstream art, and the tasks that drew the plate and the sheets. */
+interface Upstream {
+  /** In the order the planner puts them in the shot's inputs. */
+  refs: AssetRef[];
+  /** The plate's task and each non-default sheet's; a portrait's is not one. */
+  tasks: string[];
+}
+
+/** Finds the upstream art a shot's identity is built on, or says which piece is not drawn yet. */
+function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decided<Upstream> {
   const params = imageParams(ctx.config);
-  const missing = (what: string): Decided<AssetRef[]> => ({
+  const missing = (what: string): Decided<Upstream> => ({
     ok    : false,
     code  : 'UPSTREAM_MISSING',
     reason: `${what} has not been rendered, and a frame's identity is built on it — run the pipeline far enough to produce it.`,
@@ -124,12 +139,15 @@ function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decide
       reason: `Scene ${scene.id} is set in "${scene.location}", which is not a location this project has.`,
     };
   }
-  const plate = output(
-    makeTask('location_ref', locationInputs(location, shot.location, ctx.config, params)).hash,
-  );
+  const plateTask = makeTask(
+    'location_ref',
+    locationInputs(location, shot.location, ctx.config, params),
+  ).hash;
+  const plate = output(plateTask);
   if (!plate) return missing(`The "${shot.location}" plate for ${location.id}`);
 
   const refs: AssetRef[] = [plate];
+  const tasks = [plateTask];
   for (const subject of shot.subjects) {
     const character = ctx.model.characters.get(subject.characterId);
     const approved = character ? approvedPortraitOf(character, ctx.assets) : undefined;
@@ -139,30 +157,45 @@ function shotUpstream(scene: Scene, shot: Shot, ctx: SlotResolveContext): Decide
 
     const outfit = outfitFor(subject, scene, character);
     if (outfit.id === character.defaultOutfit) continue;
-    const sheet = output(
-      makeTask(
-        'model_sheet',
-        modelSheetInputs(character, outfit.id, SHEET_FRONT, portrait, ctx.config, params),
-      ).hash,
-    );
+    const sheetTask = makeTask(
+      'model_sheet',
+      modelSheetInputs(character, outfit.id, SHEET_FRONT, portrait, ctx.config, params),
+    ).hash;
+    const sheet = output(sheetTask);
     if (!sheet) return missing(`${character.id}'s "${outfit.id}" sheet`);
     refs.push(sheet);
+    tasks.push(sheetTask);
   }
-  return { ok: true, plan: refs };
+  return { ok: true, plan: { refs, tasks } };
+}
+
+/** A slot's task as the planner adds it: the resolved slot, and the tasks it runs after. */
+export interface PlannedSlot {
+  resolved: ResolvedSlot;
+  /**
+   * Task hashes for `Task.deps`, which `topoOrder` reads: a shot's plate and its non-default
+   * sheets, and none for any other slot. A portrait is not one, because a shot keys on the
+   * approved row rather than on the portrait task.
+   */
+  deps: string[];
 }
 
 /**
- * The planner's own identity for a slot, computed from the project as it stands — or the sentence
+ * The planner's own task for a slot, computed from the project as it stands — or the sentence
  * saying why the project cannot state one yet.
  *
  * Pure, because everything it reads is already loaded by the caller, which is what lets a
- * whole-graph pass call it once per slot. `adoptSlot` is the other caller and loads the model, the
- * manifest and the shots itself before calling. Its `portrait:` refusal belongs to adoption rather
- * than to identity, so it stays there rather than here.
+ * whole-graph pass call it once per slot. `adoptSlot` reaches it through {@link resolveSlot} and
+ * loads the model, the manifest and the shots itself before calling. Its `portrait:` refusal
+ * belongs to adoption rather than to identity, so it stays there rather than here.
  */
-export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<ResolvedSlot> {
+export function planSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<PlannedSlot> {
   const params = imageParams(ctx.config);
-  const gone = (what: string): Decided<ResolvedSlot> => ({
+  const planned = (resolved: ResolvedSlot, deps: string[] = []): Decided<PlannedSlot> => ({
+    ok  : true,
+    plan: { resolved, deps },
+  });
+  const gone = (what: string): Decided<PlannedSlot> => ({
     ok    : false,
     code  : 'NO_SUCH_SLOT',
     reason: `${what} — nothing in this project plans that picture.`,
@@ -172,23 +205,17 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
     case 'portrait': {
       const character = ctx.model.characters.get(slot.characterId);
       if (!character) return gone(`There is no character "${slot.characterId}"`);
-      return {
-        ok  : true,
-        plan: { kind: 'portrait', inputs: portraitInputs(character, ctx.config, params) },
-      };
+      return planned({ kind: 'portrait', inputs: portraitInputs(character, ctx.config, params) });
     }
     case 'plate': {
       const location = ctx.model.locations.get(slot.locationId);
       if (!location) return gone(`There is no location "${slot.locationId}"`);
-      if (!location.variants.some((v) => v.id === slot.variant))
+      if (!variantIds(location).has(slot.variant))
         return gone(`${location.id} has no "${slot.variant}" variant`);
-      return {
-        ok  : true,
-        plan: {
-          kind  : 'location_ref',
-          inputs: locationInputs(location, slot.variant, ctx.config, params),
-        },
-      };
+      return planned({
+        kind  : 'location_ref',
+        inputs: locationInputs(location, slot.variant, ctx.config, params),
+      });
     }
     case 'sheet': {
       const character = ctx.model.characters.get(slot.characterId);
@@ -201,24 +228,26 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
           reason: `${character.id}'s look has not been approved, and a sheet is drawn from the approved portrait — approve one with gate.approve first.`,
         };
       }
-      if (!character.outfits.some((o) => o.id === slot.outfit))
+      // `usedOutfits` keeps an outfit a shot names that the sheet does not author, and the planner
+      // draws its sheet from the id alone
+      if (
+        !character.outfits.some((o) => o.id === slot.outfit) &&
+        !usedOutfits(ctx.model).get(character.id)?.has(slot.outfit)
+      )
         return gone(`${character.id} has no "${slot.outfit}" outfit`);
       if (!(MODEL_SHEET_ANGLES as readonly string[]).includes(slot.angle))
         return gone(`"${slot.angle}" is not one of the ${MODEL_SHEET_ANGLES.join(', ')} angles`);
-      return {
-        ok  : true,
-        plan: {
-          kind  : 'model_sheet',
-          inputs: modelSheetInputs(
-            character,
-            slot.outfit,
-            slot.angle,
-            { hash: approved, ext: 'png' },
-            ctx.config,
-            params,
-          ),
-        },
-      };
+      return planned({
+        kind  : 'model_sheet',
+        inputs: modelSheetInputs(
+          character,
+          slot.outfit,
+          slot.angle,
+          { hash: approved, ext: 'png' },
+          ctx.config,
+          params,
+        ),
+      });
     }
     case 'shot': {
       const scene = ctx.model.scenes.get(slot.sceneId);
@@ -232,13 +261,13 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
         shot.sheet === undefined
           ? undefined
           : sheetKeys(scene, ctx.model, ctx.config, ctx.assets ?? []).get(shot.sheet);
-      return {
-        ok  : true,
-        plan: {
+      return planned(
+        {
           kind  : 'shot_image',
-          inputs: shotInputs(shot, scene, ctx.model, ctx.config, params, upstream.plan, sheet),
+          inputs: shotInputs(shot, scene, ctx.model, ctx.config, params, upstream.plan.refs, sheet),
         },
-      };
+        upstream.plan.tasks,
+      );
     }
     case 'asset':
       return {
@@ -248,6 +277,12 @@ export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<
           'An upload and a concept are their own identity — there is no task under them to be the output of.',
       };
   }
+}
+
+/** Answers {@link planSlot}'s task for a slot without its deps, which is a slot's identity. */
+export function resolveSlot(slot: RefBinding, ctx: SlotResolveContext): Decided<ResolvedSlot> {
+  const decided = planSlot(slot, ctx);
+  return decided.ok ? { ok: true, plan: decided.plan.resolved } : decided;
 }
 
 /**

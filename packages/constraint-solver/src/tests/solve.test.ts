@@ -57,7 +57,7 @@ const seedKind: SlotKind<Garden, { id: string }, 'prompt_refine'> = {
       ? { ok: true, plan: seedInputs(b.id) }
       : { ok: false, code: 'NO_SEED', reason: `no seed "${b.id}" is planted` },
   candidates: (b, facts) => rowsOf(`seed:${b.id}`, facts),
-  pick      : (b, facts) => current(rowsOf(`seed:${b.id}`, facts)),
+  pick      : (_b, _facts, rows) => current(rows),
   approved  : (_b, _facts, held) => held.rows.some((a) => a.hash === held.pick && a.accepted),
 };
 
@@ -83,8 +83,12 @@ const sproutKind: SlotKind<Garden, { id: string }, 'vision_review'> = {
       return { ok: false, code: 'NOT_GROWN', reason: `seed ${s.seed} has not grown yet` };
     return { ok: true, plan: { target: grown.output, spec: b.id, refs: [], modelId: 'toy' } };
   },
+  deps: (b, facts) => {
+    const s = sproutOf(facts, b.id);
+    return s ? [taskHash('prompt_refine', seedInputs(s.seed))] : [];
+  },
   candidates: (b, facts) => rowsOf(`sprout:${b.id}`, facts),
-  pick      : (b, facts) => current(rowsOf(`sprout:${b.id}`, facts)),
+  pick      : (_b, _facts, rows) => current(rows),
   approved  : (_b, _facts, held) => held.rows.some((a) => a.hash === held.pick && a.accepted),
 };
 
@@ -96,6 +100,8 @@ const garden: Family<Garden> = {
     for (const s of facts.sprouts) yield slot(sproutKind, { id: s.id }, s.bed);
     yield* facts.again ?? [];
   },
+  // Every bed is planted when the garden is listed, so nothing is owed
+  owed: () => [],
 };
 
 /** A task log holding exactly `tasks`, by hash. */
@@ -176,6 +182,18 @@ describe(pins(identitySlotsBeforeTasks), () => {
       expect(after.taskHash).toBe(
         taskHash('vision_review', { target: 'petal', spec: 'r1', refs: [], modelId: 'toy' }),
       );
+    });
+
+    it('asks a kind for its deps only once the slot has an identity', () => {
+      const rose = makeTask('prompt_refine', seedInputs('rose'));
+      expect(solve(garden, planted()).slots.get('sprout:r1')!.deps).toEqual([]);
+      const grown = solve(
+        garden,
+        planted({ tasks: log({ ...rose, status: 'done', output: 'petal' }) }),
+      );
+      expect(grown.slots.get('sprout:r1')!.deps).toEqual([rose.hash]);
+      // A kind with no `deps` runs after nothing
+      expect(grown.slots.get('seed:rose')!.deps).toEqual([]);
     });
 
     it('carries the sentence a kind refuses with', () => {

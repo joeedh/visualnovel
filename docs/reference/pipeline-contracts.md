@@ -148,12 +148,6 @@ package.
       when the log names other bytes, so the choice outlasts `repairCurrent`. The next
       `run` plans and executes the downstream work.
     - Scenes with no characters render immediately.
-- **Incremental planning.**
-    - The planner is called once per scheduler wave.
-    - Tasks whose identity depends on an upstream output (a shot references its produced
-      location plate) only appear after that upstream task is `done`.
-    - `vngen cost` counts only the work that is plannable when it runs, and it undercounts
-      tasks that become plannable after an earlier wave finishes.
 - **Currency is exclusive per slot.** A manifest row carries two bits. `current` says the
   slot holds this take; `accepted` says a person approved it. They are set by different
   acts and neither clears the other.

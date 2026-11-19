@@ -1,72 +1,43 @@
 import type {
   AnyTask,
   Asset,
-  AssetRef,
   BaseAssets,
-  Character,
-  ImageParams,
   Logger,
   PagePanel,
   PanelBox,
   ProductionData,
   ProjectModel,
+  RefBinding,
   Scene,
   Shot,
   TaskGraph,
+  TaskInputs,
 } from '@vn/types';
 import { defectReportSchema, shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { Providers } from '@vn/types';
-import { outfitFor, liveScenes, allCharacters, allLocationVariants, usedOutfits } from '@vn/model';
+import { contract } from '@vn/contracts';
+import { liveScenes } from '@vn/model';
 import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
+import { solve } from '@vn/constraint-solver';
 import { baseRefusal } from '@vn/artgen';
 import {
-  approvedPortraitOf,
   cycleRefusal,
   firstCycle,
   layoutDefect,
   sceneUnblocked,
-  sheetKeys,
+  stillsFamily,
+  type StillsFacts,
 } from '@vn/stills';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
-import {
-  imageParams,
-  locationTask,
-  modelSheetInputs,
-  portraitInputs,
-  shotInputs,
-  MODEL_SHEET_ANGLES,
-  SHEET_FRONT,
-} from './prompts.js';
+import { MODEL_SHEET_ANGLES } from './prompts.js';
 import { decomposeScene, storyboardStyle, type StoryboardStyle } from './p5.js';
 import { proseHash } from './drift.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
 export { MODEL_SHEET_ANGLES };
-
-const PNG = 'png';
-
-/**
- * One model-sheet task. Two places build these: P4 fans them out, and a shot in a non-default
- * outfit names one as a ref. The identity is written down once here so a shot cannot end up
- * depending on a hash nothing planned. The inputs come from `@vn/stills` because adoption
- * derives them too.
- */
-function modelSheetTask(
-  character: Character,
-  outfit: string,
-  angle: string,
-  portrait: AssetRef,
-  config: ProjectConfig,
-  params: ImageParams,
-): AnyTask {
-  return makeTask(
-    'model_sheet',
-    modelSheetInputs(character, outfit, angle, portrait, config, params),
-  );
-}
 
 /**
  * A scene's storyboard. Returns the persisted decomposition if one exists. Otherwise decomposes
@@ -195,23 +166,55 @@ function observedBoxes(
  */
 export { baseRefusal } from '@vn/artgen';
 
-/** Find an already-produced asset for a task identity, if it ran and succeeded. */
-function doneOutput(graph: TaskGraph, hash: string): AssetRef | undefined {
-  const task = graph.get(hash);
-  if (task?.status === 'done' && task.output) return { hash: task.output, ext: PNG };
-  return undefined;
-}
+type ShotSlot = Extract<RefBinding, { kind: 'shot' }>;
 
 /**
- * Emit/dedupe the tasks that are currently runnable given the model's approval state
- * (report §5, §7, §P3 gate-as-barrier). This is intentionally incremental: it is called
- * once per scheduler wave so that tasks whose identity depends on an upstream output
- * (shot images reference the produced location plate) only appear after that upstream task
- * is `done`, and shot tasks for a scene only appear once every character in it is approved.
+ * Copies a planned shot's prompt and its task's outcome onto the model's own shot, found by id,
+ * so that `writeShots` persists them.
+ */
+function stampShot(
+  model: ProjectModel,
+  slot: ShotSlot,
+  inputs: TaskInputs['shot_image'],
+  node: AnyTask,
+): void {
+  const scene = model.scenes.get(slot.sceneId);
+  const shot = shotsOf(model, slot.sceneId).find((s) => s.id === slot.shotId);
+  if (!scene || !shot) return;
+  shot.prompt = inputs.prompt;
+  refreshShotData(shot, node, scene);
+}
+
+export const planningIncremental = contract({
+  id      : 'planning.incremental',
+  rule: '`planTasks` runs once per scheduler wave. It decomposes the owed scenes the P3 gate has cleared, solves the stills family, and adds the task of every slot with an identity whose scene, if it has one, has cleared the gate. It keeps no enumeration of its own.',
+  prevents:
+    'Planning a shot before its plate is drawn, when its identity cannot be stated yet, or a planner that enumerates pictures its own way and so plans work the slot graph does not show.',
+  subjects: [
+    'module:packages/pipeline/src/planner.ts',
+    'function:packages/pipeline/src/planner.ts#planTasks',
+    'function:packages/stills/src/family.ts#stillsFamily',
+    'function:packages/stills/src/slotgraph.ts#planSlot',
+    'function:packages/constraint-solver/src/solve.ts#solve',
+  ],
+  see: [
+    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+  ],
+  detail:
+    'A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no ' +
+    'identity until that upstream task is `done`, so it appears a wave later. `vngen cost` ' +
+    'therefore counts only what is plannable when it runs, and undercounts the tasks a finished ' +
+    "wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and " +
+    'non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is the ' +
+    "planner's `sceneUnblocked` check until the solver's own unit gate replaces it.",
+});
+
+/**
+ * Adds the tasks that are runnable now, given the model's approval state, and answers them
+ * (report §5, §7, §P3 gate-as-barrier). See {@link planningIncremental}.
  *
- * Returns the tasks added or refreshed this pass. Decomposes scenes lazily the first time a scene
- * clears the gate, putting each storyboard into `model.production`; the model is expected to hold
- * only the storyboards earlier passes put there.
+ * Decomposes scenes lazily the first time a scene clears the gate, putting each storyboard into
+ * `model.production`; the model is expected to hold only the storyboards earlier passes put there.
  *
  * With `paths`, decompositions are persisted under `work/shots/` and preferred over
  * re-decomposing; without it planning is pure, which is what the unit tests want.
@@ -241,131 +244,58 @@ export async function planTasks(opts: {
   assets?: readonly Asset[];
 }): Promise<AnyTask[]> {
   const { model, graph, config, providers, paths, logger, base, readOnlyShots } = opts;
-  const assets = opts.assets ?? [];
   const refusal = baseRefusal(base);
   if (refusal) {
     logger?.error('plan.refused', { reason: refusal, root: base?.root });
     return [];
   }
-  const params = imageParams(config);
+  // The P3 gate per scene, which `solve` does not apply: a shot slot resolves while a cast member
+  // the shot does not show is still unapproved
+  const gate = new Map<string, boolean>();
+  const cleared = (sceneId: string): boolean => {
+    let open = gate.get(sceneId);
+    if (open === undefined) gate.set(sceneId, (open = sceneUnblocked(model, sceneId, opts.assets)));
+    return open;
+  };
+  // Built again after decomposing, because the kinds memoise on the facts object
+  const facts = (): StillsFacts => ({
+    model,
+    config,
+    tasks: graph,
+    ...(opts.assets ? { assets: opts.assets } : {}),
+  });
+
+  // Storyboards first, so the solve below sees the shot slots of every scene the gate lets through
+  for (const sceneId of stillsFamily.owed(facts())) {
+    const scene = model.scenes.get(sceneId);
+    if (!scene || !cleared(sceneId)) continue;
+    const storyboard = await shotsFor(
+      scene,
+      model,
+      providers,
+      storyboardStyle(config),
+      paths,
+      logger,
+      readOnlyShots,
+    );
+    model.production.set(sceneId, storyboard);
+  }
+
   const planned: AnyTask[] = [];
-
-  // P2: location reference plates — no upstream deps, always plannable. Covers every authored
-  // location, not only the ones a scene sits in, because authoring a sheet earns its plate.
-  for (const [locationId, variants] of allLocationVariants(model)) {
-    const location = model.locations.get(locationId);
-    if (!location) continue;
-    for (const variant of variants) {
-      planned.push(graph.add(locationTask(location, variant, config, params)));
-    }
+  for (const state of solve(stillsFamily, facts()).slots.values()) {
+    if (state.inputs === undefined) continue;
+    if (state.unit !== undefined && !cleared(state.unit)) continue;
+    const node = graph.add(makeTask(state.task, state.inputs, [...state.deps]));
+    planned.push(node);
+    if (state.task === 'shot_image')
+      stampShot(model, state.binding as ShotSlot, state.inputs as TaskInputs['shot_image'], node);
   }
 
-  const wardrobe = usedOutfits(model);
-
-  // P3: one portrait task per authored character (the human-approval gate sits on its output).
-  for (const character of allCharacters(model)) {
-    planned.push(graph.add(makeTask('portrait', portraitInputs(character, config, params))));
-
-    // P4: model sheets derive from the approved portrait, so only after the gate — and only for
-    // the outfits something puts this character in, not for every one the sheet authors. An
-    // uncast character has no wardrobe entry, so it costs nothing.
-    const approved = approvedPortraitOf(character, opts.assets);
-    if (approved !== undefined) {
-      const portraitRef: AssetRef = { hash: approved, ext: PNG };
-      for (const outfit of wardrobe.get(character.id) ?? []) {
-        for (const angle of MODEL_SHEET_ANGLES) {
-          planned.push(
-            graph.add(modelSheetTask(character, outfit, angle, portraitRef, config, params)),
-          );
-        }
-      }
-    }
-  }
-
-  // P5–P7: shots, but only for scenes that have fully cleared the character gate.
-  for (const scene of liveScenes(model)) {
-    if (!sceneUnblocked(model, scene.id, opts.assets)) continue;
-    if (shotsOf(model, scene.id).length === 0) {
-      const storyboard = await shotsFor(
-        scene,
-        model,
-        providers,
-        storyboardStyle(config),
-        paths,
-        logger,
-        readOnlyShots,
-      );
-      model.production.set(scene.id, storyboard);
-    }
-    const sheets = sheetKeys(scene, model, config, assets);
-
-    const shots = shotsOf(model, scene.id);
-    for (const shot of shots) {
-      // A shot can only be hashed once its location plate exists (its hash is a ref).
-      const locTaskHash = locationTask(
-        model.locations.get(scene.location)!,
-        shot.location,
-        config,
-        params,
-      ).hash;
-      const locAsset = doneOutput(graph, locTaskHash);
-      if (!locAsset) continue;
-
-      // Each subject contributes its approved portrait as an identity reference, which already
-      // shows the default outfit. A subject in a non-default outfit also contributes that outfit's
-      // front sheet, so the clothes are an image to copy rather than words to interpret.
-      const subjectRefs: AssetRef[] = [];
-      const sheetDeps: string[] = [];
-      let missingRef = false;
-      for (const subject of shot.subjects) {
-        const character = model.characters.get(subject.characterId);
-        const approved = character ? approvedPortraitOf(character, opts.assets) : undefined;
-        if (!character || approved === undefined) {
-          missingRef = true;
-          break;
-        }
-        const portraitRef: AssetRef = { hash: approved, ext: PNG };
-        subjectRefs.push(portraitRef);
-
-        const outfit = outfitFor(subject, scene, character);
-        if (outfit.id === character.defaultOutfit) continue;
-        const sheet = modelSheetTask(
-          character,
-          outfit.id,
-          SHEET_FRONT,
-          portraitRef,
-          config,
-          params,
-        );
-        const sheetAsset = doneOutput(graph, sheet.hash);
-        if (!sheetAsset) {
-          missingRef = true;
-          break;
-        }
-        subjectRefs.push(sheetAsset);
-        sheetDeps.push(sheet.hash);
-      }
-      if (missingRef) continue;
-
-      const inputs = shotInputs(
-        shot,
-        scene,
-        model,
-        config,
-        params,
-        [locAsset, ...subjectRefs],
-        shot.sheet === undefined ? undefined : sheets.get(shot.sheet),
-      );
-      shot.prompt = inputs.prompt;
-      const task = makeTask('shot_image', inputs, [locTaskHash, ...sheetDeps]);
-      const node = graph.add(task);
-      planned.push(node);
-      refreshShotData(shot, node, scene);
-    }
-
-    // Written once per pass, including the final pass the scheduler runs after the last wave.
-    // That final pass is what gets a completed run's outputs into the file.
-    if (paths && !readOnlyShots) await writeShots(paths, scene.id, shots);
+  // Written once per pass, including the final pass the scheduler runs after the last wave.
+  // That final pass is what gets a completed run's outputs into the file.
+  if (paths && !readOnlyShots) {
+    for (const scene of liveScenes(model))
+      if (cleared(scene.id)) await writeShots(paths, scene.id, shotsOf(model, scene.id));
   }
 
   // The defensive half of §14: `prompt.addRef` refuses a cycle before it can be written, so a

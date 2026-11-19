@@ -135,6 +135,7 @@
                 "providers",
                 "artgen",
                 "stills",
+                "constraint-solver",
                 "gengraph",
                 "contracts"
               ],

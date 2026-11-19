@@ -5,10 +5,10 @@
  *
  * The two are compared over the stage 1 oracle's fixtures after every planner wave, with and
  * without a manifest, and over every testkit script on disk as a run moves it from nothing drawn
- * to everything accepted. `SlotState` carries four fields a `SlotNode` does not (`kind`, `task`,
- * `unit`, `inputs`) and calls the held row `pick` where the node calls it `hash`; those are
- * checked on their own. This lives in `@vn/pipeline` because only the planner can move a project
- * through its waves.
+ * to everything accepted. `SlotState` carries five fields a `SlotNode` does not (`kind`, `task`,
+ * `unit`, `inputs`, `deps`) and calls the held row `pick` where the node calls it `hash`; the
+ * first four are checked on their own, and `deps` through the planner in `plannerwaves.test.ts`.
+ * This lives in `@vn/pipeline` because only the planner can move a project through its waves.
  */
 import { shotsOf, type Asset, type RefBinding } from '@vn/types';
 import { TaskGraph, loadGraph, taskHash } from '@vn/taskgraph';
@@ -35,7 +35,15 @@ function factsOf(ctx: SlotGraphContext): StillsFacts {
 
 /** A slot state in a slot node's shape, for a strict comparison. */
 function asNode(state: SlotState): SlotNode {
-  const { kind: _kind, task: _task, unit: _unit, inputs: _inputs, pick, ...rest } = state;
+  const {
+    kind: _kind,
+    task: _task,
+    unit: _unit,
+    inputs: _inputs,
+    deps: _deps,
+    pick,
+    ...rest
+  } = state;
   return {
     ...rest,
     binding: state.binding as RefBinding,

@@ -12,7 +12,7 @@
  *
  * All four are pure over a `ProjectModel` — no disk, no providers, no task graph.
  */
-import type { Character, ProjectModel, Scene } from '@vn/types';
+import type { Character, Location, ProjectModel, Scene } from '@vn/types';
 import { shotsOf } from '@vn/types';
 
 /**
@@ -82,11 +82,12 @@ export function usedOutfits(model: ProjectModel): Map<string, Set<string>> {
  */
 export function allLocationVariants(model: ProjectModel): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
-  for (const location of model.locations.values()) {
-    const set = new Set<string>();
-    // Every declared variant, so a shot can pick any of them without a second wave.
-    for (const v of location.variants.length ? location.variants : [{ id: 'day' }]) set.add(v.id);
-    out.set(location.id, set);
-  }
+  // Every declared variant, so a shot can pick any of them without a second wave
+  for (const location of model.locations.values()) out.set(location.id, variantIds(location));
   return out;
+}
+
+/** Lists the variants a location has plates for: the ones it declares, else `day`. */
+export function variantIds(location: Pick<Location, 'variants'>): Set<string> {
+  return new Set(location.variants.length ? location.variants.map((v) => v.id) : ['day']);
 }

@@ -44,10 +44,18 @@ export interface SlotKind<F extends SolverFacts, B = unknown, K extends TaskKind
   refs(binding: B, facts: F): readonly string[];
   /** Answers the task inputs this slot would run with, or the sentence saying why there are none. */
   resolve(binding: B, facts: F): Decided<TaskInputs[K]>;
+  /**
+   * Lists the task hashes the slot's task runs after, which become `Task.deps`. Only asked of a
+   * slot that resolved; a kind without it runs after nothing.
+   */
+  deps?(binding: B, facts: F): readonly string[];
   /** Lists every manifest row bound to the slot. */
   candidates(binding: B, facts: F): readonly Asset[];
-  /** Answers the row the slot holds, or `undefined` when the answer is not certain. */
-  pick(binding: B, facts: F): string | undefined;
+  /**
+   * Answers the row the slot holds, out of the `rows` its `candidates` listed, or `undefined` when
+   * the answer is not certain.
+   */
+  pick(binding: B, facts: F, rows: readonly Asset[]): string | undefined;
   /** Says whether a person has approved what fills this slot. */
   approved(binding: B, facts: F, held: Held): boolean;
   /** Contracts that apply to every slot of this kind; the index adds `slot:<prefix>` to each. */
@@ -77,4 +85,6 @@ export interface Family<F extends SolverFacts> {
   readonly kinds: readonly SlotKind<F>[];
   /** Lists every slot the project implies and is live, in the order the family wants them read. */
   enumerate(facts: F): Iterable<Slot<F>>;
+  /** Lists the live units that have no slots yet, because nothing has decomposed them. */
+  owed(facts: F): readonly string[];
 }

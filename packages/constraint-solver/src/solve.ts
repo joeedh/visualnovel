@@ -26,6 +26,8 @@ export interface SlotState {
   /** The task identity, where the kind can state one. */
   taskHash?: string;
   inputs?: TaskInputs[TaskKind];
+  /** Task hashes the slot's task runs after, from the kind's `deps`; empty without an identity. */
+  deps: readonly string[];
   /** The kind's sentence saying why no identity can be stated. */
   blocked?: string;
   status?: TaskStatus;
@@ -73,7 +75,7 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
     const key = kind.key(binding);
     if (slots.has(key)) continue;
     const rows = kind.candidates(binding, facts);
-    const pick = kind.pick(binding, facts);
+    const pick = kind.pick(binding, facts, rows);
     const decided = kind.resolve(binding, facts);
     const hash = decided.ok ? taskHash(kind.task, decided.plan) : undefined;
     const status = hash === undefined ? undefined : facts.tasks.get(hash)?.status;
@@ -87,6 +89,7 @@ export function solve<F extends SolverFacts>(family: Family<F>, facts: F): Solut
       ...(unit === undefined ? {} : { unit }),
       refs: kind.refs(binding, facts),
       ...(decided.ok ? { taskHash: hash, inputs: decided.plan } : { blocked: decided.reason }),
+      deps: decided.ok ? (kind.deps?.(binding, facts) ?? []) : [],
       ...(status ? { status } : {}),
       ...(pick ? { pick } : {}),
       candidates: rows.map((a) => a.hash),

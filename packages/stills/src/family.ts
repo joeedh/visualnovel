@@ -1,7 +1,7 @@
 /**
  * The stills family as `@vn/constraint-solver` sees it: four slot kinds and the slots a project
  * implies. Each kind wraps the functions the slot graph already calls (`slotKey`, `refsOfSlot`,
- * `resolveSlot`, `candidatesFor`, `resolveBinding`), so `solve(stillsFamily, facts)` and
+ * `planSlot`, `candidatesFor`, `pick`), so `solve(stillsFamily, facts)` and
  * `buildSlotGraph` answer the same slot for slot until stage 6b retires the latter.
  */
 import type { Asset, RefBinding, TaskInputs, TaskKind } from '@vn/types';
@@ -18,31 +18,105 @@ import {
   type SlotKind,
   type SolverFacts,
 } from '@vn/constraint-solver';
-import { candidatesFor, resolveBinding } from './refs.js';
+import { type BindingContext, candidatesFor, pick } from './refs.js';
 import { refsOfSlot } from './refcycle.js';
 import { parseSlot, slotKey, slotLabel } from './slotaddr.js';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
-import { newestFirst, resolveSlot, type ResolvedSlot, type SlotGraphContext } from './slotgraph.js';
-
-/** What the stills kinds read: the solver's facts plus the model, the config and the manifest. */
-export interface StillsFacts extends SolverFacts, Omit<SlotGraphContext, 'assets' | 'graph'> {
-  /** Both roots, as `BindingContext` reads them; an empty list where the caller holds no store. */
-  assets: readonly Asset[];
-}
+import {
+  newestFirst,
+  planSlot,
+  type PlannedSlot,
+  type SlotGraphContext,
+  type SlotResolveContext,
+} from './slotgraph.js';
 
 /** The four bindings a stills slot is addressed by; `asset:` names a pin, not a slot. */
 type SlotPrefix = Exclude<RefBinding['kind'], 'asset'>;
 type Bound<P extends SlotPrefix> = Extract<RefBinding, { kind: P }>;
 
-/** Narrows `resolveSlot`'s answer to the inputs of the one task kind this slot kind fills. */
+/**
+ * What the stills kinds read: the solver's facts plus the model and the config. Without `assets`
+ * the gate reads each character sheet's mirror, as a plan with no store does, and no slot holds a
+ * row. The kinds memoise each slot's plan on the facts object, so a caller that changes the model
+ * or the task log builds new facts before solving again.
+ */
+export interface StillsFacts extends SolverFacts, Omit<SlotGraphContext, 'assets' | 'graph'> {}
+
+/** The context `planSlot` reads, with the manifest left absent when the caller has none. */
+const resolveCtx = (facts: StillsFacts): SlotResolveContext => ({
+  model : facts.model,
+  config: facts.config,
+  assets: facts.assets,
+  graph : facts.tasks,
+});
+
+/** Each facts object's slot plans by address, so a shot's `resolve` and `deps` share one walk. */
+const plans = new WeakMap<StillsFacts, Map<string, Decided<PlannedSlot>>>();
+
+/** Answers `planSlot` for a slot, once per facts object. */
+function planOf(binding: RefBinding, facts: StillsFacts): Decided<PlannedSlot> {
+  let memo = plans.get(facts);
+  if (!memo) plans.set(facts, (memo = new Map()));
+  const key = slotKey(binding);
+  let plan = memo.get(key);
+  if (!plan) memo.set(key, (plan = planSlot(binding, resolveCtx(facts))));
+  return plan;
+}
+
+/** Each facts object's manifest rows, grouped under every id their bindings name. */
+const near = new WeakMap<StillsFacts, Map<string, Asset[]>>();
+
+/** Gives the id a slot's rows are grouped under: every row `candidatesFor` keeps names it. */
+function nearKey(binding: Bound<SlotPrefix>): string {
+  switch (binding.kind) {
+    case 'portrait':
+    case 'sheet':
+      return `character:${binding.characterId}`;
+    case 'plate':
+      return `location:${binding.locationId}`;
+    case 'shot':
+      return `scene:${binding.sceneId}`;
+  }
+}
+
+/**
+ * Answers the context binding reads, holding only the rows that name the slot's character,
+ * location or scene, in manifest order. `candidatesFor` filters those as it would the whole
+ * manifest. With no manifest, no slot holds a row.
+ */
+function bindingCtx(binding: Bound<SlotPrefix>, facts: StillsFacts): BindingContext {
+  if (!facts.assets) return { ...facts, assets: [] };
+  let groups = near.get(facts);
+  if (!groups) {
+    groups = new Map();
+    for (const row of facts.assets) {
+      const keys = new Set<string>();
+      for (const b of row.satisfies) {
+        if (b.characterId !== undefined) keys.add(`character:${b.characterId}`);
+        if (b.locationId !== undefined) keys.add(`location:${b.locationId}`);
+        if (b.sceneId !== undefined) keys.add(`scene:${b.sceneId}`);
+      }
+      for (const key of keys) {
+        const rows = groups.get(key);
+        if (rows) rows.push(row);
+        else groups.set(key, [row]);
+      }
+    }
+    near.set(facts, groups);
+  }
+  return { ...facts, assets: groups.get(nearKey(binding)) ?? [] };
+}
+
+/** Narrows `planSlot`'s answer to the inputs of the one task kind this slot kind fills. */
 function inputsFor<K extends TaskKind>(
   task: K,
-  decided: Decided<ResolvedSlot>,
+  decided: Decided<PlannedSlot>,
 ): Decided<TaskInputs[K]> {
   if (!decided.ok) return decided;
-  if (decided.plan.kind !== task)
-    throw new Error(`resolveSlot planned a ${decided.plan.kind} task for a ${task} slot`);
-  return { ok: true, plan: decided.plan.inputs as TaskInputs[K] };
+  const { resolved } = decided.plan;
+  if (resolved.kind !== task)
+    throw new Error(`planSlot planned a ${resolved.kind} task for a ${task} slot`);
+  return { ok: true, plan: resolved.inputs as TaskInputs[K] };
 }
 
 export const takesApprovedMeansAccepted = contract({
@@ -77,10 +151,9 @@ export const planningSheetsOnlyWhenWorn = contract({
   ],
   see     : ['docs/plans/archive/INDEX.md#drawing-a-character-before-a-scene-casts-them'],
   detail:
-    "The planner's P2 and P3 plan over `allLocationVariants` and `allCharacters`, and P4 fans " +
-    'sheets out over `usedOutfits`. `stillsFamily` and `buildSlotGraph` enumerate from the same ' +
-    'three, and a test plans a mock project to exhaustion and asserts the slot graph promises ' +
-    'exactly what was planned. `usedOutfits` gives everyone a live scene casts their default ' +
+    '`stillsFamily` enumerates plates over `allLocationVariants`, portraits over ' +
+    '`allCharacters` and sheets over `usedOutfits`; the planner plans from its slots, and ' +
+    '`buildSlotGraph` enumerates from the same three. `usedOutfits` gives everyone a live scene casts their default ' +
     'outfit, plus each `[[outfit:]]` marker and shot override. The gate is a separate question: ' +
     "`gateStatus` walks live scenes' casts, so an uncast character's unapproved portrait halts " +
     "nothing and shows in the document tree's Awaiting approval branch.",
@@ -108,18 +181,13 @@ function stillsKind<P extends SlotPrefix, K extends TaskKind>(
     },
     label     : slotLabel,
     refs      : (binding, facts) => refsOfSlot(binding, facts).map(slotKey),
-    resolve: (binding, facts) =>
-      inputsFor(
-        task,
-        resolveSlot(binding, {
-          model : facts.model,
-          config: facts.config,
-          assets: facts.assets,
-          graph : facts.tasks,
-        }),
-      ),
-    candidates: (binding, facts) => newestFirst(candidatesFor(binding, facts)),
-    pick      : (binding, facts) => resolveBinding(binding, facts),
+    resolve   : (binding, facts) => inputsFor(task, planOf(binding, facts)),
+    deps: (binding, facts) => {
+      const planned = planOf(binding, facts);
+      return planned.ok ? planned.plan.deps : [];
+    },
+    candidates: (binding, facts) => newestFirst(candidatesFor(binding, bindingCtx(binding, facts))),
+    pick      : (_binding, _facts, rows) => pick(rows),
     approved  : heldAccepted,
   };
 }
@@ -157,8 +225,16 @@ function enumerate(facts: StillsFacts): Slot<StillsFacts>[] {
   return out;
 }
 
+/** Lists the live scenes whose storyboard the production map does not hold, in model order. */
+function owed(facts: StillsFacts): string[] {
+  return liveScenes(facts.model)
+    .filter((scene) => shotsOf(facts.model, scene.id).length === 0)
+    .map((scene) => scene.id);
+}
+
 export const stillsFamily: Family<StillsFacts> = {
   id   : 'stills',
   kinds: [plateKind, portraitKind, sheetKind, shotKind],
   enumerate,
+  owed,
 };
