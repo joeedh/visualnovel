@@ -19,56 +19,11 @@ opens the summary file and then the one shard it needs.
 
 <!-- toc -->
 
-- [Identity and storage](#identity-and-storage)
 - [Scheduling](#scheduling)
 - [Scenes, shots, and lines](#scenes-shots-and-lines)
 - [Generation and review](#generation-and-review)
 
 <!-- tocstop -->
-
-## Identity and storage
-
-- **Content-addressed task graph.**
-    - A task is identified by `sha256(kind, inputs)`, where inputs include the normalized
-      prompt, ordered reference asset hashes, and params — but not the model id.
-    - The model id is left out of the hash so that changing `models.image` in
-      `project.yaml` does not re-key every task: a rendered slot keeps its picture, and
-      the new model is used for slots not yet drawn, for a regenerate, and where a slot's
-      own `model` override names it. A node that has not run yet takes the inputs of the
-      latest planning pass (`TaskGraph.add`), so a pending task follows the project's
-      current model; a `done` node keeps the inputs it ran with, and the asset records the
-      model that drew it (`Asset.modelId`, always the author's spelling, never
-      OpenRouter's) and, optionally, the key that carried the call (`Asset.transport`). A
-      picture drawn through OpenRouter has the same identity as one drawn natively, so
-      adding a vendor's key later redraws nothing.
-    - `params` is `image_params` with the narrowest authored seed applied (`seedFor`) and,
-      for a shot, its own `aspect` in place of the project's (`aspectFor`). Both return
-      the project's params by identity when nothing was authored, so a project that
-      authored neither hashes as it did before either field existed. The model id is
-      resolved the same way (`modelFor`: the narrowest `imageModel` rung, else
-      `models.image`) but, being outside the hash, changes nothing about identity.
-    - A run can be narrowed to a set of targets. `RunOptions.only` restricts each wave to
-      `closureOf(graph, targets)` — the targets and every task they depend on — so
-      `asset.regenerate` and `pipeline.draw` draw one slot and what it still needs, and
-      nothing else the plan holds. Planning is unchanged; only which ready tasks start is.
-    - Identical work collapses to one node, so dedupe, resumability, and staleness come at
-      no extra cost.
-    - Every status transition is appended to `state/tasks.jsonl`. Replaying that log (last
-      writer wins per hash) rebuilds the graph, so runs are crash-safe and resumable.
-    - A tombstone takes a task out of the replayed graph. It is a full copy of the task's
-      last record with `status: 'pending'`, no `output`, no `error`, and `removed: true`,
-      written by `logTombstone` (`packages/taskgraph/src/maintain.ts`).
-        - `loadGraph` leaves a hash out when its last record is a tombstone, so
-          `vngen status` and the Task Graph pane stop counting it. A later task record for
-          the same hash supersedes the tombstone, and the planner plans the task again.
-        - The shape is the requeue's plus one field, so a build that predates tombstones
-          replays one as a requeued task, with its `deps`. A bare `{ hash, removed }`
-          record would reach that build's `topoOrder` with no `deps` array, and it would
-          throw.
-        - A line that does not parse still stops `readJsonl`, as any bad line does.
-        - Plan:
-          [`../plans/archive/deleting-things.md`](../plans/archive/deleting-things.md),
-          stage 2.
 
 ## Scheduling
 

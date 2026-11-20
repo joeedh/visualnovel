@@ -10,6 +10,7 @@
     "@vn/types": "workspace:*",
     "@vn/util": "workspace:*",
     "@vn/taskgraph": "workspace:*",
-    "@vn/pipeline": "workspace:*"
+    "@vn/pipeline": "workspace:*",
+    "@vn/contracts": "workspace:*"
   }
 }

@@ -1,10 +1,18 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pins } from '@vn/contracts';
 import type { AnyTask, ImageParams } from '@vn/types';
 import { readJsonl } from '@vn/util';
 import { ProjectPaths } from '@vn/store';
-import { latestRecords, loadGraph, makeTask, TaskGraph, tombstoneOf } from '../index.js';
+import {
+  latestRecords,
+  loadGraph,
+  logTombstoneRemoves,
+  makeTask,
+  TaskGraph,
+  tombstoneOf,
+} from '../index.js';
 import { logTombstone, restoreDone } from '../maintain.js';
 import { logTask } from '../write.js';
 
@@ -31,7 +39,7 @@ function portraitAndSheet(): { portrait: AnyTask; sheet: AnyTask } {
   return { portrait, sheet };
 }
 
-describe('tombstones in tasks.jsonl', () => {
+describe(pins(logTombstoneRemoves), () => {
   it('leaves a done task out of the graph once its last record is a tombstone', async () => {
     const { paths, cleanup } = await project();
     try {

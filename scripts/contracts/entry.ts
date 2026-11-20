@@ -21,6 +21,7 @@ import { CONTRACTS as gengraph } from '../../packages/gengraph/src/contracts.js'
 import { CONTRACTS as model } from '../../packages/model/src/contracts.js';
 import { CONTRACTS as pipeline } from '../../packages/pipeline/src/contracts.js';
 import { CONTRACTS as providers } from '../../packages/providers/src/contracts.js';
+import { CONTRACTS as scheduler } from '../../packages/scheduler/src/contracts.js';
 import { CONTRACTS as scriptedit } from '../../packages/scriptedit/src/contracts.js';
 import { CONTRACTS as stills } from '../../packages/stills/src/contracts.js';
 import { CONTRACTS as store } from '../../packages/store/src/contracts.js';
@@ -36,6 +37,7 @@ export const DECLARED: readonly Declared[] = [
   { file: 'packages/model/src/contracts.ts', contracts: model },
   { file: 'packages/pipeline/src/contracts.ts', contracts: pipeline },
   { file: 'packages/providers/src/contracts.ts', contracts: providers },
+  { file: 'packages/scheduler/src/contracts.ts', contracts: scheduler },
   { file: 'packages/scriptedit/src/contracts.ts', contracts: scriptedit },
   { file: 'packages/stills/src/contracts.ts', contracts: stills },
   { file: 'packages/store/src/contracts.ts', contracts: store },

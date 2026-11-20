@@ -1,9 +1,10 @@
+import { pins } from '@vn/contracts';
 import type { ImageParams, TaskInputs, TaskKind } from '@vn/types';
-import { makeTask, taskHash, TaskGraph } from '../index.js';
+import { identityTaskHash, makeTask, taskHash, TaskGraph } from '../index.js';
 
 const params: ImageParams = { modelId: 'gemini-2.5-flash-image', aspect: '16:9' };
 
-describe('content-addressed dedupe', () => {
+describe(pins(identityTaskHash), () => {
   it('identical inputs collapse to the same hash', () => {
     const a = taskHash('portrait', { characterId: 'aiko', prompt: 'p', refs: [], params });
     const b = taskHash('portrait', { characterId: 'aiko', prompt: 'p', refs: [], params });
@@ -41,6 +42,26 @@ describe('content-addressed dedupe', () => {
     g.setStatus(first.hash, 'done', { output: 'h' });
     g.add(makeTask('portrait', inputs));
     expect(first.inputs.params.modelId).toBe('openai/gpt-5-image');
+  });
+
+  it('the kind is part of the identity', () => {
+    const inputs = { characterId: 'aiko', prompt: 'p', refs: [], params };
+    const asLocation = taskHash(
+      'location_ref' as TaskKind,
+      inputs as unknown as TaskInputs[TaskKind],
+    );
+    expect(asLocation).not.toBe(taskHash('portrait', inputs));
+  });
+
+  it('a failed node takes the newer inputs, as a pending one does', () => {
+    const inputs = { characterId: 'aiko', prompt: 'p', refs: [], params };
+    const g = new TaskGraph();
+    const node = g.add(makeTask('portrait', inputs));
+    g.setStatus(node.hash, 'failed', { error: 'boom' });
+    g.add(
+      makeTask('portrait', { ...inputs, params: { ...params, modelId: 'openai/gpt-5-image' } }),
+    );
+    expect(node.inputs.params.modelId).toBe('openai/gpt-5-image');
   });
 
   it('graph.add dedupes by hash', () => {

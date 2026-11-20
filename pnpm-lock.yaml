@@ -532,6 +532,9 @@ importers:
 
   packages/scheduler:
     dependencies:
+      '@vn/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@vn/pipeline':
         specifier: workspace:*
         version: link:../pipeline

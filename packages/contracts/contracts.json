@@ -25,6 +25,16 @@
       ]
     },
     {
+      "id"      : "execution.targetClosure",
+      "rule": "A run given `RunOptions.only` starts only the ready tasks in `closureOf(graph, targets)`, the targets and every task they depend on, recomputed at each wave. Planning is unchanged; only which ready tasks start is.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#closureOf",
+        "function:packages/scheduler/src/scheduler.ts#RunOptions",
+        "command:asset.regenerate",
+        "command:pipeline.draw"
+      ]
+    },
+    {
       "id"      : "gate.perUnit",
       "rule": "A live scene is not decomposed, and none of its slots is ready, until every character in `scene.characters` has an approved portrait: a portrait row that is both current and accepted. The solver applies it per unit; the stills family lists the cast's portraits.",
       "subjects": [
@@ -135,6 +145,18 @@
       ]
     },
     {
+      "id"      : "identity.taskHash",
+      "rule": "A task is identified by `sha256(kind, inputs)`, where the inputs are the normalized prompt, the ordered reference asset hashes and the params, and never the model id. Identical work therefore collapses to one node.",
+      "subjects": [
+        "function:packages/taskgraph/src/hash.ts#taskHash",
+        "function:packages/taskgraph/src/hash.ts#makeTask",
+        "function:packages/taskgraph/src/graph.ts#TaskGraph",
+        "function:packages/stills/src/prompts.ts#seedFor",
+        "function:packages/stills/src/prompts.ts#aspectFor",
+        "function:packages/stills/src/prompts.ts#modelFor"
+      ]
+    },
+    {
       "id"      : "log.doneWriters",
       "rule": "Outside the scheduler, a `done` record is written only by adoption (`@vn/artgen/adopt`). The maintenance writers re-write a record the log already held, verbatim, or write `pending`.",
       "subjects": [
@@ -146,6 +168,27 @@
         "function:packages/artgen/src/adoptslot.ts#holdPortrait",
         "function:packages/artgen/src/adoptslot.ts#repinAdoption",
         "command:asset.adopt",
+        "file:state/tasks.jsonl"
+      ]
+    },
+    {
+      "id"      : "log.lastWriterWins",
+      "rule": "Every status transition appends the whole task to `state/tasks.jsonl`, and replaying the log, last writer wins per hash, rebuilds the task graph.",
+      "subjects": [
+        "function:packages/taskgraph/src/log.ts#loadGraph",
+        "function:packages/taskgraph/src/log.ts#latestRecords",
+        "function:packages/taskgraph/src/write.ts#logTask",
+        "file:state/tasks.jsonl"
+      ]
+    },
+    {
+      "id"      : "log.tombstoneRemoves",
+      "rule": "A tombstone takes a task out of the replayed graph. It is a full copy of the task's last record with `status: 'pending'`, no `output`, no `error`, and `removed: true`, and a later record for the same hash supersedes it.",
+      "subjects": [
+        "function:packages/taskgraph/src/maintain.ts#logTombstone",
+        "function:packages/taskgraph/src/maintain.ts#restoreDone",
+        "function:packages/taskgraph/src/log.ts#tombstoneOf",
+        "function:packages/taskgraph/src/log.ts#loadGraph",
         "file:state/tasks.jsonl"
       ]
     },
@@ -546,12 +589,14 @@
     "command:asset.adopt"                                                : ["log.doneWriters"],
     "command:asset.collect": ["collect.applyOrder", "collect.unusedRemoved"],
     "command:asset.recover": ["collect.unusedRemoved"],
+    "command:asset.regenerate": ["execution.targetClosure"],
     "command:asset.restore": ["takes.currencyExclusive"],
     "command:asset.suspended": ["takes.suspensionDerived"],
     "command:gate.approve"                                               : ["gate.perUnit"],
     "command:gate.lock"                                                  : ["gate.perUnit"],
     "command:gengraph.run": ["identity.stagingSheet"],
     "command:gengraph.setProp": ["graphs.groupNodeKey", "graphs.instanceEditsOverride"],
+    "command:pipeline.draw": ["execution.targetClosure"],
     "command:prompt.addRef": ["prompts.refOnClause", "prompts.refsAcyclic"],
     "command:prompt.clear"                                               : ["prompts.clauseList"],
     "command:prompt.repin": ["prompts.refOnClause", "takes.suspensionDerived"],
@@ -566,7 +611,7 @@
     "command:story.setSheetGroup": ["identity.stagingSheet"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:scenes": ["script.sceneOneFile", "script.sceneSourcesOneLoad"],
-    "file:state/tasks.jsonl"                                             : ["log.doneWriters"],
+    "file:state/tasks.jsonl": ["log.doneWriters", "log.lastWriterWins", "log.tombstoneRemoves"],
     "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:vngen/work/graphs/lib": ["graphs.instanceEditsOverride"],
     "file:vngen/work/shots": ["storage.storyboardKept"],
@@ -668,6 +713,8 @@
       "providers.modelIdRoutes",
       "providers.textFallback"
     ],
+    "function:packages/scheduler/src/scheduler.ts#RunOptions": ["execution.targetClosure"],
+    "function:packages/scheduler/src/scheduler.ts#closureOf": ["execution.targetClosure"],
     "function:packages/scheduler/src/scheduler.ts#requeueDrifted": ["graphs.editInvalidates"],
     "function:packages/scriptedit/src/apply.ts#planSceneEdit": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/apply.ts#proveScenes": [
@@ -706,6 +753,7 @@
     "function:packages/stills/src/gate.ts#approvedPortraitOf"            : ["gate.perUnit"],
     "function:packages/stills/src/kept.ts#keptSlots": ["collect.unusedRemoved"],
     "function:packages/stills/src/prompts.ts#artClause": ["prompts.artNotesAppended"],
+    "function:packages/stills/src/prompts.ts#aspectFor"                  : ["identity.taskHash"],
     "function:packages/stills/src/prompts.ts#buildLocationChunks": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildModelSheetChunks": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildPortraitChunks": ["prompts.artNotesAppended"],
@@ -714,8 +762,14 @@
       "prompts.artNotesAppended"
     ],
     "function:packages/stills/src/prompts.ts#buildShotPrompt": ["script.proseDriftReported"],
-    "function:packages/stills/src/prompts.ts#modelFor": ["prompts.artRungsShared"],
-    "function:packages/stills/src/prompts.ts#seedFor": ["prompts.artRungsShared"],
+    "function:packages/stills/src/prompts.ts#modelFor": [
+      "identity.taskHash",
+      "prompts.artRungsShared"
+    ],
+    "function:packages/stills/src/prompts.ts#seedFor": [
+      "identity.taskHash",
+      "prompts.artRungsShared"
+    ],
     "function:packages/stills/src/prompts.ts#shotInputs": [
       "identity.headingRekeysShots",
       "identity.stagingSheet"
@@ -760,6 +814,18 @@
     "function:packages/store/src/shots.ts#writeShots": ["storage.storyboardKept"],
     "function:packages/store/src/worktree.ts#findScreenplay": ["script.sceneSourcesOneLoad"],
     "function:packages/store/src/worktree.ts#loadInputs": ["script.sceneSourcesOneLoad"],
+    "function:packages/taskgraph/src/graph.ts#TaskGraph"                 : ["identity.taskHash"],
+    "function:packages/taskgraph/src/hash.ts#makeTask"                   : ["identity.taskHash"],
+    "function:packages/taskgraph/src/hash.ts#taskHash"                   : ["identity.taskHash"],
+    "function:packages/taskgraph/src/log.ts#latestRecords"               : ["log.lastWriterWins"],
+    "function:packages/taskgraph/src/log.ts#loadGraph": [
+      "log.lastWriterWins",
+      "log.tombstoneRemoves"
+    ],
+    "function:packages/taskgraph/src/log.ts#tombstoneOf"                 : ["log.tombstoneRemoves"],
+    "function:packages/taskgraph/src/maintain.ts#logTombstone"           : ["log.tombstoneRemoves"],
+    "function:packages/taskgraph/src/maintain.ts#restoreDone"            : ["log.tombstoneRemoves"],
+    "function:packages/taskgraph/src/write.ts#logTask"                   : ["log.lastWriterWins"],
     "function:packages/types/src/production/storyboard.ts#ProductionData": [
       "storage.storyboardKept"
     ],

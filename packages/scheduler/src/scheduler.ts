@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { AnyTask, Logger, ProjectModel, Providers, TaskStatus } from '@vn/types';
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { contract } from '@vn/contracts';
 import { withProduction, type ProjectPaths } from '@vn/store';
 import { TaskGraph } from '@vn/taskgraph';
 import { logTask } from '@vn/taskgraph/write';
@@ -236,6 +237,25 @@ export function requeueDrifted(
   }
   return requeued;
 }
+
+export const executionTargetClosure = contract({
+  id      : 'execution.targetClosure',
+  rule: 'A run given `RunOptions.only` starts only the ready tasks in `closureOf(graph, targets)`, the targets and every task they depend on, recomputed at each wave. Planning is unchanged; only which ready tasks start is.',
+  prevents:
+    'Drawing one slot from `asset.regenerate` or `pipeline.draw` and paying for everything else the plan holds, or a targeted run that never draws a dependency its target still needs.',
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#closureOf',
+    'function:packages/scheduler/src/scheduler.ts#RunOptions',
+    'command:asset.regenerate',
+    'command:pipeline.draw',
+  ],
+  see     : ['docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
+  detail:
+    'The closure is walked over `deps` in the graph as it stands at each wave, because a wave can ' +
+    'plan nodes that did not exist before it: a shot task appears once the sheet it depends on is ' +
+    'drawn. Planning still covers the whole project, so the storyboard files and the preview are ' +
+    'what a full run would leave. The failure and drift requeues are bounded to the same closure.',
+});
 
 /**
  * The tasks a targeted run may touch: the targets and everything upstream of them, walked over

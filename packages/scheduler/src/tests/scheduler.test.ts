@@ -1,9 +1,15 @@
+import { pins } from '@vn/contracts';
 import type { AnyTask, TaskInputs, TaskStatus } from '@vn/types';
 import { planTasks } from '@vn/pipeline';
 import { StubImageBackend, createMockProviders, type ImageBackend } from '@vn/providers';
 import { TaskGraph, loadGraph, makeTask } from '@vn/taskgraph';
 import { SCRIPTS, makeProject } from '@vn/testkit';
-import { closureOf, requeueAbandoned, requeueFailed } from '../scheduler.js';
+import {
+  closureOf,
+  executionTargetClosure,
+  requeueAbandoned,
+  requeueFailed,
+} from '../scheduler.js';
 
 /** Shot ids of the `shot_image` tasks in a run. `Task` is generic, so `inputs` needs a cast. */
 const shotIds = (tasks: AnyTask[]): string[] =>
@@ -72,37 +78,39 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
     }
   }, 30_000);
 
-  it('runs only the targets and what they need when asked for a subset', async () => {
-    const p = await makeProject({ title: 'Demo', script: SCRIPTS.linear });
-    try {
-      await p.run();
-      await p.approve('aiko');
-      // What the next run would plan, from a plan of its own over the same disk state
-      const { model, graph, config, store } = await p.reload();
-      const planned = await planTasks({
-        model,
-        graph,
-        config,
-        providers    : createMockProviders(),
-        paths        : p.paths,
-        base         : store.base,
-        readOnlyShots: true,
-        assets       : store.manifest(),
-      });
-      const sheets = planned.filter((t) => t.kind === 'model_sheet' && t.status === 'pending');
-      expect(sheets.length).toBeGreaterThan(1);
-      const target = sheets[0]!;
+  describe(pins(executionTargetClosure), () => {
+    it('runs only the targets and what they need when asked for a subset', async () => {
+      const p = await makeProject({ title: 'Demo', script: SCRIPTS.linear });
+      try {
+        await p.run();
+        await p.approve('aiko');
+        // What the next run would plan, from a plan of its own over the same disk state
+        const { model, graph, config, store } = await p.reload();
+        const planned = await planTasks({
+          model,
+          graph,
+          config,
+          providers    : createMockProviders(),
+          paths        : p.paths,
+          base         : store.base,
+          readOnlyShots: true,
+          assets       : store.manifest(),
+        });
+        const sheets = planned.filter((t) => t.kind === 'model_sheet' && t.status === 'pending');
+        expect(sheets.length).toBeGreaterThan(1);
+        const target = sheets[0]!;
 
-      const summary = await p.run({ only: [target.hash] });
-      expect(summary.ran.map((t) => t.hash)).toEqual([target.hash]);
-      expect(summary.ran[0]?.status).toBe('done');
-      // The rest of the sheets are still waiting, so a full run has them left to do
-      const after = await loadGraph(p.paths);
-      expect(sheets.slice(1).every((t) => after.get(t.hash) === undefined)).toBe(true);
-    } finally {
-      await p.cleanup();
-    }
-  }, 30_000);
+        const summary = await p.run({ only: [target.hash] });
+        expect(summary.ran.map((t) => t.hash)).toEqual([target.hash]);
+        expect(summary.ran[0]?.status).toBe('done');
+        // The rest of the sheets are still waiting, so a full run has them left to do
+        const after = await loadGraph(p.paths);
+        expect(sheets.slice(1).every((t) => after.get(t.hash) === undefined)).toBe(true);
+      } finally {
+        await p.cleanup();
+      }
+    }, 30_000);
+  });
 
   it('caps the P7 loop and flags needs_human when reviewers keep blocking', async () => {
     const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
@@ -363,7 +371,7 @@ describe('requeueFailed', () => {
   });
 });
 
-describe('closureOf', () => {
+describe(pins(executionTargetClosure), () => {
   it('closes a target over its dependencies and nothing downstream of it', () => {
     const g = new TaskGraph();
     const params = { modelId: 'm' };

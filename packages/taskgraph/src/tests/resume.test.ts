@@ -1,14 +1,15 @@
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pins } from '@vn/contracts';
 import type { ImageParams } from '@vn/types';
 import { ProjectPaths } from '@vn/store';
-import { loadGraph, makeTask, TaskGraph } from '../index.js';
+import { loadGraph, logLastWriterWins, makeTask, TaskGraph } from '../index.js';
 import { logTask } from '../write.js';
 
 const params: ImageParams = { modelId: 'm' };
 
-describe('resumability via the status log', () => {
+describe(pins(logLastWriterWins), () => {
   it('replays tasks.jsonl so a re-run skips done work', async () => {
     const root = await mkdtemp(join(tmpdir(), 'vn-tg-'));
     const paths = new ProjectPaths(root);
