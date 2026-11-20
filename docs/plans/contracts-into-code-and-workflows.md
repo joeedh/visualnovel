@@ -1757,6 +1757,140 @@ The plan as written before it landed: the workflows note's step 3, in solver ter
 
 ### Stage 8: execution contracts
 
+**8 landed 2026-11-20 on the `execution` branch, as `d292c397`, `d715d6f2`, `8d495764`,
+`3c3ae19d` and the commit that adds this note.** As built:
+
+- **Fourteen contracts added**; the index holds 58. Each is listed with the file that
+  declares it and the test that pins it.
+    - Row 24, "Content-addressed task graph" (`d292c397`):
+        - `identity.taskHash`, `packages/taskgraph/src/hash.ts`, pinned by
+          `taskgraph.test.ts`.
+        - `log.lastWriterWins`, `packages/taskgraph/src/log.ts`, pinned by
+          `resume.test.ts`.
+        - `log.tombstoneRemoves`, `packages/taskgraph/src/log.ts`, pinned by
+          `tombstone.test.ts`.
+        - `execution.targetClosure`, `packages/scheduler/src/scheduler.ts`, pinned by
+          `scheduler.test.ts`.
+    - Row 303, "A terminal task records why, is retried once" (`d715d6f2`):
+        - `execution.failureRecorded`, `scheduler.ts`, pinned by `scheduler.test.ts`.
+        - `execution.retryBudget`, on `requeueFailed` in `scheduler.ts`, pinned by
+          `scheduler.test.ts`.
+        - `execution.abandonedReleased`, on `requeueAbandoned` in `scheduler.ts`, pinned
+          by `scheduler.test.ts` and `stopping.test.ts`.
+        - `execution.reportFromPlan`, `scheduler.ts`, pinned by the pipeline's
+          `rerender.test.ts`.
+        - `execution.stopAtRequest`, `scheduler.ts`, pinned by `stopping.test.ts`.
+        - `execution.resumeFromJournal`, on `TaskRequests` in
+          `packages/pipeline/src/requests.ts`, pinned by the pipeline's
+          `requests.test.ts`.
+        - `execution.taskLogDiagnostic`, on `TaskLogFile` in
+          `packages/pipeline/src/tasklog.ts`, pinned by the scheduler's `tasklog.test.ts`.
+        - `providers.transientRetry`, on `callWithRetry` in
+          `packages/providers/src/backends/transient.ts`, pinned by `transient.test.ts`.
+    - Row 692, the executor half (`8d495764`): `execution.redrawDrifted`, on
+      `requeueDrifted` in `scheduler.ts`, pinned by the pipeline's `graphdrift.test.ts`.
+    - Row 866, "P7 generate→critique→refine" (`8d495764`): `execution.refineLoop`, on
+      `makeShotRunner` in `packages/pipeline/src/runners.ts`, pinned by
+      `scheduler.test.ts`.
+- **`prompthash.test.ts` is the hash guard, not the pin.** It is byte-identical and its
+  baseline was not regenerated. `identity.taskHash` is pinned by `taskgraph.test.ts`,
+  whose content-addressing block checks `taskHash` and `TaskGraph.add` directly.
+  `plannerwaves.test.ts`, `plannerpins.test.ts` and
+  `packages/pipeline/src/tests/__fixtures__/waves/` are unchanged.
+- **Why two bullets became twelve contracts.** Each bold rule of the terminal-task bullet,
+  and each sub-bullet of the task-graph bullet that states its own rule (tombstones,
+  `RunOptions.only`, the replayed log), is one checkable statement, and the 280-character
+  caps leave room for one statement per contract.
+    - Every fact of the removed bullets and their sub-bullets is in a `rule`, `prevents`
+      or `detail`. The defect story that opened the terminal-task bullet is in
+      `execution.failureRecorded`'s detail.
+    - No moved sub-bullet only said that two code paths agree, so none was dropped.
+    - Two statements were corrected against the code. `TaskGraph.add` gives newer inputs
+      to a `failed` node as well as a `pending` one, where the bullet said "a node that
+      has not run yet"; `taskgraph.test.ts` gained a case for it. The task log's "nothing
+      deletes a log" is kept for the file, and the detail adds that a file past
+      `TASKLOG_MAX_BYTES` drops its oldest other execution.
+- **What moved out of `graphs.editInvalidates`** into `execution.redrawDrifted`:
+    - `requeueDrifted`'s requeue, once per run before the wave loop, and
+      `RunSummary.redrawn`.
+    - The journal write that clears the drift, including a redraw resumed from a cached
+      answer, the empty `{varC}` example, and the first `done` record a newly bound graph
+      writes.
+    - A failed redraw being left to `requeueFailed`, and the requeue happening at run time
+      because undo excludes `vngen/state/`.
+    - `vngen cost` pricing a redraw from the dry run's requeue (`boundSlotsToDraw`).
+    - The `requeueDrifted` and `boundSlotsToDraw` subjects.
+    - `graphs.editInvalidates` keeps the drift rule, `vngen status`'s edited arm, the
+      default-graph comparison and `authoredHashes`. Its rule's last sentence now names
+      `execution.redrawDrifted`, and its detail ends by pointing there.
+- **Where the declarations sit.**
+    - `@vn/scheduler` gained `src/contracts.ts` and a dependency on `@vn/contracts`; the
+      lintrix allow-list already had it. `pnpm-lock.yaml` was edited by hand for the new
+      link, and `pnpm install --frozen-lockfile` accepted it.
+    - Each declaration sits above the function it is on.
+    - Two pipeline tests now import a contract from `@vn/scheduler` (`rerender.test.ts`,
+      `graphdrift.test.ts`). Test files are outside `vn/element-types`, and both tests
+      already ran the scheduler through the testkit.
+- **Bullets removed.** The three bullets above, which empties the "Identity and storage",
+  "Scheduling" and "Generation and review" sections; their TOC entries were removed by
+  hand.
+- **Docs retargeted.** No doc linked a removed anchor. `desktop-app-editors-pipeline.md`
+  names `execution.taskLogDiagnostic` for the task log file; `gen-graphs.md` names
+  `execution.redrawDrifted` beside `graphs.editInvalidates`; `module-map.md`'s
+  `p5.ts`/`p6.ts` row describes the modules; `docs/index.md`'s row describes what the page
+  still holds.
+- **The retired task kinds keep their remaining answers** (decided before this stage):
+  `RETIRED_COST`, `slotOfTask`'s `outfit_sheet` case, `IMAGE_KINDS`, `validateProject`'s
+  skip and `subjectOf`'s `target` stay until the legacy runners are retired in their own
+  plan (decision 7).
+- **The desktop looks its family up through `familyOf(project.config.workflow)`**
+  (`3c3ae19d`), at the five call sites in `session/core.ts`, `docs.ts`, `gate.ts` and
+  `pipeline.ts`, which named `stillsFamily`. `familyOf('vn')` is `stillsFamily`, so
+  nothing a host shows changed. The desktop's tests still solve `stillsFamily` directly.
+- **Tests touched**, by tests and `expect` calls in the source, before and after:
+    - `taskgraph.test.ts` 8 and 15 → 10 and 17 (the kind case and the `failed` case).
+    - Wrapped or retitled, unchanged in count: `resume.test.ts` 1 and 4,
+      `tombstone.test.ts` 7 and 15, `scheduler.test.ts` 15 and 71, `stopping.test.ts` 9
+      and 49, the scheduler's `tasklog.test.ts` 2 and 10, `rerender.test.ts` 3 and 14,
+      `graphdrift.test.ts` 8 and 25, the pipeline's `requests.test.ts` 1 and 5,
+      `transient.test.ts` 21 and 55.
+    - No assertion was changed or removed.
+    - The whole suite went from 420 suites and 5899 tests to 420 and 5901.
+- **What is left on the page: one bullet.** "A storyboard is single frames or manga pages,
+  and a page's panels carry their own cast and lines", with its four sub-bullets
+  (`shot_form`, the page shape and lettering, bubbles, `shotData.panelBoxes`).
+    - Stage 4 split it off the storyboard bullet and left it on the page ("Page and bubble
+      rules stay on the page"), and no stage was assigned it.
+    - It has no single obvious home. Its rules live in `@vn/stills` (`decompSystem`,
+      `buildPageChunks`, `letteredPagesNote`), `@vn/store` (`readShots`' refusals),
+      `@vn/scriptedit` (`setBubbles`, `setPanels`), `@vn/pipeline` (`layoutReport`), the
+      exporter and the desktop's `project.setShotForm`. It was left in place for a
+      decision. Stage 9 cannot delete the page until it has moved.
+- **For 9:**
+    - Move the page bullet above, or decide where it goes.
+    - Retarget the Markdown links `pnpm check:doclinks` will flag once the page is gone:
+      `CLAUDE.md`, `docs/index.md` (two rows), `docs/guides/cli.md`,
+      `docs/history/vn-generator-report.md`, this plan,
+      `creating-shots-by-hand-and-by-agent.md`, `manga-style.md`, and the research notes
+      `pipeline-contracts-into-code.md`, `codebase-migration-for-new-requirements.md`,
+      `comparable-systems.md`, `manga-shot-composition.md`, `storylet-path-summaries.md`
+      and `storylet-solver.md`.
+    - Retarget the plain-text mentions a repo-wide search for `pipeline-contracts` finds:
+      `.commentlintrc.json`, `.claude/skills/archive-plans/SKILL.md`,
+      `scripts/prosestyle/fixtures/violations.txt`, `docs/plans/index.md`, the active
+      plans `node-based-asset-generation.md`, `openrouter-as-a-fallback-transport.md` and
+      `task-pane-logs.md`, the research notes `deleting-things.md`,
+      `slots-as-asset-history.md` and `story-format-rules-and-a-scene-lint.md`, and six
+      archived plans under `docs/plans/archive/`.
+    - `CLAUDE.md`'s "Core ideas" paragraph (the stage 9 rewrite), and its gen-graphs
+      sentence "the contracts doc keeps only their three invariants", which is already out
+      of date: those invariants are contracts now.
+    - Unchanged from stage 7: `slotOfTask`'s `bindingOf` switch, `familyOf`'s
+      `Family<StillsFacts>` type, one solve per desktop read, and every host loading every
+      contract shard.
+
+The plan as written before it landed:
+
 - Move the remaining execution bullets to contract declarations in `@vn/scheduler`,
   `@vn/pipeline` and `@vn/taskgraph`, per the disposition table.
 
