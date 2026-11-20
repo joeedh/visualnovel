@@ -63,9 +63,9 @@ export interface DocTreeInput {
    */
   angleOf?: (sourceTask: string | undefined) => string | undefined;
   /**
-   * Every picture the project implies, from `solve(stillsFamily, facts)`. Optional: when it is
-   * absent the Unapproved root is left out rather than drawn empty, so a caller that has not
-   * solved never claims nothing is waiting.
+   * Every picture the project implies, from `solve(familyOf(config.workflow), facts)`.
+   * Optional: when it is absent the Unapproved root is left out rather than drawn empty, so a
+   * caller that has not solved never claims nothing is waiting.
    */
   slots?: SlotsRead;
   /**

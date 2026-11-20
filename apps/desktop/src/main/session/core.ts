@@ -53,17 +53,10 @@ import {
 import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
+import { familyOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
 import { type AdoptVia, type ProjectFinding } from '@vn/artgen';
 import { suspensions, type Suspension } from '@vn/constraint-solver';
-import {
-  angleOfTask,
-  driftOf,
-  slotLabel,
-  stillsFamily,
-  type PlanFacts,
-  type PromptRung,
-} from '@vn/stills';
+import { angleOfTask, driftOf, slotLabel, type PlanFacts, type PromptRung } from '@vn/stills';
 import {
   chatBackendFor,
   chatRoute,
@@ -363,7 +356,8 @@ export function suspensionsOf(
   project: LoadedProject,
   model: ProjectModel,
 ): Map<string, Suspension> {
-  return new Map(suspensions(stillsFamily, sessionFacts(project, model)).map((s) => [s.hash, s]));
+  const family = familyOf(project.config.workflow);
+  return new Map(suspensions(family, sessionFacts(project, model)).map((s) => [s.hash, s]));
 }
 
 /**

@@ -1,16 +1,9 @@
 import { loadConfig, resolveKeys, secretDirsFor } from '@vn/config';
 import { entityFile, setCharacterLocked } from '@vn/store';
-import { isApproved } from '@vn/pipeline';
+import { familyOf, isApproved } from '@vn/pipeline';
 import { holdPortrait } from '@vn/artgen';
 import { solve, type Suspension } from '@vn/constraint-solver';
-import {
-  assetApproved,
-  assetPrereqs,
-  prereqRefusal,
-  resolveSlot,
-  slotTaskHash,
-  stillsFamily,
-} from '@vn/stills';
+import { assetApproved, assetPrereqs, prereqRefusal, resolveSlot, slotTaskHash } from '@vn/stills';
 import { chatBackendFor, chatRoute, type ChatBackend } from '@vn/providers';
 import { TRIAGE_MODEL, type Approvable } from '@vn/authoring';
 import type { ProjectModel, RefBinding } from '@vn/types';
@@ -193,7 +186,7 @@ export class GatePart {
     const manifest = project.store.manifest();
     const model = await withShots(project);
     const labels = labelContext(model, project.graph);
-    const solved = solve(stillsFamily, sessionFacts(project, model));
+    const solved = solve(familyOf(project.config.workflow), sessionFacts(project, model));
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
     const drifted = driftedFrames(model);
@@ -251,7 +244,7 @@ export class GatePart {
     const manifest = project.store.manifest();
     const model = await withShots(project);
     const labels = labelContext(model, project.graph);
-    const solved = solve(stillsFamily, sessionFacts(project, model));
+    const solved = solve(familyOf(project.config.workflow), sessionFacts(project, model));
     const names = labelAssets(manifest, labels);
     const byHash = new Map(manifest.map((a) => [a.hash, a]));
     const out: Approvable[] = [];

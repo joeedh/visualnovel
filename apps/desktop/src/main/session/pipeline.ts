@@ -2,11 +2,11 @@ import { join } from 'node:path';
 import { scriptFromScenes } from '@vn/model';
 import { VnError, writeFileAtomic } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
-import { gateStatus, readTaskLog } from '@vn/pipeline';
+import { familyOf, gateStatus, readTaskLog } from '@vn/pipeline';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { solve, type Solution } from '@vn/constraint-solver';
-import { stillsFamily, unapprovedTakes } from '@vn/stills';
+import { unapprovedTakes } from '@vn/stills';
 import { buildPlayable, unapprovedSentence, withSceneShots } from '@vn/export';
 import type { Playable, RefBinding } from '@vn/types';
 import type { PipelineStatus, SlotNode, TaskLogView } from '../../shared/ipc.js';
@@ -111,7 +111,10 @@ export class PipelinePart {
     const exts = new Map(manifest.map((a) => [a.hash, a.ext]));
     // The same solve `docTree` reads. Emitted in order, so the wire carries the topology the pane
     // needs without shipping the two Maps: upstream is always earlier in the array.
-    const solved = solve(stillsFamily, sessionFacts(project, await withShots(project)));
+    const solved = solve(
+      familyOf(project.config.workflow),
+      sessionFacts(project, await withShots(project)),
+    );
     return {
       tasks: taskActivity(
         [...project.graph.all()].map((t) => narrowTask(t, (hash) => exts.get(hash))),

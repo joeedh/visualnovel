@@ -16,7 +16,7 @@ import { bindSlots, registerGenRuntimes, type Graph as GenGraph } from '@vn/geng
 import { exists } from '@vn/util';
 import { fileCache } from '../workspace/filecache.js';
 import { solve } from '@vn/constraint-solver';
-import { stillsFamily } from '@vn/stills';
+import { familyOf } from '@vn/pipeline';
 import {
   PROJECT_SKILLS_DIR,
   cloneSkill,
@@ -96,7 +96,7 @@ export class DocsPart {
       skills     : await this.session.skillEntries(),
       // The same solve the Task Graph pane reads, over the same load: the tree's two unapproved
       // groups are projections of it, so nothing here enumerates slots a second time.
-      slots      : solve(stillsFamily, sessionFacts(project, model)),
+      slots      : solve(familyOf(project.config.workflow), sessionFacts(project, model)),
       boundGraphs: bound,
       graphs,
     });
