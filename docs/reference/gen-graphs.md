@@ -365,7 +365,8 @@ implementation. The testkit passes a mock.
   hash with the default output's, so moving or relabelling nodes, or adding nodes the
   output does not descend from, still counts as the default graph. The redraw writes the
   output's first `done` record, so it is asked for once. `reportGraphs` does not list
-  these slots as drifted, because it does not read the task graph.
+  these slots as drifted, because it does not read the task graph, so `vngen status` does
+  not name them; `vngen cost` prices them (see Cost).
 - **A deliberate re-render marks nodes invalid instead of re-walking the graph.** With
   every node clean, a plain requeue would skip straight to the cached image.
   `PipelineControl.regenerate` on a bound slot, and `gengraph.run` with `force`, append an
@@ -523,7 +524,14 @@ implementation. The testkit passes a mock.
   graph's own estimate prices it node by node and counting both would charge twice.
   Drifted tasks are counted under the pending line, and their slots are priced beside the
   unrendered ones in the graph estimate (`boundSlotsToDraw`), so a redraw is quoted before
-  it is paid for.
+  it is paid for. `boundSlotsToDraw` reads the task graph the dry run left behind and
+  prices every drawn bound slot whose task is `pending`. The dry run's own requeues put
+  those tasks there: `requeueDrifted` for either arm of drift, `requeueFailed` for a retry
+  and `requeueAbandoned` for an interrupted task. So the estimate prices exactly the
+  redraws the run makes, and a slot redrawn because its graph has not drawn it yet is
+  priced although `vngen status` does not list it as drifted. Until November 2026 the
+  estimate priced the slots `graphDrift` reported instead, which missed that arm and
+  priced a drifted slot whose task the run would not redraw.
 
 ## The DSL and the agent
 

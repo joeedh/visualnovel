@@ -374,7 +374,8 @@ async function loadGraphs(
  * What the graphs are expected to spend, printed under the call counts it replaces. Every slot
  * a graph draws and nothing has drawn yet is priced, planned or not, because the planner runs
  * one wave per run and a slot a later wave unlocks would otherwise be quoted at nothing. A
- * drawn slot whose graph has drifted is priced too, since the run requeues it before drawing.
+ * drawn slot is priced when the dry run before this left its task `pending`, because that is
+ * the run's own requeue deciding to redraw it.
  */
 async function printGraphCost(project: LoadedProject, docs: readonly GraphDoc[]): Promise<void> {
   if (docs.length === 0) return;

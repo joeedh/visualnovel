@@ -49,6 +49,7 @@
         "function:packages/pipeline/src/graphrun.ts#graphFacts",
         "function:packages/pipeline/src/graphrun.ts#driftedTasks",
         "function:packages/scheduler/src/scheduler.ts#requeueDrifted",
+        "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw",
         "function:packages/gengraph/src/drift.ts#graphDrift",
         "function:packages/gengraph/src/drift.ts#isDefaultGraph"
       ]
@@ -648,6 +649,7 @@
     "function:packages/pipeline/src/decompose.ts#decomposeAllPreview": [
       "planning.storyboardOnRequest"
     ],
+    "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#driftedTasks": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#graphFacts": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#runBoundGraph": ["identity.stagingSheet"],

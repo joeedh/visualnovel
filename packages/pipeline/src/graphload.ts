@@ -9,8 +9,8 @@
 import type { AnyTask, Asset, ProjectModel } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { ProjectPaths } from '@vn/store';
-import { solve } from '@vn/constraint-solver';
-import { angleOfTask, stillsFamily } from '@vn/stills';
+import { solve, type Solution } from '@vn/constraint-solver';
+import { angleOfTask } from '@vn/stills';
 import {
   activeOutputs,
   bindSlots,
@@ -45,6 +45,7 @@ import type { GenServicesDeps } from './genservices.js';
 import { createGenServices } from './genservices.js';
 import { indexGraphs, type GraphIndex, type LoadedGraph } from './graphrun.js';
 import { waveFacts } from './facts.js';
+import { familyOf } from './workflows.js';
 
 // Re-exported so a host that builds its providers through this package reads the listing the
 // router takes without a dependency on the graph package's state entry.
@@ -249,13 +250,13 @@ export interface ProjectSlotInputs {
 }
 
 /**
- * The slots a graph draws that nothing has drawn yet, upstream before downstream. Every slot
- * the project implies is enumerated, planned or not, because the planner runs one wave per run
- * and a slot a later wave unlocks would otherwise be priced at nothing.
+ * Every slot the project implies, planned or not, solved over the facts the planner builds and
+ * the task statuses `inputs.graph` holds. Every slot is enumerated because the planner runs one
+ * wave per run, and a slot a later wave unlocks would otherwise be priced at nothing.
  */
-export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
-  const solved = solve(
-    stillsFamily,
+function solveSlots(inputs: ProjectSlotInputs): Solution {
+  return solve(
+    familyOf(inputs.config.workflow),
     waveFacts({
       model  : inputs.model,
       config : inputs.config,
@@ -264,7 +265,11 @@ export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotIn
       angleOf: angleOfTask(inputs.graph),
     }),
   );
+}
 
+/** The slots a graph draws that nothing has drawn yet, upstream before downstream. */
+export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
+  const solved = solveSlots(inputs);
   return solved.order.filter((key) => {
     const state = solved.slots.get(key);
     return report.bound.has(key) && state !== undefined && state.candidates.length === 0;
@@ -272,20 +277,19 @@ export function unrenderedBoundSlots(report: GraphsReport, inputs: ProjectSlotIn
 }
 
 /**
- * The slots the next run draws through a graph: the unrendered ones, and the drawn ones whose
- * graph has been edited since, which `requeueDrifted` puts back to `pending` at the start of
- * the run. The unrendered slots come first, in slot order, then the drifted ones; a slot that
- * is both is named once.
+ * The slots the next run draws through a graph, upstream before downstream: the unrendered ones,
+ * and the drawn ones whose task is `pending`. Called on the task graph a dry run has just
+ * planned, whose requeues (`requeueDrifted` for either arm of graph drift, `requeueFailed`,
+ * `requeueAbandoned`) left at `pending` every drawn task the run redraws, so the estimate prices
+ * a drawn slot exactly when the run's own rules redraw it.
  */
 export function boundSlotsToDraw(report: GraphsReport, inputs: ProjectSlotInputs): string[] {
-  const drifted = new Set(report.drifted.map((d) => d.slot).filter((slot) => slot.length > 0));
-  const slots = new Set(unrenderedBoundSlots(report, inputs));
-  for (const slot of drifted) {
-    if (report.bound.has(slot)) {
-      slots.add(slot);
-    }
-  }
-  return [...slots];
+  const solved = solveSlots(inputs);
+  return solved.order.filter((key) => {
+    const state = solved.slots.get(key);
+    if (!report.bound.has(key) || state === undefined) return false;
+    return state.candidates.length === 0 || state.status === 'pending';
+  });
 }
 
 /** What drawing a set of graph-bound slots is expected to cost. */

@@ -7,7 +7,14 @@ import { parseFountain } from '@vn/parse';
 import { AssetStore, ProjectPaths } from '@vn/store';
 import type { Playable } from '@vn/types';
 import { makeProject, SCRIPTS } from '@vn/testkit';
-import { GenDerivedPrompt, GenImage, GenOutput, Graph, registerGenRuntimes } from '@vn/gengraph';
+import {
+  defaultSlotGraph,
+  GenDerivedPrompt,
+  GenImage,
+  GenOutput,
+  Graph,
+  registerGenRuntimes,
+} from '@vn/gengraph';
 import { graphDocFile, writeGraphDoc } from '@vn/gengraph/state';
 import {
   cmdAccept,
@@ -666,6 +673,45 @@ describe('a project whose slot a generation graph draws', () => {
 
       expect(code).toBe(0);
       expect(out).toContain('slots to draw: 1 of 1 bound');
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('prices a slot drawn before its graph existed, which the run redraws', async () => {
+    registerGenRuntimes();
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      // Drawn by the built-in runner, so the graph's output has no `done` record to drift from
+      await p.run();
+      await writeGraphDoc(p.dir, 'portraits', boundGraph('portrait:aiko'));
+
+      const { code, out } = await capture(() =>
+        cmdCost({ positional: [p.dir], flags: {} }, silentLogger),
+      );
+
+      expect(code).toBe(0);
+      expect(out).toContain('of those, redrawn for an edited graph: 1');
+      expect(out).toContain('slots to draw: 1 of 1 bound');
+    } finally {
+      await p.cleanup();
+    }
+  });
+
+  it('prices nothing for a drawn slot bound to the default graph, which the run leaves alone', async () => {
+    registerGenRuntimes();
+    const p = await makeProject({ script: SCRIPTS.linear });
+    try {
+      await p.run();
+      await writeGraphDoc(p.dir, 'portraits', defaultSlotGraph('portrait:aiko'));
+
+      const { code, out } = await capture(() =>
+        cmdCost({ positional: [p.dir], flags: {} }, silentLogger),
+      );
+
+      expect(code).toBe(0);
+      expect(out).not.toContain('redrawn for an edited graph');
+      expect(out).toContain('slots to draw: 0 of 1 bound');
     } finally {
       await p.cleanup();
     }

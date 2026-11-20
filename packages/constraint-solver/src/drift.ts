@@ -16,6 +16,7 @@ export const graphsEditInvalidates = contract({
     'function:packages/pipeline/src/graphrun.ts#graphFacts',
     'function:packages/pipeline/src/graphrun.ts#driftedTasks',
     'function:packages/scheduler/src/scheduler.ts#requeueDrifted',
+    'function:packages/pipeline/src/graphload.ts#boundSlotsToDraw',
     'function:packages/gengraph/src/drift.ts#graphDrift',
     'function:packages/gengraph/src/drift.ts#isDefaultGraph',
   ],
@@ -33,7 +34,10 @@ export const graphsEditInvalidates = contract({
     '`done` record for that node, for the report. `requeueDrifted` (`@vn/scheduler`, through ' +
     '`driftedTasks`) returns every planned `done` or `needs_human` task whose bound graph has ' +
     'drifted to `pending`. It runs once per run, before the wave loop, and `RunSummary.redrawn` ' +
-    'names the tasks it requeued. A graph bound to a slot the built-in runner already drew has ' +
+    'names the tasks it requeued. `vngen cost` prices a redraw from that same decision: ' +
+    '`boundSlotsToDraw` reads the task graph the dry run left and prices a drawn bound slot ' +
+    'whose task is `pending`, so the estimate covers both arms. `vngen status` lists what ' +
+    '`graphDrift` reports, the edited arm alone, whatever the task. A graph bound to a slot the built-in runner already drew has ' +
     'no `done` record for its output, so `graphDrift` reports nothing for it, but the slot is ' +
     'still drifted unless `isDefaultGraph` finds the graph equivalent to `defaultSlotGraph` for ' +
     'the slot, which draws what the built-in runner drew. That comparison uses authored hashes, ' +
