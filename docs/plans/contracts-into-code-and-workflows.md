@@ -1579,7 +1579,171 @@ The core of the plan. It runs as five commits, each green.
 
 ### Stage 7: the executor reads the slot kinds
 
-The workflows note's step 3, in solver terms.
+**7 landed 2026-11-20 on the `executor` branch, as `c5af638c`, `ba6d2d7f`, `9f210ad0` and
+`7b46e6d4` and the commit that adds this note.** As built:
+
+- **The executor registry** (`c5af638c`).
+    - `@vn/pipeline`'s `executors.ts` holds `EXECUTORS`, keyed by task kind. Each entry is
+      an `Executor<K>`: `runner(config)`, which builds the kind's runner, and
+      `cost(config)`, which answers its most image and review calls (`Calls`). A shot is
+      `max_refine_attempts` image calls, each read by every reviewer; the other three
+      kinds are one image call.
+    - `createRunners` builds a `Map` of runners from the registry, and `costPreview` reads
+      each pending task's line through `costOf`. Neither names a kind.
+    - `runTask` moved from `runners.ts` into `executors.ts`. A kind with no runner gets
+      the runner that fails the task with the same sentence as before:
+      `no runner for task kind "<kind>" (<hash>)`. The four runners are now exported from
+      `runners.ts` so the registry can name them.
+    - The registry is in the host, not on `SlotKind`, because a runner reaches providers
+      and generation graphs, which the solver and `@vn/stills` may not import.
+- **`TaskKind` is opened** (`ba6d2d7f`).
+    - `TaskKind` is `keyof TaskInputs`, and `TaskInputs` holds the input shapes of the
+      four kinds the stills family declares. No kind name or input shape changed, so no
+      hash moved: `prompthash.test.ts` is untouched, and `plannerpins.test.ts`,
+      `plannerwaves.test.ts` and the recorded waves pass unchanged.
+    - `EXECUTORS` is typed `{ readonly [K in TaskKind]: Executor<K> }`, so a declared kind
+      with no executor does not compile.
+    - `outfit_sheet`, `vision_review` and `prompt_refine` are now `RetiredTaskKind` in
+      `@vn/types` and have no executor.
+    - The contract index reads the task kinds a `task:` subject may name from the stills
+      family's slot kinds instead of from a hand-written list.
+- **`workflow:` and `Phase`** (`9f210ad0`).
+    - `WORKFLOWS` (`['vn']`) and `Workflow` sit in `@vn/types`' `schemas.ts`, and
+      `projectConfig` gains `workflow: z.enum(WORKFLOWS).default('vn')`. This follows the
+      stage 5 pattern for `narrative:`: the schema in `@vn/types`, loaded by
+      `@vn/config`'s `loadConfig`, documented in `docs/guides/cli.md`.
+    - An unknown name is refused by `loadConfig` as
+      `invalid project.yaml: workflow: Invalid enum value. Expected 'vn', received 'manga'`.
+      That message names the key and the known workflows. A `project.yaml` without the key
+      parses to `vn`.
+    - `@vn/pipeline`'s `familyOf` (`workflows.ts`) maps each workflow to its family. It is
+      typed over every `Workflow`, so a name with no family does not compile; `vn` maps to
+      `stillsFamily`.
+    - The planner, `boundSlotsToDraw`/`unrenderedBoundSlots` and `vngen status`'s
+      suspension count reach the family through `familyOf(config.workflow)`. For every
+      project today they get the same family as before.
+    - `Phase` is deleted from `packages/types/src/model.ts`, together with `RunContext`,
+      which only `Phase` named. Nothing implemented or imported either.
+- **The cost fix** (`7b46e6d4`; approved by the user before the stage).
+    - `boundSlotsToDraw` solves once over the task graph the dry run has just planned. It
+      prices every bound slot that is unrendered, planned or not, or whose task is
+      `pending`.
+    - The dry run's own requeues are what leave a drawn task at `pending`:
+      `requeueDrifted` (through `driftedTasks`, `graphFacts` and `boundDrift`, for both
+      arms of drift), `requeueFailed` and `requeueAbandoned`. So the estimate reads the
+      run's decision rather than repeating any comparison, and `graphDrift` is no longer
+      read by the cost.
+    - `RunSummary.redrawn` and "slots to draw" now agree.
+    - Calling `driftedTasks` again after the dry run would not work: the dry run has
+      already put those tasks back to `pending` in memory, and the planned set it bounds
+      the requeue by is not in `RunSummary`.
+- **Decisions.**
+    - **`TaskKind` is opened at compile time, by interface augmentation.** A family in
+      another package declares its kinds by augmenting `TaskInputs`
+      (`declare module '@vn/types'`), which widens `TaskKind`. The registry's mapped type
+      then fails until those kinds have executors. A runtime string registry would make
+      `Task<K>`, `taskHash`, `makeTask`, `TaskGraph.add`, `SlotKind` and every
+      `TaskInputs[K]` lookup untyped. The workflows note asks for this choice ("Keep it
+      typed… workflows can be compiled-in modules").
+    - **The stills family's kinds stay declared in `@vn/types`.** `@vn/taskgraph`,
+      `@vn/artgen`, the desktop and the solver's tests name them, and none of them can
+      import `@vn/stills`.
+    - **Augmentation applies to the whole program.** The solver's toy family therefore
+      cannot declare kinds of its own without adding them to `TaskKind` everywhere. It
+      borrows `portrait` and `location_ref` (`SEED_TASK`, `SPROUT_TASK`), with the same
+      assertions as before. The solver does nothing with a task kind but hash it and
+      report it.
+    - **A record of a retired kind keeps every answer it had.** A record of a retired kind
+      in an older `tasks.jsonl` still loads, because `loadGraph` does not validate by
+      kind. Running one fails with the old sentence. Such a record keeps these answers:
+        - `costPreview` prices a pending `outfit_sheet` record at one image call
+          (`RETIRED_COST`) and the other two at none, as before.
+        - `slotOfTask` still files `outfit_sheet` under its sheet slot.
+        - The desktop's `IMAGE_KINDS` (the count a style change re-keys) still counts it.
+        - `validateProject` still skips `vision_review` and `prompt_refine` records.
+        - The Task Graph pane's `subjectOf` still reads a `vision_review` record's
+          `target`.
+    - **`byKind` holds a retired kind only when a pending record has one.** The registered
+      kinds start at zero in the old order. Every reader prints only non-zero entries (the
+      CLI's preview, the desktop's `pipeline.run` check note), so no output changes. A
+      pending `outfit_sheet` would print after `shot_image` rather than before it. Nothing
+      in this repository has ever written a record of a retired kind (`git log -G` over
+      every branch finds only test fixtures).
+    - **`AssetKind` is untouched.** `outfit_sheet` is still an `AssetKind` and a manifest
+      row kind; `refs.ts`, `refcycle.ts`, `resolve.ts`, `takes.ts`, `artnotes.ts`, the
+      store's kind list and the desktop's labels read it as before.
+    - **Five of the six barrel re-exports stay.** `stillsFamily` is no longer re-exported:
+      the CLI reaches the family through `familyOf`. `baseRefusal`, `suspensions`,
+      `Suspension`, `unapprovedTakes` and `UnapprovedTake` stay. They are derivation
+      answers rather than executor concerns, and the CLI and the scheduler still may
+      import neither the solver nor `@vn/stills`.
+    - **`vngen status` is unchanged.** Its `drifted` list is still `graphDrift` through
+      `reportGraphs`: the edited arm only, per output node (an inactive one with an empty
+      slot), whatever the slot's task. Status and cost now answer different questions.
+        - Status names every output whose graph was edited since it last ran.
+        - Cost prices what the next run draws.
+        - So status can list a drifted output that cost does not price, and cost can price
+          a slot that status does not list. The status line's "the next run redraws it"
+          was already not always true, and is left as it was.
+- **Behaviour visible to hosts.**
+    - **`vngen cost` and `vngen run --mock`.** Only "slots to draw" and "estimated"
+      change, and only for a project that binds a generation graph to a slot that holds a
+      picture.
+        - Priced now and not before: a drawn slot bound to a non-default graph that has
+          never drawn it (boundDrift's second arm), and a drawn bound slot whose task is
+          `pending` for any other reason. That covers a retry the run will make, an
+          interrupted task, and a task requeued by approve or regenerate. Before, such a
+          task was counted under "drawn by a graph (counted by the graph estimate below)",
+          but the estimate below did not price it.
+        - Priced before and not now: a drawn slot whose edited graph `graphDrift` reports
+          but whose task the run will not redraw. That covers a task failed past its
+          attempt budget, one not in the current plan, and one not yet planned.
+        - A refused or stopped dry run requeues nothing, so it prices only unrendered and
+          already-pending slots.
+    - **The desktop** shows no graph cost from `boundSlotsToDraw`, so nothing it shows
+      changes. No command or control changed. `ux-model.json` equals a regeneration (the
+      task-list situation keeps its `prompt_refine` card, cast), and no editor under
+      `renderer/pathux/editors/` changed.
+    - Nothing else: the hashes, the plans, the runs, the refusals and the status output
+      are as they were.
+- **Contracts.** None added; the index holds 44.
+    - `graphs.editInvalidates` gains the subject
+      `function:packages/pipeline/src/graphload.ts#boundSlotsToDraw`. Its `detail` now
+      says the cost prices from the dry run's requeue and that `vngen status` lists
+      `graphDrift`'s edited arm alone.
+    - `planning.incremental`'s `vngen cost` sentence is about task counts, which did not
+      change, and was left as it was.
+    - Every contract keeps a pinning test.
+- **Tests rewritten**, by tests and assertions, before and after:
+    - `solve.test.ts` 19 and 58, `keep.test.ts` 4 and 7, `take.test.ts` 12 and 23: the
+      same, with the toy family's task kinds swapped.
+    - `taskgraph.test.ts` 8 and 15: the same. The top-level model-id case keeps its
+      `prompt_refine` inputs through a cast.
+    - The renderer's `taskGraph.test.ts` 48 and 89: the same. The review case is now about
+      a record of a retired kind, cast.
+    - New or grown: `executors.test.ts` 0 → 4 tests and 10 assertions; the CLI's
+      `commands.test.ts` 29 and 123 → 31 and 129 (the two cost cases); `schemas.test.ts`
+      15 and 27 → 17 and 29; `config.test.ts` 68 and 132 → 70 and 134.
+    - The whole suite went from 419 suites and 5889 tests to 420 and 5899.
+- `.claude/comment-audit-ledger.json` no longer lists the deleted `base.ts` and
+  `pipeline/src/drift.ts`.
+- **For 8:**
+    - The retired kinds' remaining answers (`RETIRED_COST`, `slotOfTask`'s `outfit_sheet`
+      case, `IMAGE_KINDS`, `validateProject`'s skip, `subjectOf`'s `target`) can be
+      deleted once a decision says a record of one no longer needs the answer it had.
+    - `slotOfTask`'s `bindingOf` still switches on kind names. The workflows note's step 3
+      lists "the slot switch" with the registry, but `SlotKind` has no inverse from task
+      inputs to a binding.
+    - The desktop still names `stillsFamily` directly rather than
+      `familyOf(config.workflow)`.
+    - `familyOf` answers `Family<StillsFacts>`; a workflow whose family has different
+      facts needs that type widened.
+    - Stage 8 can give `requeueDrifted` its own declaration, which would carry the
+      cost-reads-the-requeue sentence now in `graphs.editInvalidates`' detail.
+    - Unchanged from 6e: one solve per desktop read rather than a shared solve per
+      snapshot, and every host loading every contract shard.
+
+The plan as written before it landed: the workflows note's step 3, in solver terms.
 
 - Add the host-side registry in `@vn/pipeline`, keyed by task kind, with the runner and
   the cost line. `createRunners` and `costPreview` read it instead of switching on names.

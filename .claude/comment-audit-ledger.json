@@ -1057,10 +1057,6 @@
       "auditedAt": "2026-08-20T19:36:27.305Z",
       "blob"     : "a7c9d2f831806a3b335f39fd354cf1f168e93476"
     },
-    "packages/artgen/src/base.ts": {
-      "auditedAt": "2026-08-20T19:36:27.305Z",
-      "blob"     : "5c05b85d5763fc056b1bbad2ea145edbb9bd6a65"
-    },
     "packages/artgen/src/chunks.ts": {
       "auditedAt": "2026-08-20T19:36:27.305Z",
       "blob"     : "e5ba9e7f7f56dd919f334312d96066fc7defc35b"
@@ -1672,10 +1668,6 @@
     "packages/pipeline/src/decompose.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
       "blob"     : "e7e899f8db957f6ef7df5c5825b411b9d643faa4"
-    },
-    "packages/pipeline/src/drift.ts": {
-      "auditedAt": "2026-08-20T19:36:31.968Z",
-      "blob"     : "a70534d7ef4ae99add2ff1188147f06e7032171c"
     },
     "packages/pipeline/src/index.ts": {
       "auditedAt": "2026-08-20T19:36:31.968Z",
