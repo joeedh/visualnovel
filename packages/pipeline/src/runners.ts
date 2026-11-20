@@ -15,6 +15,7 @@ import type {
 } from '@vn/types';
 import { shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
+import { contract } from '@vn/contracts';
 import { checkRequestWrite, mergeReports, withTaskLogScope } from '@vn/providers';
 import { heldBy, layoutDefect, sheetSeeds, type SheetSeeds } from '@vn/stills';
 import { refinePrompt } from './p6.js';
@@ -268,6 +269,40 @@ export function layoutReport(
   const honoured = defects.some((d) => d === undefined);
   return [{ reviewer: 'layout', defects: honoured || !first ? [] : [first] }];
 }
+
+export const executionRefineLoop = contract({
+  id      : 'execution.refineLoop',
+  rule: 'The `shot_image` runner holds the P7 loop: each attempt draws, every configured reviewer critiques the picture against the shot spec, and a blocking merged verdict refines the prompt for another attempt, up to `max_refine_attempts`. Then the shot is `needs_human`.',
+  prevents:
+    'A flawed frame shipped silently as `done`, or the rest of the attempt cap spent repeating a request already made.',
+  subjects: [
+    'function:packages/pipeline/src/runners.ts#makeShotRunner',
+    'function:packages/pipeline/src/p6.ts#refinePrompt',
+    'function:packages/providers/src/review.ts#mergeReports',
+    'task:shot_image',
+  ],
+  see: [
+    'docs/history/vn-generator-report.md',
+    'docs/plans/archive/INDEX.md#refine-loop-inspector',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    "Folding the loop into the runner is a documented deviation from the report's separate " +
+    '`vision_review` and `prompt_refine` nodes, which are now retired task kinds with no ' +
+    'executor. Every attempt is recorded on the task for provenance: its prompt, refs, output and ' +
+    'every review, in `Task.attempts`. `max_refine_attempts` caps the attempts within one run, ' +
+    'and is at least one; it is separate from `max_task_attempts` (`execution.retryBudget`). ' +
+    "Refinement is deterministic (`refinePrompt` folds each defect's suggested fix, or its " +
+    'description, into a `Corrections:` clause), so the loop also stops early when a refinement ' +
+    'repeats one an earlier attempt of the task already tried: the critique repeated, and the ' +
+    'next attempt would issue a request already made, so spending the rest of the cap would ' +
+    'repeat that request rather than refine it. A bound graph with a refine node takes the ' +
+    "critique through that node, which re-runs only the graph's tail, and the repeat check then " +
+    'compares critiques; a graph without one takes it on the derived prompt. A clean frame ' +
+    "becomes the take its slot holds, and the reviewers' verdict approves nothing, which stays a " +
+    "person's act. The last flawed frame holds the slot too, because it is what the author needs " +
+    "to see and fix. The give-up sentence is the task's `error` (`execution.failureRecorded`).",
+});
 
 /**
  * P7 generate → critique → refine loop (report §P7), folded into the shot runner so every

@@ -263,6 +263,46 @@ export function requeueAbandoned(graph: TaskGraph): AnyTask[] {
   return requeued;
 }
 
+export const executionRedrawDrifted = contract({
+  id      : 'execution.redrawDrifted',
+  rule: 'Once per run, after the failure retries and before the wave loop, every planned `done` or `needs_human` task whose bound generation graph has drifted goes back to `pending`, and `RunSummary.redrawn` names it. A successful redraw clears the drift.',
+  prevents:
+    "An edited graph's slot keeping the picture the old graph drew for the life of the project, or a slot requeued on every run because its redraw never cleared the drift.",
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#requeueDrifted',
+    'function:packages/scheduler/src/scheduler.ts#RunSummary',
+    'function:packages/pipeline/src/graphrun.ts#driftedTasks',
+    'function:packages/pipeline/src/graphload.ts#boundSlotsToDraw',
+    'function:apps/cli/src/commands.ts#cmdCost',
+  ],
+  see: [
+    'docs/reference/gen-graphs.md#identity-the-journal-and-drift',
+    'docs/plans/node-based-asset-generation.md',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-7-the-executor-reads-the-slot-kinds',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    "Which tasks have drifted is `graphs.editInvalidates`: `driftedTasks` asks the solver's " +
+    '`boundDrift`, over `graphFacts`, for the tasks whose bound graph would no longer draw the ' +
+    "picture their slot holds. The requeue clears the task's `output` and `error`, writes it to " +
+    'the log (a dry run only in memory) and logs `task.redraw`. It runs after `requeueFailed`, ' +
+    'so a task that both a failure and a graph edit want back is requeued once, and it is bounded ' +
+    'to the current plan and the `only` closure (`execution.targetClosure`). A successful redraw ' +
+    "writes the graph's new authored hash into the journal, which clears the drift; for a graph " +
+    "bound to a slot the built-in runner drew, the redraw writes the output's first `done` " +
+    'record, so it is asked for once. That holds for a redraw the executor resumed from a cached ' +
+    'answer too, because a node that resumes while its latest `done` record carries stale hashes ' +
+    'writes a fresh `done` record under the current ones. Without that record an edit that ' +
+    'leaves the output unchanged (an empty `{varC}` added to a template) would keep the slot ' +
+    'drifted and requeue it on every run. A failed redraw writes no such record, so `failed` is ' +
+    'left to `requeueFailed` and its own attempt budget (`execution.retryBudget`) rather than ' +
+    'requeued here forever. The requeue happens at run time rather than at the graph write, ' +
+    'because undo excludes `vngen/state/`: undoing a graph edit restores the authored hash, so ' +
+    'the drift disappears before anything is redrawn. `vngen cost` prices a redraw from this ' +
+    'same decision: `boundSlotsToDraw` reads the task graph the dry run left and prices a drawn ' +
+    'bound slot whose task is `pending`, so the estimate covers both arms of drift.',
+});
+
 /**
  * Put back to `pending` every task whose bound generation graph has been edited since it drew
  * the slot, so this run redraws it. Editing a graph does not move the task's hash, so without
@@ -308,7 +348,7 @@ export const executionTargetClosure = contract({
     'plan nodes that did not exist before it: a shot task appears once the sheet it depends on is ' +
     'drawn. Planning still covers the whole project, so the storyboard files and the preview are ' +
     'what a full run would leave. The failure and drift requeues are bounded to the same closure ' +
-    '(`execution.retryBudget`).',
+    '(`execution.retryBudget`, `execution.redrawDrifted`).',
 });
 
 /**

@@ -42,6 +42,27 @@
       ]
     },
     {
+      "id"      : "execution.redrawDrifted",
+      "rule": "Once per run, after the failure retries and before the wave loop, every planned `done` or `needs_human` task whose bound generation graph has drifted goes back to `pending`, and `RunSummary.redrawn` names it. A successful redraw clears the drift.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#requeueDrifted",
+        "function:packages/scheduler/src/scheduler.ts#RunSummary",
+        "function:packages/pipeline/src/graphrun.ts#driftedTasks",
+        "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw",
+        "function:apps/cli/src/commands.ts#cmdCost"
+      ]
+    },
+    {
+      "id"      : "execution.refineLoop",
+      "rule": "The `shot_image` runner holds the P7 loop: each attempt draws, every configured reviewer critiques the picture against the shot spec, and a blocking merged verdict refines the prompt for another attempt, up to `max_refine_attempts`. Then the shot is `needs_human`.",
+      "subjects": [
+        "function:packages/pipeline/src/runners.ts#makeShotRunner",
+        "function:packages/pipeline/src/p6.ts#refinePrompt",
+        "function:packages/providers/src/review.ts#mergeReports",
+        "task:shot_image"
+      ]
+    },
+    {
       "id"      : "execution.reportFromPlan",
       "rule": "`RunSummary.failed` and `needsHuman` are the tasks the last planning pass asked for that are in those states, not what this process ran, so a failure inherited from an earlier run still exits `vngen run` non-zero and an orphan is never reported.",
       "subjects": [
@@ -124,14 +145,12 @@
     },
     {
       "id"      : "graphs.editInvalidates",
-      "rule": "Editing a generation graph bound to a slot moves no task hash, so it is reported as drift: the output node's authored hash differs from its last completed run's, or the node never ran and the graph is not the default one. A run redraws a drifted planned task once.",
+      "rule": "Editing a generation graph bound to a slot moves no task hash, so it is reported as drift: the output node's authored hash differs from its last completed run's, or the node never ran and the graph is not the default one. `execution.redrawDrifted` redraws it.",
       "subjects": [
         "function:packages/constraint-solver/src/drift.ts#boundDrift",
         "function:packages/constraint-solver/src/solve.ts#solve",
         "function:packages/pipeline/src/graphrun.ts#graphFacts",
         "function:packages/pipeline/src/graphrun.ts#driftedTasks",
-        "function:packages/scheduler/src/scheduler.ts#requeueDrifted",
-        "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw",
         "function:packages/gengraph/src/drift.ts#graphDrift",
         "function:packages/gengraph/src/drift.ts#isDefaultGraph"
       ]
@@ -710,7 +729,10 @@
     "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:vngen/work/graphs/lib": ["graphs.instanceEditsOverride"],
     "file:vngen/work/shots": ["storage.storyboardKept"],
-    "function:apps/cli/src/commands.ts#cmdCost": ["execution.retryBudget"],
+    "function:apps/cli/src/commands.ts#cmdCost": [
+      "execution.redrawDrifted",
+      "execution.retryBudget"
+    ],
     "function:apps/cli/src/commands.ts#cmdRun": [
       "execution.failureRecorded",
       "execution.reportFromPlan",
@@ -797,12 +819,16 @@
       "planning.storyboardOnRequest"
     ],
     "function:packages/pipeline/src/executors.ts#runTask": ["execution.taskLogDiagnostic"],
-    "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw": ["graphs.editInvalidates"],
-    "function:packages/pipeline/src/graphrun.ts#driftedTasks": ["graphs.editInvalidates"],
+    "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw": ["execution.redrawDrifted"],
+    "function:packages/pipeline/src/graphrun.ts#driftedTasks": [
+      "execution.redrawDrifted",
+      "graphs.editInvalidates"
+    ],
     "function:packages/pipeline/src/graphrun.ts#graphFacts": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#runBoundGraph": ["identity.stagingSheet"],
     "function:packages/pipeline/src/p1.ts#deterministicBreakdown": ["providers.textFallback"],
     "function:packages/pipeline/src/p1.ts#enrichLocation": ["providers.textFallback"],
+    "function:packages/pipeline/src/p6.ts#refinePrompt"                  : ["execution.refineLoop"],
     "function:packages/pipeline/src/planner.ts#planTasks": [
       "gate.perUnit",
       "planning.incremental",
@@ -810,7 +836,10 @@
       "storage.storyboardKept"
     ],
     "function:packages/pipeline/src/requests.ts#TaskRequests": ["execution.resumeFromJournal"],
-    "function:packages/pipeline/src/runners.ts#makeShotRunner": ["execution.resumeFromJournal"],
+    "function:packages/pipeline/src/runners.ts#makeShotRunner": [
+      "execution.refineLoop",
+      "execution.resumeFromJournal"
+    ],
     "function:packages/pipeline/src/tasklog.ts#TaskLogFile": ["execution.taskLogDiagnostic"],
     "function:packages/pipeline/src/tasklog.ts#readTaskLog": ["execution.taskLogDiagnostic"],
     "function:packages/providers/src/backends/transient.ts#callWithRetry": [
@@ -836,12 +865,14 @@
     "function:packages/providers/src/requests.ts#checkRequest": ["execution.stopAtRequest"],
     "function:packages/providers/src/requests.ts#checkRequestWrite": ["execution.stopAtRequest"],
     "function:packages/providers/src/requests.ts#withRequestStop": ["execution.stopAtRequest"],
+    "function:packages/providers/src/review.ts#mergeReports"             : ["execution.refineLoop"],
     "function:packages/providers/src/tasklog.ts#withTaskLog": ["execution.taskLogDiagnostic"],
     "function:packages/scheduler/src/scheduler.ts#RunOptions": [
       "execution.stopAtRequest",
       "execution.targetClosure"
     ],
     "function:packages/scheduler/src/scheduler.ts#RunSummary": [
+      "execution.redrawDrifted",
       "execution.reportFromPlan",
       "execution.retryBudget"
     ],
@@ -849,7 +880,7 @@
     "function:packages/scheduler/src/scheduler.ts#requeueAbandoned": [
       "execution.abandonedReleased"
     ],
-    "function:packages/scheduler/src/scheduler.ts#requeueDrifted": ["graphs.editInvalidates"],
+    "function:packages/scheduler/src/scheduler.ts#requeueDrifted": ["execution.redrawDrifted"],
     "function:packages/scheduler/src/scheduler.ts#requeueFailed": ["execution.retryBudget"],
     "function:packages/scheduler/src/scheduler.ts#runPipeline": [
       "execution.abandonedReleased",
@@ -1050,6 +1081,7 @@
       "takes.currencyExclusive"
     ],
     "task:shot_image": [
+      "execution.refineLoop",
       "gate.perUnit",
       "identity.headingRekeysShots",
       "identity.stagingSheet",

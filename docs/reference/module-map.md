@@ -295,7 +295,7 @@ and `pending` requeues).
 | `p1.ts`                        | P1: planning inputs / character sheets                                                      |
 | `planner.ts`                   | task planning over the model                                                                |
 | `decompose.ts`                 | explicit decomposition                                                                      |
-| `p5.ts` / `p6.ts`              | later phases (see pipeline-contracts.md)                                                    |
+| `p5.ts` / `p6.ts`              | P5 decomposition (from `@vn/stills`) and P6 prompt refinement (`execution.refineLoop`)      |
 | `runners.ts`                   | task runners                                                                                |
 | `executors.ts`                 | the executor registry: each task kind's runner and cost line; `createRunners`, `runTask`    |
 | `workflows.ts`                 | `familyOf`: the family each `workflow:` in `project.yaml` is drawn by                       |

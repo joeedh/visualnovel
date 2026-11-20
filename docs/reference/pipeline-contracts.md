@@ -20,7 +20,6 @@ opens the summary file and then the one shard it needs.
 <!-- toc -->
 
 - [Scenes, shots, and lines](#scenes-shots-and-lines)
-- [Generation and review](#generation-and-review)
 
 <!-- tocstop -->
 
@@ -66,17 +65,3 @@ opens the summary file and then the one shard it needs.
       only when none of them match, because a reviewer's measurement can be off while none
       invents a match for a wrong page; a page no reviewer measured gets no layout
       verdict. The boxes stamped are the matching reviewer's.
-
-## Generation and review
-
-- **P7 generate→critique→refine loop** is folded into the `shot_image` runner (a
-  documented deviation from the report's separate `vision_review`/`prompt_refine` nodes).
-    - Each attempt generates, then every configured reviewer critiques against the shot
-      spec and the verdicts are merged. A blocking verdict triggers a deterministic prompt
-      refinement and another attempt. Attempts are capped at `config.max_refine_attempts`,
-      after which the shot is flagged `needs_human`.
-    - Every attempt is recorded on the task for provenance.
-    - It also stops early when a refinement changes nothing. Refinement is deterministic,
-      so an unchanged prompt means the critique repeated verbatim and the next attempt
-      would issue the identical request. Spending the rest of the cap on that repeats the
-      same request rather than refining it.

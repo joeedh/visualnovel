@@ -32,6 +32,44 @@
       "declared": "packages/scheduler/src/scheduler.ts"
     },
     {
+      "id"      : "execution.redrawDrifted",
+      "rule": "Once per run, after the failure retries and before the wave loop, every planned `done` or `needs_human` task whose bound generation graph has drifted goes back to `pending`, and `RunSummary.redrawn` names it. A successful redraw clears the drift.",
+      "prevents": "An edited graph's slot keeping the picture the old graph drew for the life of the project, or a slot requeued on every run because its redraw never cleared the drift.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#requeueDrifted",
+        "function:packages/scheduler/src/scheduler.ts#RunSummary",
+        "function:packages/pipeline/src/graphrun.ts#driftedTasks",
+        "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw",
+        "function:apps/cli/src/commands.ts#cmdCost"
+      ],
+      "see": [
+        "docs/reference/gen-graphs.md#identity-the-journal-and-drift",
+        "docs/plans/node-based-asset-generation.md",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-7-the-executor-reads-the-slot-kinds",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+      ],
+      "detail": "Which tasks have drifted is `graphs.editInvalidates`: `driftedTasks` asks the solver's `boundDrift`, over `graphFacts`, for the tasks whose bound graph would no longer draw the picture their slot holds. The requeue clears the task's `output` and `error`, writes it to the log (a dry run only in memory) and logs `task.redraw`. It runs after `requeueFailed`, so a task that both a failure and a graph edit want back is requeued once, and it is bounded to the current plan and the `only` closure (`execution.targetClosure`). A successful redraw writes the graph's new authored hash into the journal, which clears the drift; for a graph bound to a slot the built-in runner drew, the redraw writes the output's first `done` record, so it is asked for once. That holds for a redraw the executor resumed from a cached answer too, because a node that resumes while its latest `done` record carries stale hashes writes a fresh `done` record under the current ones. Without that record an edit that leaves the output unchanged (an empty `{varC}` added to a template) would keep the slot drifted and requeue it on every run. A failed redraw writes no such record, so `failed` is left to `requeueFailed` and its own attempt budget (`execution.retryBudget`) rather than requeued here forever. The requeue happens at run time rather than at the graph write, because undo excludes `vngen/state/`: undoing a graph edit restores the authored hash, so the drift disappears before anything is redrawn. `vngen cost` prices a redraw from this same decision: `boundSlotsToDraw` reads the task graph the dry run left and prices a drawn bound slot whose task is `pending`, so the estimate covers both arms of drift.",
+      "declared": "packages/scheduler/src/scheduler.ts"
+    },
+    {
+      "id"      : "execution.refineLoop",
+      "rule": "The `shot_image` runner holds the P7 loop: each attempt draws, every configured reviewer critiques the picture against the shot spec, and a blocking merged verdict refines the prompt for another attempt, up to `max_refine_attempts`. Then the shot is `needs_human`.",
+      "prevents": "A flawed frame shipped silently as `done`, or the rest of the attempt cap spent repeating a request already made.",
+      "subjects": [
+        "function:packages/pipeline/src/runners.ts#makeShotRunner",
+        "function:packages/pipeline/src/p6.ts#refinePrompt",
+        "function:packages/providers/src/review.ts#mergeReports",
+        "task:shot_image"
+      ],
+      "see": [
+        "docs/history/vn-generator-report.md",
+        "docs/plans/archive/INDEX.md#refine-loop-inspector",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+      ],
+      "detail": "Folding the loop into the runner is a documented deviation from the report's separate `vision_review` and `prompt_refine` nodes, which are now retired task kinds with no executor. Every attempt is recorded on the task for provenance: its prompt, refs, output and every review, in `Task.attempts`. `max_refine_attempts` caps the attempts within one run, and is at least one; it is separate from `max_task_attempts` (`execution.retryBudget`). Refinement is deterministic (`refinePrompt` folds each defect's suggested fix, or its description, into a `Corrections:` clause), so the loop also stops early when a refinement repeats one an earlier attempt of the task already tried: the critique repeated, and the next attempt would issue a request already made, so spending the rest of the cap would repeat that request rather than refine it. A bound graph with a refine node takes the critique through that node, which re-runs only the graph's tail, and the repeat check then compares critiques; a graph without one takes it on the derived prompt. A clean frame becomes the take its slot holds, and the reviewers' verdict approves nothing, which stays a person's act. The last flawed frame holds the slot too, because it is what the author needs to see and fix. The give-up sentence is the task's `error` (`execution.failureRecorded`).",
+      "declared": "packages/pipeline/src/runners.ts"
+    },
+    {
       "id"      : "execution.reportFromPlan",
       "rule": "`RunSummary.failed` and `needsHuman` are the tasks the last planning pass asked for that are in those states, not what this process ran, so a failure inherited from an earlier run still exits `vngen run` non-zero and an orphan is never reported.",
       "prevents": "A run reporting success over a failure an earlier run left, or an orphaned `failed` node in the never-pruned log keeping the exit code failing forever.",
@@ -107,7 +145,7 @@
         "command:pipeline.draw"
       ],
       "see"     : ["docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"],
-      "detail": "The closure is walked over `deps` in the graph as it stands at each wave, because a wave can plan nodes that did not exist before it: a shot task appears once the sheet it depends on is drawn. Planning still covers the whole project, so the storyboard files and the preview are what a full run would leave. The failure and drift requeues are bounded to the same closure (`execution.retryBudget`).",
+      "detail": "The closure is walked over `deps` in the graph as it stands at each wave, because a wave can plan nodes that did not exist before it: a shot task appears once the sheet it depends on is drawn. Planning still covers the whole project, so the storyboard files and the preview are what a full run would leave. The failure and drift requeues are bounded to the same closure (`execution.retryBudget`, `execution.redrawDrifted`).",
       "declared": "packages/scheduler/src/scheduler.ts"
     },
     {

@@ -7,7 +7,7 @@ import { contract } from '@vn/contracts';
 
 export const graphsEditInvalidates = contract({
   id      : 'graphs.editInvalidates',
-  rule: "Editing a generation graph bound to a slot moves no task hash, so it is reported as drift: the output node's authored hash differs from its last completed run's, or the node never ran and the graph is not the default one. A run redraws a drifted planned task once.",
+  rule: "Editing a generation graph bound to a slot moves no task hash, so it is reported as drift: the output node's authored hash differs from its last completed run's, or the node never ran and the graph is not the default one. `execution.redrawDrifted` redraws it.",
   prevents:
     'A `done` record keeping a picture the edited graph would no longer draw for the life of the project, or a slot redrawn on every run whether or not anyone edited its graph.',
   subjects: [
@@ -15,8 +15,6 @@ export const graphsEditInvalidates = contract({
     'function:packages/constraint-solver/src/solve.ts#solve',
     'function:packages/pipeline/src/graphrun.ts#graphFacts',
     'function:packages/pipeline/src/graphrun.ts#driftedTasks',
-    'function:packages/scheduler/src/scheduler.ts#requeueDrifted',
-    'function:packages/pipeline/src/graphload.ts#boundSlotsToDraw',
     'function:packages/gengraph/src/drift.ts#graphDrift',
     'function:packages/gengraph/src/drift.ts#isDefaultGraph',
   ],
@@ -29,33 +27,20 @@ export const graphsEditInvalidates = contract({
     "A bound graph runs the slot, and the graph is the slot's runner rather than part of what " +
     'the slot is, so editing it never moves the task hash; the difference shows as drift. ' +
     '`graphFacts` summarises each bound slot as a `BoundGraphFact`, and `boundDrift` decides it; ' +
-    '`solve` reports it on `SlotState.drift` when the facts carry `graphs`. `graphDrift` ' +
-    "recomputes each Output node's authored hash and compares it against the journal's last " +
-    '`done` record for that node, for the report. `requeueDrifted` (`@vn/scheduler`, through ' +
-    '`driftedTasks`) returns every planned `done` or `needs_human` task whose bound graph has ' +
-    'drifted to `pending`. It runs once per run, before the wave loop, and `RunSummary.redrawn` ' +
-    'names the tasks it requeued. `vngen cost` prices a redraw from that same decision: ' +
-    '`boundSlotsToDraw` reads the task graph the dry run left and prices a drawn bound slot ' +
-    'whose task is `pending`, so the estimate covers both arms. `vngen status` lists what ' +
-    '`graphDrift` reports, the edited arm alone, whatever the task. A graph bound to a slot the built-in runner already drew has ' +
-    'no `done` record for its output, so `graphDrift` reports nothing for it, but the slot is ' +
-    'still drifted unless `isDefaultGraph` finds the graph equivalent to `defaultSlotGraph` for ' +
-    'the slot, which draws what the built-in runner drew. That comparison uses authored hashes, ' +
-    'so a default graph whose nodes were only moved or joined by unconnected nodes still counts ' +
-    "as the default. The redraw writes the output's first `done` record, so it is asked for " +
-    'once. Drift is measured on `authoredHashes`, which reads each host-seeded input (the ' +
-    'derived prompt, the task refs) as though nothing had been seeded onto it, and not on the ' +
-    "task's own `nodeHash`, which includes the seeding and would report drift after every run. " +
-    "A successful redraw writes the graph's new authored hash into the journal, which clears " +
-    'the drift; that holds for a redraw the executor resumed from a cached answer too, because a ' +
-    'node that resumes while its latest `done` record carries stale hashes writes a fresh `done` ' +
-    'record under the current ones. Without that record an edit that leaves the output ' +
-    'unchanged (an empty `{varC}` added to a template) would keep the slot drifted and requeue ' +
-    'it on every run. A failed redraw writes no such record, so the failure goes to ' +
-    '`requeueFailed` and its own attempt budget rather than being requeued here forever. The ' +
-    'requeue happens at run time rather than at the graph write, because undo excludes ' +
-    '`vngen/state/`: undoing a graph edit restores the authored hash, so the drift disappears ' +
-    'before anything is redrawn. Editing prose is the opposite case; see ' +
+    '`solve` reports it on `SlotState.drift` when the facts carry `graphs`, and `driftedTasks` ' +
+    "answers the tasks whose slot has drifted. `graphDrift` recomputes each Output node's " +
+    "authored hash and compares it against the journal's last `done` record for that node, for " +
+    'the report, and `vngen status` lists what it reports: the edited arm alone, whatever the ' +
+    'task. A graph bound to a slot the built-in runner already drew has no `done` record for its ' +
+    'output, so `graphDrift` reports nothing for it, but the slot is still drifted unless ' +
+    '`isDefaultGraph` finds the graph equivalent to `defaultSlotGraph` for the slot, which draws ' +
+    'what the built-in runner drew. That comparison uses authored hashes, so a default graph ' +
+    'whose nodes were only moved or joined by unconnected nodes still counts as the default. ' +
+    'Drift is measured on `authoredHashes`, which reads each host-seeded input (the derived ' +
+    "prompt, the task refs) as though nothing had been seeded onto it, and not on the task's " +
+    'own `nodeHash`, which includes the seeding and would report drift after every run. ' +
+    'Requeueing a drifted task, how a redraw clears the drift, and how `vngen cost` prices the ' +
+    'redraw are `execution.redrawDrifted`. Editing prose is the opposite case; see ' +
     '`script.proseDriftReported`.',
 });
 

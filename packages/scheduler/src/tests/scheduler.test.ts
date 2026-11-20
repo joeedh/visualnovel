@@ -1,6 +1,6 @@
 import { pins } from '@vn/contracts';
 import type { AnyTask, TaskInputs, TaskStatus } from '@vn/types';
-import { planTasks } from '@vn/pipeline';
+import { executionRefineLoop, planTasks } from '@vn/pipeline';
 import { StubImageBackend, createMockProviders, type ImageBackend } from '@vn/providers';
 import { TaskGraph, loadGraph, makeTask } from '@vn/taskgraph';
 import { SCRIPTS, makeProject } from '@vn/testkit';
@@ -115,45 +115,47 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
     }, 30_000);
   });
 
-  it('caps the P7 loop and flags needs_human when reviewers keep blocking', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
-    try {
-      await p.run();
-      await p.approve('aiko');
+  describe(pins(executionRefineLoop), () => {
+    it('caps the P7 loop and flags needs_human when reviewers keep blocking', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
+      try {
+        await p.run();
+        await p.approve('aiko');
 
-      // Only now do the gated shots run — with a reviewer that refuses every attempt.
-      const summary = await p.run({ reviewResponses: [BLOCKING] });
-      const shots = summary.ran.filter((t) => t.kind === 'shot_image');
-      expect(shots.length).toBeGreaterThan(0);
-      expect(shots.every((t) => t.status === 'needs_human')).toBe(true);
-      // Capped at max_refine_attempts (2), each recorded for provenance.
-      expect(shots.every((t) => t.attempts.length === 2)).toBe(true);
-      expect(shots.every((t) => t.attempts.every((a) => a.output))).toBe(true);
-      // `error` records the reason for the terminal state, whatever the state; here it is P7's give-up.
-      expect(shots.every((t) => t.error?.includes('still has blocking defects'))).toBe(true);
-    } finally {
-      await p.cleanup();
-    }
-  }, 30_000);
+        // Only now do the gated shots run — with a reviewer that refuses every attempt.
+        const summary = await p.run({ reviewResponses: [BLOCKING] });
+        const shots = summary.ran.filter((t) => t.kind === 'shot_image');
+        expect(shots.length).toBeGreaterThan(0);
+        expect(shots.every((t) => t.status === 'needs_human')).toBe(true);
+        // Capped at max_refine_attempts (2), each recorded for provenance.
+        expect(shots.every((t) => t.attempts.length === 2)).toBe(true);
+        expect(shots.every((t) => t.attempts.every((a) => a.output))).toBe(true);
+        // `error` records the reason for the terminal state, whatever the state; here it is P7's give-up.
+        expect(shots.every((t) => t.error?.includes('still has blocking defects'))).toBe(true);
+      } finally {
+        await p.cleanup();
+      }
+    }, 30_000);
 
-  it('gives up early when the critique repeats, instead of spending the whole cap', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 6 } });
-    try {
-      await p.run();
-      await p.approve('aiko');
+    it('gives up early when the critique repeats, instead of spending the whole cap', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 6 } });
+      try {
+        await p.run();
+        await p.approve('aiko');
 
-      // Same defect every time, so the second refinement reproduces the first prompt verbatim
-      // and the third attempt would be the identical request.
-      const summary = await p.run({ reviewResponses: [BLOCKING] });
-      const shots = summary.ran.filter((t) => t.kind === 'shot_image');
-      expect(shots.length).toBeGreaterThan(0);
-      expect(shots.every((t) => t.status === 'needs_human')).toBe(true);
-      // Two, not six: the cap is no longer what stops it.
-      expect(shots.every((t) => t.attempts.length === 2)).toBe(true);
-    } finally {
-      await p.cleanup();
-    }
-  }, 30_000);
+        // Same defect every time, so the second refinement reproduces the first prompt verbatim
+        // and the third attempt would be the identical request.
+        const summary = await p.run({ reviewResponses: [BLOCKING] });
+        const shots = summary.ran.filter((t) => t.kind === 'shot_image');
+        expect(shots.length).toBeGreaterThan(0);
+        expect(shots.every((t) => t.status === 'needs_human')).toBe(true);
+        // Two, not six: the cap is no longer what stops it.
+        expect(shots.every((t) => t.attempts.length === 2)).toBe(true);
+      } finally {
+        await p.cleanup();
+      }
+    }, 30_000);
+  });
 
   describe(pins(executionFailureRecorded), () => {
     it('records why a task failed — on the node, in the log, and as an attempt', async () => {

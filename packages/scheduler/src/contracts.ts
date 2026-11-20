@@ -3,6 +3,7 @@ import type { Contract } from '@vn/contracts';
 import {
   executionAbandonedReleased,
   executionFailureRecorded,
+  executionRedrawDrifted,
   executionReportFromPlan,
   executionRetryBudget,
   executionStopAtRequest,
@@ -14,6 +15,7 @@ export const CONTRACTS: readonly Contract[] = [
   executionFailureRecorded,
   executionRetryBudget,
   executionAbandonedReleased,
+  executionRedrawDrifted,
   executionReportFromPlan,
   executionStopAtRequest,
 ];

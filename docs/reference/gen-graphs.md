@@ -352,8 +352,10 @@ implementation. The testkit passes a mock.
   `requeueFailed` and its attempt budget handle the failure rather than requeuing it
   forever. The requeue happens at run time rather than at the graph write because undo
   excludes `state/`. Undoing the edit restores the authored hash, so the drift disappears
-  before anything is redrawn. The contract is `graphs.editInvalidates`, declared in
-  [`drift.ts`](../../packages/constraint-solver/src/drift.ts).
+  before anything is redrawn. The drift rule is `graphs.editInvalidates`, declared in
+  [`drift.ts`](../../packages/constraint-solver/src/drift.ts), and the requeue is
+  `execution.redrawDrifted`, declared in
+  [`scheduler.ts`](../../packages/scheduler/src/scheduler.ts).
 - **Binding a graph to a slot that is already drawn redraws it, unless the graph is the
   default one.** An output with no `done` record has nothing to drift from, so
   `graphDrift` does not report it, but its slot may hold a picture the built-in runner
