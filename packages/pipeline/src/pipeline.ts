@@ -4,6 +4,7 @@ import type { ProjectConfig } from '@vn/config';
 import type { TaskLogSink } from '@vn/providers';
 import type { GraphRuntime } from './graphrun.js';
 import type { TaskRequests } from './requests.js';
+import { costOf } from './executors.js';
 
 /**
  * Everything a runner needs to execute one task (report §5, §8). This is not the graph: the
@@ -65,10 +66,9 @@ const ZERO_BY_KIND = (): Record<TaskKind, number> => ({
 });
 
 /**
- * Estimate the generative cost of the pending tasks in a graph (report §10). A single image
- * task is one call; a shot task is the P7 worst case — up to `max_refine_attempts` image
- * calls, each critiqued by every configured reviewer. This is the upper bound shown before
- * spending money; the actual run usually costs less because most shots pass on attempt one.
+ * Estimate the generative cost of the pending tasks in a graph (report §10), at each kind's cost
+ * line in the executor registry. This is the upper bound shown before spending money; the actual
+ * run usually costs less because most shots pass on attempt one.
  *
  * `drawnByGraph` names the tasks a generation graph draws. Those are still counted as pending
  * work, but they contribute no calls: the graph's own estimate prices them node by node, and
@@ -84,8 +84,6 @@ export function costPreview(
   let reviewCalls = 0;
   let pendingTasks = 0;
   let boundTasks = 0;
-  const reviewers = config.models.vision.length;
-  const maxAttempts = Math.max(1, config.max_refine_attempts);
 
   for (const task of graph.all()) {
     if (task.status !== 'pending') continue;
@@ -95,17 +93,9 @@ export function costPreview(
       boundTasks += 1;
       continue;
     }
-    if (task.kind === 'shot_image') {
-      imageCalls += maxAttempts;
-      reviewCalls += maxAttempts * reviewers;
-    } else if (
-      task.kind === 'location_ref' ||
-      task.kind === 'portrait' ||
-      task.kind === 'model_sheet' ||
-      task.kind === 'outfit_sheet'
-    ) {
-      imageCalls += 1;
-    }
+    const calls = costOf(task.kind, config);
+    imageCalls += calls.image;
+    reviewCalls += calls.review;
   }
 
   return { imageCalls, reviewCalls, byKind, pendingTasks, boundTasks };

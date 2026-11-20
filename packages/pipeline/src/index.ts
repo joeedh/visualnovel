@@ -15,6 +15,7 @@ export * from './p6.js';
 export * from './facts.js';
 export * from './planner.js';
 export * from './runners.js';
+export * from './executors.js';
 export * from './pipeline.js';
 export * from './genservices.js';
 export * from './graphrun.js';

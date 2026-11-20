@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { AnyTask, Logger, ProjectModel, Providers, TaskKind, TaskStatus } from '@vn/types';
+import type { AnyTask, Logger, ProjectModel, Providers, TaskStatus } from '@vn/types';
 import type { AssetStore, BaseAssets } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { withProduction, type ProjectPaths } from '@vn/store';
@@ -27,7 +27,6 @@ import {
   type GateStatus,
   type GraphRuntime,
   type RunDeps,
-  type Runner,
 } from '@vn/pipeline';
 
 /** ` — caused by …` for each `cause` under a thrown error, which `Task.error` does not keep. */
@@ -346,7 +345,7 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
   // A task a graph draws is priced by the graph rather than by its own call count, so the
   // preview asks the same index the runner does.
   const drawnByGraph = (task: AnyTask): boolean => boundGraph(task, deps) !== undefined;
-  const runners: Record<TaskKind, Runner> = createRunners(config);
+  const runners = createRunners(config);
   // What this run is allowed to touch, out of what the plan asked for
   const inScope = (planned: AnyTask[]): Set<string> => {
     const hashes = new Set(planned.map((t) => t.hash));

@@ -15,14 +15,7 @@ import type {
 } from '@vn/types';
 import { shotsOf } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import {
-  checkRequestWrite,
-  mergeReports,
-  noteTask,
-  reportingRetries,
-  withTaskLog,
-  withTaskLogScope,
-} from '@vn/providers';
+import { checkRequestWrite, mergeReports, withTaskLogScope } from '@vn/providers';
 import { heldBy, layoutDefect, sheetSeeds, type SheetSeeds } from '@vn/stills';
 import { refinePrompt } from './p6.js';
 import { shotSpec } from './prompts.js';
@@ -190,7 +183,7 @@ async function graphReviewRefs(binding: GraphBinding, draw: GraphDraw): Promise<
   return out;
 }
 
-const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
+export const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
   const { locationId, variant, prompt, refs, params } = task.inputs;
   const meta: AssetWriteMeta = {
     kind      : 'location_ref',
@@ -205,7 +198,7 @@ const runLocationRef: Runner<'location_ref'> = async (task, deps) => {
   return { status: 'done', output: ref.hash };
 };
 
-const runPortrait: Runner<'portrait'> = async (task, deps) => {
+export const runPortrait: Runner<'portrait'> = async (task, deps) => {
   const { characterId, prompt, refs, params } = task.inputs;
   const meta: AssetWriteMeta = {
     kind      : 'portrait',
@@ -221,7 +214,7 @@ const runPortrait: Runner<'portrait'> = async (task, deps) => {
   return { status: 'done', output: ref.hash };
 };
 
-const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
+export const runModelSheet: Runner<'model_sheet'> = async (task, deps) => {
   const { characterId, outfit, prompt, refs, params } = task.inputs;
   const meta: AssetWriteMeta = {
     kind      : 'model_sheet',
@@ -287,7 +280,7 @@ export function layoutReport(
  * bound graph resumes the picture that critique produced rather than drawing a new one, so
  * the reviewers would answer as they did then and the loop would only spend their calls.
  */
-function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
+export function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
   return async (task, deps) => {
     const found = findShot(deps, task.inputs.shotId);
     const spec: ShotSpec = found
@@ -398,55 +391,4 @@ function makeShotRunner(config: ProjectConfig): Runner<'shot_image'> {
         : `shot still has blocking defects after ${maxAttempts} attempts`,
     };
   };
-}
-
-/** Build the per-kind runner registry bound to the project config (for the P7 cap). */
-export function createRunners(config: ProjectConfig): Record<TaskKind, Runner> {
-  const shot = makeShotRunner(config);
-  const unsupported =
-    (kind: TaskKind): Runner =>
-    (task) =>
-      Promise.resolve({
-        status: 'failed',
-        error : `no runner for task kind "${kind}" (${task.hash})`,
-      });
-  return {
-    location_ref : runLocationRef as Runner,
-    portrait     : runPortrait as Runner,
-    model_sheet  : runModelSheet as Runner,
-    shot_image   : shot as Runner,
-    // P7 review/refine are folded into shot_image; these kinds are reserved (report deviation).
-    outfit_sheet : unsupported('outfit_sheet'),
-    vision_review: unsupported('vision_review'),
-    prompt_refine: unsupported('prompt_refine'),
-  };
-}
-
-/**
- * Dispatch a task to its kind's runner. A retry a provider call makes underneath is reported as
- * the task's activity, since the runner cannot see it and it is the wait an author most wants
- * explained.
- */
-export async function runTask(
-  task: AnyTask,
-  deps: RunDeps,
-  runners: Record<TaskKind, Runner>,
-): Promise<TaskResult> {
-  deps.activity?.(task, 'drawing');
-  const run = () =>
-    runners[task.kind](task, {
-      ...deps,
-      store    : deps.requests?.store(deps.store) ?? deps.store,
-      providers: deps.requests?.providers(deps.providers) ?? deps.providers,
-    });
-  const { activity } = deps;
-  const heard = (note: string): void => {
-    activity?.(task, note);
-    noteTask('retry', note);
-  };
-  try {
-    return await withTaskLog(deps.taskLog, () => reportingRetries(heard, run));
-  } finally {
-    await deps.requests?.settled();
-  }
 }

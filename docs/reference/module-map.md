@@ -297,6 +297,7 @@ and `pending` requeues).
 | `decompose.ts`                 | explicit decomposition                                                                   |
 | `p5.ts` / `p6.ts`              | later phases (see pipeline-contracts.md)                                                 |
 | `runners.ts`                   | task runners                                                                             |
+| `executors.ts`                 | the executor registry: each task kind's runner and cost line; `createRunners`, `runTask` |
 | `genservices.ts`               | generation services wiring                                                               |
 | `graphrun.ts` / `graphload.ts` | bound generation-graph runs                                                              |
 | `prompts.ts`                   | pipeline LLM prompts                                                                     |
