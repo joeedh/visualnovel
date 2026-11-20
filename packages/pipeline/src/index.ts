@@ -4,9 +4,9 @@ export * from './repair.js';
 // `isApproved` without importing the pipeline. Re-exported by name: every caller says `@vn/pipeline`.
 export { approvedPortraitOf, gateStatus, isApproved, type GateStatus } from '@vn/stills';
 // Re-exported by name for the CLI and the scheduler, which may import neither the solver nor
-// `@vn/stills`: the base-root refusal (`storage.baseUnavailable`), suspension over the stills
-// family (`takes.suspensionDerived`) and the takes an export refuses over
-export { stillsFamily, unapprovedTakes, type UnapprovedTake } from '@vn/stills';
+// `@vn/stills`: the base-root refusal (`storage.baseUnavailable`), suspension
+// (`takes.suspensionDerived`) and the takes an export refuses over
+export { unapprovedTakes, type UnapprovedTake } from '@vn/stills';
 export { baseRefusal, suspensions, type Suspension } from '@vn/constraint-solver';
 export * from './p1.js';
 export * from './p5.js';
@@ -16,6 +16,7 @@ export * from './facts.js';
 export * from './planner.js';
 export * from './runners.js';
 export * from './executors.js';
+export * from './workflows.js';
 export * from './pipeline.js';
 export * from './genservices.js';
 export * from './graphrun.js';

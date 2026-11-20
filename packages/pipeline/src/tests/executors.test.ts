@@ -1,13 +1,21 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { projectConfig, type AssetStore } from '@vn/types';
+import { projectConfig, WORKFLOWS, type AssetStore } from '@vn/types';
 import { createMockProviders } from '@vn/providers';
 import { ProjectPaths } from '@vn/store';
 import { loadGraph } from '@vn/taskgraph';
 import { stillsFamily } from '@vn/stills';
 import { model } from '@vn/testkit';
-import { EXECUTORS, costOf, costPreview, createRunners, runTask, type RunDeps } from '../index.js';
+import {
+  EXECUTORS,
+  costOf,
+  costPreview,
+  createRunners,
+  familyOf,
+  runTask,
+  type RunDeps,
+} from '../index.js';
 
 const config = projectConfig.parse({
   title              : 'Test',
@@ -16,8 +24,9 @@ const config = projectConfig.parse({
 });
 
 describe('the executor registry', () => {
-  it('holds exactly the task kinds the stills family declares', () => {
-    const declared = new Set(stillsFamily.kinds.map((k) => k.task));
+  it("holds exactly the task kinds the registered workflows' families declare", () => {
+    const declared = new Set(WORKFLOWS.flatMap((w) => familyOf(w).kinds.map((k) => k.task)));
+    expect(familyOf('vn')).toBe(stillsFamily);
     expect(new Set(Object.keys(EXECUTORS))).toEqual(declared);
     expect(new Set(createRunners(config).keys())).toEqual(declared);
   });

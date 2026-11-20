@@ -12,7 +12,6 @@ import type { Scene } from './script/scenes.js';
 import type { Shot } from './production/shots.js';
 import type { ProductionData } from './production/storyboard.js';
 import type { AnyTask, Task, TaskKind } from './tasks.js';
-import type { Providers } from './providers.js';
 import type { Transport } from './textmodels.js';
 
 /** The in-memory project model built from parsed input files (report §P0, §6). */
@@ -131,22 +130,4 @@ export interface TaskResult {
   status: 'done' | 'failed' | 'needs_human';
   output?: string;
   error?: string;
-}
-
-/** Execution context handed to a phase runner. */
-export interface RunContext {
-  model: ProjectModel;
-  graph: TaskGraph;
-  store: AssetStore;
-  providers: Providers;
-  logger: Logger;
-}
-
-/** A pipeline phase: a planner (emits/dedupes tasks) + a runner (executes one). */
-export interface Phase {
-  readonly name: string;
-  /** Which task kinds this phase knows how to run. */
-  readonly handles: readonly TaskKind[];
-  plan(ctx: RunContext): void;
-  run(task: AnyTask, ctx: RunContext): Promise<TaskResult>;
 }

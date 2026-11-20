@@ -352,6 +352,14 @@ export const SHOT_FORMS = ['frames', 'pages'] as const;
 export type ShotForm = (typeof SHOT_FORMS)[number];
 
 /**
+ * The workflows a project can select with `workflow:` in `project.yaml`. A workflow names the
+ * family that produces its art; `vn` is produced by the stills family.
+ */
+export const WORKFLOWS = ['vn'] as const;
+
+export type Workflow = (typeof WORKFLOWS)[number];
+
+/**
  * The skills that ship with the app, by id. The catalog itself lives in `@vn/authoring`
  * (`builtin-skills/<id>/`), which a test there checks against this list; it is spelt here so the
  * `project.yaml` schema can default `builtin_skills` to every one of them.
@@ -388,6 +396,8 @@ export const projectConfig = z.object({
    * this schema cannot. A project that has not been imported yet has no scene ids to choose from.
    */
   start              : z.string().min(1).optional(),
+  /** Which workflow the project is, and so which family produces its art. Absent means `vn`. */
+  workflow           : z.enum(WORKFLOWS).default('vn'),
   /**
    * Which narrative engine reads the story: `branching` follows each scene's markers from
    * `start:`, and `linear` plays the scenes {@link scenes} lists. Absent means `branching`.

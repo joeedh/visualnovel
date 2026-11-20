@@ -21,12 +21,13 @@ import { liveScenes } from '@vn/model';
 import { type ProjectPaths, productionOf, readShots, writeShots } from '@vn/store';
 import { makeTask } from '@vn/taskgraph';
 import { projectRefusal, solve, unitGates } from '@vn/constraint-solver';
-import { cycleRefusal, firstCycle, layoutDefect, proseHash, stillsFamily } from '@vn/stills';
+import { cycleRefusal, firstCycle, layoutDefect, proseHash } from '@vn/stills';
 import { VnError } from '@vn/util';
 import { checkRequest } from '@vn/providers';
 import { MODEL_SHEET_ANGLES } from './prompts.js';
 import { decomposeScene, storyboardStyle, type StoryboardStyle } from './p5.js';
 import { waveFacts } from './facts.js';
+import { familyOf } from './workflows.js';
 
 /** Model-sheet angles generated per outfit once a character is approved (report §P4). */
 export { MODEL_SHEET_ANGLES };
@@ -234,9 +235,10 @@ export async function planTasks(opts: {
     return [];
   }
 
+  const family = familyOf(config.workflow);
   // Storyboards first, so the solve below sees the shot slots of every scene the gate lets through
-  const owed = stillsFamily.owed(before);
-  const gates = owed.length ? unitGates(stillsFamily, before) : undefined;
+  const owed = family.owed(before);
+  const gates = owed.length ? unitGates(family, before) : undefined;
   for (const sceneId of owed) {
     const scene = model.scenes.get(sceneId);
     if (!scene || !gates?.get(sceneId)?.open) continue;
@@ -253,7 +255,7 @@ export async function planTasks(opts: {
   }
 
   const planned: AnyTask[] = [];
-  const solved = solve(stillsFamily, facts());
+  const solved = solve(family, facts());
   for (const state of solved.slots.values()) {
     if (!state.ready || state.inputs === undefined) continue;
     const node = graph.add(makeTask(state.task, state.inputs, [...state.deps]));

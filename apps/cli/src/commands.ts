@@ -22,6 +22,7 @@ import {
   acceptableTakes,
   boundSlotsToDraw,
   decomposeAll,
+  familyOf,
   gateStatus,
   graphRuntime,
   holdPortrait,
@@ -29,7 +30,6 @@ import {
   priceSlots,
   readProjectGraphs,
   reportGraphs,
-  stillsFamily,
   suspensions,
   unapprovedTakes,
   waveFacts,
@@ -300,7 +300,7 @@ export async function cmdStatus(args: Args): Promise<number> {
   // Suspension is derived, so this is a walk over the manifest rather than a stored count. The
   // desktop app's `asset.suspended` lists them; this prints a count and where to look
   const suspended = suspensions(
-    stillsFamily,
+    familyOf(project.config.workflow),
     waveFacts({
       model  : await withSceneShots(project.paths, project.model),
       config : project.config,

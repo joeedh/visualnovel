@@ -289,19 +289,20 @@ and `pending` requeues).
 
 ### @vn/pipeline — the P-phases (`packages/pipeline`)
 
-| module                         | purpose                                                                                  |
-| ------------------------------ | ---------------------------------------------------------------------------------------- |
-| `pipeline.ts`                  | the run driver                                                                           |
-| `p1.ts`                        | P1: planning inputs / character sheets                                                   |
-| `planner.ts`                   | task planning over the model                                                             |
-| `decompose.ts`                 | explicit decomposition                                                                   |
-| `p5.ts` / `p6.ts`              | later phases (see pipeline-contracts.md)                                                 |
-| `runners.ts`                   | task runners                                                                             |
-| `executors.ts`                 | the executor registry: each task kind's runner and cost line; `createRunners`, `runTask` |
-| `genservices.ts`               | generation services wiring                                                               |
-| `graphrun.ts` / `graphload.ts` | bound generation-graph runs                                                              |
-| `prompts.ts`                   | pipeline LLM prompts                                                                     |
-| `index.ts`                     | barrel (re-exports the P3 gate, `stillsFamily`, `baseRefusal` and `suspensions` by name) |
+| module                         | purpose                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `pipeline.ts`                  | the run driver                                                                              |
+| `p1.ts`                        | P1: planning inputs / character sheets                                                      |
+| `planner.ts`                   | task planning over the model                                                                |
+| `decompose.ts`                 | explicit decomposition                                                                      |
+| `p5.ts` / `p6.ts`              | later phases (see pipeline-contracts.md)                                                    |
+| `runners.ts`                   | task runners                                                                                |
+| `executors.ts`                 | the executor registry: each task kind's runner and cost line; `createRunners`, `runTask`    |
+| `workflows.ts`                 | `familyOf`: the family each `workflow:` in `project.yaml` is drawn by                       |
+| `genservices.ts`               | generation services wiring                                                                  |
+| `graphrun.ts` / `graphload.ts` | bound generation-graph runs                                                                 |
+| `prompts.ts`                   | pipeline LLM prompts                                                                        |
+| `index.ts`                     | barrel (re-exports the P3 gate, `baseRefusal`, `suspensions` and `unapprovedTakes` by name) |
 
 ### @vn/scheduler — resumable run loop (`packages/scheduler`)
 

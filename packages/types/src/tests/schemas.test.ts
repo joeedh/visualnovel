@@ -97,6 +97,16 @@ describe('projectConfig narrative', () => {
   });
 });
 
+describe('projectConfig workflow', () => {
+  it('defaults to the vn workflow', () => {
+    expect(projectConfig.parse({ title: 'T' }).workflow).toBe('vn');
+  });
+
+  it('rejects a workflow it does not know', () => {
+    expect(projectConfig.safeParse({ title: 'T', workflow: 'manga' }).success).toBe(false);
+  });
+});
+
 describe('projectConfig start', () => {
   it('reads the entry scene when given', () => {
     expect(projectConfig.parse({ title: 'T', start: 'arrival' }).start).toBe('arrival');

@@ -60,6 +60,18 @@ describe('loadConfig', () => {
     await expect(loadConfig(dir)).rejects.toThrow(/invalid project\.yaml/);
   });
 
+  it('reads the vn workflow when the key is absent', async () => {
+    const dir = await tempProject('title: My Novel\n');
+    expect((await loadConfig(dir)).workflow).toBe('vn');
+  });
+
+  it('refuses a workflow it does not know, naming the key and the known workflows', async () => {
+    const dir = await tempProject('title: My Novel\nworkflow: manga\n');
+    await expect(loadConfig(dir)).rejects.toThrow(
+      "invalid project.yaml: workflow: Invalid enum value. Expected 'vn', received 'manga'",
+    );
+  });
+
   it('throws ConfigError when project.yaml is absent', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'vn-config-empty-'));
     await expect(loadConfig(dir)).rejects.toThrow(/no project\.yaml/);

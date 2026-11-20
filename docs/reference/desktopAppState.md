@@ -337,7 +337,7 @@ Authored inputs and generated outputs are the source of truth for everything els
 
 ```
 <workspace>/
-├── project.yaml              # Config: title, models, API key env vars, `start:` (entry scene), `narrative:`/`scenes:`
+├── project.yaml              # Config: title, models, API key env vars, `start:` (entry scene), `workflow:`, `narrative:`/`scenes:`
 ├── characters/
 │   ├── <id>/character.md     # Character front-matter + prose
 │   └── …

@@ -13,6 +13,7 @@ after `pnpm build`.
 - [`--mock`, and what a real run needs](#--mock-and-what-a-real-run-needs)
 - [Project layout on disk](#project-layout-on-disk)
     - [A scene is one file](#a-scene-is-one-file)
+    - [Which workflow the project is](#which-workflow-the-project-is)
     - [How the scenes make a story](#how-the-scenes-make-a-story)
 - [The sample project](#the-sample-project)
 
@@ -151,6 +152,15 @@ a warning to delete or rename it `.fountain.imported`. For what a body may conta
 [`../reference/fountain.md`](../reference/fountain.md#where-the-fountain-lives-project-specific).
 For why the reader alone decides, see the `script.sceneSourcesOneLoad` contract in
 [`sources.ts`](../../packages/scriptedit/src/sources.ts).
+
+### Which workflow the project is
+
+`workflow:` in `project.yaml` names what kind of project it is, and so which family of
+production code draws its art. `vn` is the only workflow, and what a project without the
+key gets; it is drawn by the stills family (portraits, plates, model sheets and shots). An
+unknown name is refused when the project loads, with the key and the names it accepts:
+`invalid project.yaml: workflow: Invalid enum value. Expected 'vn', received 'manga'`.
+`@vn/pipeline`'s `familyOf` is the lookup from a workflow to its family.
 
 ### How the scenes make a story
 
