@@ -97,7 +97,8 @@ export function subjectOf(task: Task): string {
       : inputs.characterId;
   }
   if ('locationId' in inputs) return `${inputs.locationId} · ${inputs.variant}`;
-  if ('target' in inputs) return inputs.target;
+  // A record of the retired `vision_review` kind, which an older log may hold
+  if ('target' in inputs) return (inputs as { target: string }).target;
   return '';
 }
 

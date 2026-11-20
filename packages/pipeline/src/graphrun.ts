@@ -5,7 +5,15 @@
  * written to the asset store through the same call the legacy runners use. A slot nothing
  * is bound to never reaches this file.
  */
-import type { AnyTask, AssetMeta, AssetRef, ProjectModel, RefBinding } from '@vn/types';
+import type {
+  AnyTask,
+  AssetMeta,
+  AssetRef,
+  ProjectModel,
+  RefBinding,
+  RetiredTaskKind,
+  TaskKind,
+} from '@vn/types';
 import { shotsOf } from '@vn/types';
 import { slotKey } from '@vn/stills';
 import {
@@ -101,7 +109,7 @@ export function slotOfTask(task: AnyTask, model: ProjectModel): string | undefin
 }
 
 function bindingOf(
-  kind: AnyTask['kind'],
+  kind: TaskKind | RetiredTaskKind,
   said: {
     characterId?: string;
     outfit?: string;
@@ -119,6 +127,7 @@ function bindingOf(
       return said.locationId && said.variant
         ? { kind: 'plate', locationId: said.locationId, variant: said.variant }
         : undefined;
+    // The retired `outfit_sheet` is kept so a record of one in an older log names its sheet slot
     case 'model_sheet':
     case 'outfit_sheet':
       return said.characterId && said.outfit && said.angle

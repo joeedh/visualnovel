@@ -3,11 +3,11 @@
  */
 import { makeTask } from '@vn/taskgraph';
 import { keepSet, solve } from '../index.js';
-import { garden, log, planted, seedInputs } from './garden.js';
+import { garden, log, planted, SEED_TASK, seedInputs } from './garden.js';
 
 describe('keepSet over a toy family', () => {
-  const rose = makeTask('prompt_refine', seedInputs('rose'));
-  const moss = makeTask('prompt_refine', seedInputs('moss'));
+  const rose = makeTask(SEED_TASK, seedInputs('rose'));
+  const moss = makeTask(SEED_TASK, seedInputs('moss'));
 
   it('lists every slot the family keeps, wider than the ones it enumerates', () => {
     const facts = planted({ dormant: ['moss'] });

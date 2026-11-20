@@ -1,6 +1,6 @@
 /**
- * The solver's generic loop and unit gate over the toy family in `garden.ts`, which shares nothing
- * with any real family.
+ * The solver's generic loop and unit gate over the toy family in `garden.ts`, whose slots share
+ * nothing with any real family.
  */
 import { pins } from '@vn/contracts';
 import { makeTask, taskHash } from '@vn/taskgraph';
@@ -19,7 +19,10 @@ import {
   row,
   seedInputs,
   seedKind,
+  SEED_TASK,
+  sproutInputs,
   sproutKind,
+  SPROUT_TASK,
   type Garden,
 } from './garden.js';
 
@@ -35,7 +38,7 @@ describe(pins(identitySlotsBeforeTasks), () => {
       ]);
       expect(solved.slots.get('sprout:r1')).toMatchObject({
         kind : 'sprout',
-        task : 'vision_review',
+        task : SPROUT_TASK,
         label: 'sprout r1',
         unit : 'east',
       });
@@ -49,7 +52,7 @@ describe(pins(identitySlotsBeforeTasks), () => {
     });
 
     it('states the identity a kind can resolve, and reads its status from the task log', () => {
-      const rose = makeTask('prompt_refine', seedInputs('rose'));
+      const rose = makeTask(SEED_TASK, seedInputs('rose'));
       const solved = solve(garden, planted({ tasks: log({ ...rose, status: 'running' }) }));
       const seed = solved.slots.get('seed:rose')!;
       expect(seed.taskHash).toBe(rose.hash);
@@ -65,18 +68,16 @@ describe(pins(identitySlotsBeforeTasks), () => {
       expect(before.inputs).toBeUndefined();
       expect(before.blocked).toBe('seed rose has not grown yet');
 
-      const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
+      const rose = { ...makeTask(SEED_TASK, seedInputs('rose')), status: 'done' as const };
       const after = solve(garden, planted({ tasks: log({ ...rose, output: 'petal' }) })).slots.get(
         'sprout:r1',
       )!;
       expect(after.blocked).toBeUndefined();
-      expect(after.taskHash).toBe(
-        taskHash('vision_review', { target: 'petal', spec: 'r1', refs: [], modelId: 'toy' }),
-      );
+      expect(after.taskHash).toBe(taskHash(SPROUT_TASK, sproutInputs('petal', 'r1')));
     });
 
     it('asks a kind for its deps only once the slot has an identity', () => {
-      const rose = makeTask('prompt_refine', seedInputs('rose'));
+      const rose = makeTask(SEED_TASK, seedInputs('rose'));
       expect(solve(garden, planted()).slots.get('sprout:r1')!.deps).toEqual([]);
       const grown = solve(
         garden,
@@ -165,8 +166,8 @@ describe(pins(identitySlotsBeforeTasks), () => {
 });
 
 describe('the unit gate over a toy family', () => {
-  const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
-  const fern = { ...makeTask('prompt_refine', seedInputs('fern')), status: 'done' as const };
+  const rose = { ...makeTask(SEED_TASK, seedInputs('rose')), status: 'done' as const };
+  const fern = { ...makeTask(SEED_TASK, seedInputs('fern')), status: 'done' as const };
   /** Both seeds grown, so both sprouts have an identity. */
   const grown = (over: Partial<Garden> = {}): Garden =>
     planted({ tasks: log({ ...rose, output: 'petal' }, { ...fern, output: 'frond' }), ...over });
@@ -226,7 +227,7 @@ describe('the unit gate over a toy family', () => {
 });
 
 describe(pins(storageBaseUnavailable), () => {
-  const rose = { ...makeTask('prompt_refine', seedInputs('rose')), status: 'done' as const };
+  const rose = { ...makeTask(SEED_TASK, seedInputs('rose')), status: 'done' as const };
   const unavailable = { state: 'unavailable' as const, root: '/p/assets', count: 0 };
 
   it('refuses a project whose base root is unavailable, and makes no slot ready', () => {

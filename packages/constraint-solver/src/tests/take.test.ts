@@ -6,7 +6,7 @@
 import type { AnyTask } from '@vn/types';
 import { makeTask } from '@vn/taskgraph';
 import { lastRenderedAt, loggedTake, newestFirst, overHeld, pick, solve } from '../index.js';
-import { garden, log, planted, row, seedInputs } from './garden.js';
+import { garden, log, planted, row, SEED_TASK, seedInputs } from './garden.js';
 
 describe('pick', () => {
   it('answers the one current row, declines two, and falls back to an only row', () => {
@@ -52,7 +52,7 @@ describe('newestFirst', () => {
 });
 
 describe('loggedTake', () => {
-  const task = makeTask('prompt_refine', seedInputs('rose'));
+  const task = makeTask(SEED_TASK, seedInputs('rose'));
 
   it("answers a done task's output and a needs_human task's last output", () => {
     expect(loggedTake({ ...task, status: 'done', output: 'x' })).toBe('x');
@@ -90,7 +90,7 @@ describe('lastRenderedAt', () => {
 });
 
 describe('overHeld over a toy family', () => {
-  const rose = makeTask('prompt_refine', seedInputs('rose'));
+  const rose = makeTask(SEED_TASK, seedInputs('rose'));
 
   it('lists nothing while every slot holds at most one current row', () => {
     const assets = [row('a', 'seed:rose', { current: true }), row('b', 'seed:rose')];

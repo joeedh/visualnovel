@@ -5,18 +5,22 @@
  */
 import type { AssetRef, ImageParams, TakeVia } from './assets.js';
 
-export type TaskKind =
-  | 'location_ref'
-  | 'portrait'
-  | 'model_sheet'
-  | 'outfit_sheet'
-  | 'shot_image'
-  | 'vision_review'
-  | 'prompt_refine';
+/** The kinds the registered families declare: one per entry of {@link TaskInputs}. */
+export type TaskKind = keyof TaskInputs;
+
+/**
+ * Kinds the task union once named that nothing ever planned. An older `tasks.jsonl` may hold a
+ * record of one; it loads, and no executor runs it.
+ */
+export type RetiredTaskKind = 'outfit_sheet' | 'vision_review' | 'prompt_refine';
 
 export type TaskStatus = 'pending' | 'running' | 'done' | 'failed' | 'needs_human';
 
-/** Per-kind, fully-specified inputs. Everything here is folded into the task hash. */
+/**
+ * Per-kind, fully-specified inputs, for the four kinds the stills family declares. Everything here
+ * is folded into the task hash. A family in another package adds its kinds by augmenting this
+ * interface (`declare module '@vn/types'`), which widens {@link TaskKind} with them.
+ */
 export interface TaskInputs {
   location_ref: {
     locationId: string;
@@ -34,17 +38,7 @@ export interface TaskInputs {
     refs: AssetRef[];
     params: ImageParams;
   };
-  outfit_sheet: {
-    characterId: string;
-    outfit: string;
-    angle: string;
-    prompt: string;
-    refs: AssetRef[];
-    params: ImageParams;
-  };
   shot_image: { shotId: string; prompt: string; refs: AssetRef[]; params: ImageParams };
-  vision_review: { target: string; spec: string; refs: AssetRef[]; modelId: string };
-  prompt_refine: { basePrompt: string; defects: string; modelId: string };
 }
 
 /** A single execution attempt, recorded for provenance (report §P7). */

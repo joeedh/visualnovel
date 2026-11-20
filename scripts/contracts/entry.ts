@@ -1,12 +1,11 @@
 /**
  * What `pnpm gen:contracts` bundles and the index tests import: every `contracts.ts` by path, and
- * the registries a subject is checked against (the desktop's commands, both agents' tools, the
- * task kinds and the stills family's slot kinds).
+ * the registries a subject is checked against (the desktop's commands, both agents' tools, and the
+ * stills family's slot kinds and the task kinds they fill).
  *
  * A new package's `src/contracts.ts`, or an app's `contracts.ts` anywhere under its `src/`, is
  * added to {@link DECLARED}; a test fails while one on disk is missing from it.
  */
-import type { TaskKind } from '@vn/types';
 import { createRegistry } from '@vn/authoring';
 import { stillsFamily } from '@vn/stills';
 import type { ContractIndex } from '@vn/contracts/query';
@@ -44,17 +43,6 @@ export const DECLARED: readonly Declared[] = [
   { file: 'packages/types/src/contracts.ts', contracts: types },
 ];
 
-/** Every task kind, spelled out so the type checker fails here when `TaskKind` changes. */
-const TASK_KINDS: Record<TaskKind, true> = {
-  location_ref : true,
-  portrait     : true,
-  model_sheet  : true,
-  outfit_sheet : true,
-  shot_image   : true,
-  vision_review: true,
-  prompt_refine: true,
-};
-
 /** The registries a subject is checked against, read from the code that defines them. */
 export function facts(root: string): Facts {
   const commands = createDesktopRegistry().list();
@@ -69,7 +57,7 @@ export function facts(root: string): Facts {
   return {
     commands        : new Set(commands.map((c) => c.id)),
     tools           : new Set([...createRegistry().keys(), ...debugTools]),
-    taskKinds       : new Set(Object.keys(TASK_KINDS)),
+    taskKinds       : new Set(stillsFamily.kinds.map((k) => k.task)),
     slots           : new Set(stillsFamily.kinds.map((k) => k.prefix)),
     commandContracts: commands
       .filter((c) => c.contracts?.length)

@@ -1,10 +1,18 @@
-import type { AnyTask, Logger, ProjectModel, Providers, TaskGraph, TaskKind } from '@vn/types';
+import type {
+  AnyTask,
+  Logger,
+  ProjectModel,
+  Providers,
+  RetiredTaskKind,
+  TaskGraph,
+  TaskKind,
+} from '@vn/types';
 import type { AssetStore } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import type { TaskLogSink } from '@vn/providers';
 import type { GraphRuntime } from './graphrun.js';
 import type { TaskRequests } from './requests.js';
-import { costOf } from './executors.js';
+import { costOf, EXECUTORS } from './executors.js';
 
 /**
  * Everything a runner needs to execute one task (report §5, §8). This is not the graph: the
@@ -44,8 +52,8 @@ export interface CostPreview {
   imageCalls: number;
   /** Vision-review calls. */
   reviewCalls: number;
-  /** Count of pending tasks by kind. */
-  byKind: Record<TaskKind, number>;
+  /** Count of pending tasks by kind; a retired kind appears only when a pending record has it. */
+  byKind: Record<TaskKind, number> & Partial<Record<RetiredTaskKind, number>>;
   /** Pending tasks counted (status `pending`). */
   pendingTasks: number;
   /**
@@ -54,16 +62,6 @@ export interface CostPreview {
    */
   boundTasks: number;
 }
-
-const ZERO_BY_KIND = (): Record<TaskKind, number> => ({
-  location_ref : 0,
-  portrait     : 0,
-  model_sheet  : 0,
-  outfit_sheet : 0,
-  shot_image   : 0,
-  vision_review: 0,
-  prompt_refine: 0,
-});
 
 /**
  * Estimate the generative cost of the pending tasks in a graph (report §10), at each kind's cost
@@ -79,7 +77,8 @@ export function costPreview(
   config: ProjectConfig,
   drawnByGraph?: (task: AnyTask) => boolean,
 ): CostPreview {
-  const byKind = ZERO_BY_KIND();
+  const counts: Record<string, number> = {};
+  for (const kind of Object.keys(EXECUTORS)) counts[kind] = 0;
   let imageCalls = 0;
   let reviewCalls = 0;
   let pendingTasks = 0;
@@ -88,7 +87,7 @@ export function costPreview(
   for (const task of graph.all()) {
     if (task.status !== 'pending') continue;
     pendingTasks += 1;
-    byKind[task.kind] += 1;
+    counts[task.kind] = (counts[task.kind] ?? 0) + 1;
     if (drawnByGraph?.(task) === true) {
       boundTasks += 1;
       continue;
@@ -98,6 +97,7 @@ export function costPreview(
     reviewCalls += calls.review;
   }
 
+  const byKind = counts as CostPreview['byKind'];
   return { imageCalls, reviewCalls, byKind, pendingTasks, boundTasks };
 }
 

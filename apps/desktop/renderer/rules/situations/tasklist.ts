@@ -6,6 +6,19 @@ import type { Task } from '../../../src/shared/ipc.js';
 
 const PARAMS: ImageParams = { modelId: 'mock-image' };
 
+/**
+ * A record of the retired `prompt_refine` kind, which drew nothing. An older log may still hold
+ * one, and `Task` names only the declared kinds, so it is cast.
+ */
+const RETIRED = {
+  hash    : 'e5f6a7b8',
+  kind    : 'prompt_refine',
+  deps    : [],
+  status  : 'done',
+  attempts: [],
+  inputs  : { basePrompt: 'Café Mori at night', defects: 'too bright', modelId: 'mock-llm' },
+} as unknown as Task;
+
 /** A shot that rendered a frame, and a prompt refinement that drew nothing. */
 const TASKS: readonly Task[] = [
   {
@@ -17,14 +30,7 @@ const TASKS: readonly Task[] = [
     output  : 'a1b2c3d4',
     inputs  : { shotId: 'arrival__s1', prompt: '', refs: [], params: PARAMS },
   },
-  {
-    hash    : 'e5f6a7b8',
-    kind    : 'prompt_refine',
-    deps    : [],
-    status  : 'done',
-    attempts: [],
-    inputs  : { basePrompt: 'Café Mori at night', defects: 'too bright', modelId: 'mock-llm' },
-  },
+  RETIRED,
 ];
 
 const NOTHING_SELECTED = {

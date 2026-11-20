@@ -254,7 +254,7 @@ export function closureOf(graph: TaskGraph, targets: readonly string[]): Set<str
   return seen;
 }
 
-/** The reference hashes a task's inputs carry, if its kind has any (`prompt_refine` does not). */
+/** The reference hashes a task's inputs carry, if any; a retired `prompt_refine` record has none. */
 function inputRefHashes(task: AnyTask): string[] {
   const refs = (task.inputs as { refs?: { hash: string }[] }).refs;
   return refs ? refs.map((r) => r.hash) : [];

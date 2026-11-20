@@ -1,9 +1,11 @@
 /**
- * A toy family that shares nothing with any real one, so the solver's rules are tested without a
- * family package. A `seed` is drawn from nothing; a `sprout` is drawn from its seed's output, so it
+ * A toy family whose slots and units share nothing with any real family, so the solver's rules are
+ * tested without a family package. A `seed` is drawn from nothing; a `sprout` is drawn from its seed's output, so it
  * has no identity until that seed's task is done, and it may lean on other sprouts. Manifest rows
  * are matched to a slot by `sourceTask`, which the toy sets to the address. A bed is a sprout's
- * unit, and waits on whichever slots `beds` names for it.
+ * unit, and waits on whichever slots `beds` names for it. Its two slot kinds borrow two of the
+ * stills family's task kinds, because `TaskKind` names only the kinds a registered family declares;
+ * the solver does nothing with a task kind but hash it and report it.
  */
 import type { AnyTask, Asset, TaskInputs } from '@vn/types';
 import { taskHash } from '@vn/taskgraph';
@@ -35,18 +37,34 @@ export interface Garden extends SolverFacts {
   grafts?: Record<string, { pin: string; from: string }[]>;
 }
 
-export const seedInputs = (id: string): TaskInputs['prompt_refine'] => ({
-  basePrompt: id,
-  defects   : '',
-  modelId   : 'toy',
+/** The task kind a seed's slot fills. */
+export const SEED_TASK = 'portrait';
+
+/** The task kind a sprout's slot fills. */
+export const SPROUT_TASK = 'location_ref';
+
+export const seedInputs = (id: string): TaskInputs[typeof SEED_TASK] => ({
+  characterId: id,
+  prompt     : '',
+  refs       : [],
+  params     : { modelId: 'toy' },
+});
+
+/** A sprout's inputs, drawn from its seed's output. */
+export const sproutInputs = (seedOutput: string, id: string): TaskInputs[typeof SPROUT_TASK] => ({
+  locationId: seedOutput,
+  variant   : id,
+  prompt    : '',
+  refs      : [],
+  params    : { modelId: 'toy' },
 });
 
 const rowsOf = (key: string, facts: Garden): Asset[] =>
   (facts.assets ?? []).filter((a) => a.sourceTask === key);
 
-export const seedKind: SlotKind<Garden, { id: string }, 'prompt_refine'> = {
+export const seedKind: SlotKind<Garden, { id: string }, typeof SEED_TASK> = {
   prefix    : 'seed',
-  task      : 'prompt_refine',
+  task      : SEED_TASK,
   key       : (b) => `seed:${b.id}`,
   parse     : (key) => (key.startsWith('seed:') ? { id: key.slice(5) } : undefined),
   label     : (b) => `seed ${b.id}`,
@@ -64,9 +82,9 @@ export const seedKind: SlotKind<Garden, { id: string }, 'prompt_refine'> = {
 const sproutOf = (facts: Garden, id: string): Sprout | undefined =>
   facts.sprouts.find((s) => s.id === id);
 
-export const sproutKind: SlotKind<Garden, { id: string }, 'vision_review'> = {
+export const sproutKind: SlotKind<Garden, { id: string }, typeof SPROUT_TASK> = {
   prefix    : 'sprout',
-  task      : 'vision_review',
+  task      : SPROUT_TASK,
   key       : (b) => `sprout:${b.id}`,
   parse     : (key) => (key.startsWith('sprout:') ? { id: key.slice(7) } : undefined),
   label     : (b) => `sprout ${b.id}`,
@@ -78,14 +96,14 @@ export const sproutKind: SlotKind<Garden, { id: string }, 'vision_review'> = {
     const s = sproutOf(facts, b.id);
     if (!s || !facts.seeds.includes(s.seed))
       return { ok: false, code: 'NO_SEED', reason: `sprout ${b.id} has no seed to grow from` };
-    const grown = facts.tasks.get(taskHash('prompt_refine', seedInputs(s.seed)));
+    const grown = facts.tasks.get(taskHash(SEED_TASK, seedInputs(s.seed)));
     if (grown?.status !== 'done' || !grown.output)
       return { ok: false, code: 'NOT_GROWN', reason: `seed ${s.seed} has not grown yet` };
-    return { ok: true, plan: { target: grown.output, spec: b.id, refs: [], modelId: 'toy' } };
+    return { ok: true, plan: sproutInputs(grown.output, b.id) };
   },
   deps: (b, facts) => {
     const s = sproutOf(facts, b.id);
-    return s ? [taskHash('prompt_refine', seedInputs(s.seed))] : [];
+    return s ? [taskHash(SEED_TASK, seedInputs(s.seed))] : [];
   },
   candidates: (b, facts) => rowsOf(`sprout:${b.id}`, facts),
   named     : (_b, facts) => new Set(facts.notebook ?? []),

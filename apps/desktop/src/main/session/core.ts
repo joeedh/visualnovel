@@ -150,6 +150,7 @@ import {
   chatRouteFor,
   shotsOf,
   type BudgetChoice,
+  type RetiredTaskKind,
   type Route,
   type TaskKind,
   type Transport,
@@ -326,10 +327,10 @@ export const editInputOf = (project: LoadedProject): SceneEditInput => ({
 
 /**
  * The task kinds that render a picture. Each one's prompt opens with the project's art style, so
- * this is exactly the set of tasks a style change re-keys. `vision_review` and `prompt_refine`
- * read a prompt but never carry the style preamble.
+ * this is exactly the set of tasks a style change re-keys. It keeps the retired `outfit_sheet`,
+ * so a record of one in an older log is counted as before.
  */
-export const IMAGE_KINDS = new Set<TaskKind>([
+export const IMAGE_KINDS = new Set<TaskKind | RetiredTaskKind>([
   'location_ref',
   'portrait',
   'model_sheet',

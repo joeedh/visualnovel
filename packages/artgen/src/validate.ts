@@ -5,7 +5,7 @@
  * adds the graph documents and runs both halves.
  */
 import { readdir } from 'node:fs/promises';
-import type { PromptOverride } from '@vn/types';
+import type { PromptOverride, RetiredTaskKind } from '@vn/types';
 import { playableSchema, type ProjectModel } from '@vn/types';
 import {
   AssetRoot,
@@ -20,6 +20,12 @@ import { loadGraph } from '@vn/taskgraph';
 import { exists, readText } from '@vn/util';
 import { angleOfTask, stillsFamily, type StillsFacts } from '@vn/stills';
 import { overHeld } from '@vn/constraint-solver';
+
+/** Retired kinds whose `done` record names no picture, which the output check skips. */
+const NO_PICTURE: ReadonlySet<string> = new Set<RetiredTaskKind>([
+  'vision_review',
+  'prompt_refine',
+]);
 
 /**
  * `blocking` means the next run or a read of the project would fail; `information` is stale
@@ -126,7 +132,7 @@ export async function validateAssets(
 
   for (const task of graph.all()) {
     if (task.status !== 'done' || task.output === undefined) continue;
-    if (task.kind === 'vision_review' || task.kind === 'prompt_refine') continue;
+    if (NO_PICTURE.has(task.kind)) continue;
     const referrer = `${task.kind} task ${short(task.hash)}`;
     if (!onDisk(task.output)) {
       findings.push({

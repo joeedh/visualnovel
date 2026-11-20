@@ -4,7 +4,7 @@
  * because a runner reaches providers and generation graphs, which neither `@vn/constraint-solver`
  * nor `@vn/stills` may import.
  */
-import type { AnyTask, TaskKind, TaskResult } from '@vn/types';
+import type { AnyTask, RetiredTaskKind, TaskKind, TaskResult } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
 import { noteTask, reportingRetries, withTaskLog } from '@vn/providers';
 import type { RunDeps } from './pipeline.js';
@@ -40,22 +40,22 @@ function shotCost(config: ProjectConfig): Calls {
   return { image: attempts, review: attempts * config.models.vision.length };
 }
 
-/** The kinds the stills family declares, each with its runner and its cost line. */
-export const EXECUTORS: { readonly [K in Exclude<TaskKind, RetiredKind>]: Executor<K> } = {
+/**
+ * Every declared task kind with its runner and its cost line. It is keyed over all of `TaskKind`,
+ * so a family that declares a kind without registering an executor for it does not compile.
+ */
+export const EXECUTORS: { readonly [K in TaskKind]: Executor<K> } = {
   location_ref: { runner: () => runLocationRef, cost: oneImage },
   portrait    : { runner: () => runPortrait, cost: oneImage },
   model_sheet : { runner: () => runModelSheet, cost: oneImage },
   shot_image  : { runner: makeShotRunner, cost: shotCost },
 };
 
-/** Kinds the task union names that nothing has ever planned, so no executor takes them. */
-type RetiredKind = 'outfit_sheet' | 'vision_review' | 'prompt_refine';
-
 /**
  * The cost line each retired kind was priced at while it had a placeholder runner, so a log that
  * holds a pending record of one prices as it did. Running one fails without a call.
  */
-const RETIRED_COST: { readonly [K in RetiredKind]: (config: ProjectConfig) => Calls } = {
+const RETIRED_COST: { readonly [K in RetiredTaskKind]: (config: ProjectConfig) => Calls } = {
   outfit_sheet : oneImage,
   vision_review: noCalls,
   prompt_refine: noCalls,
@@ -72,7 +72,9 @@ export function executorOf(kind: string): Executor<TaskKind> | undefined {
 export function costOf(kind: string, config: ProjectConfig): Calls {
   const executor = executorOf(kind);
   if (executor) return executor.cost(config);
-  return Object.hasOwn(RETIRED_COST, kind) ? RETIRED_COST[kind as RetiredKind](config) : noCalls();
+  return Object.hasOwn(RETIRED_COST, kind)
+    ? RETIRED_COST[kind as RetiredTaskKind](config)
+    : noCalls();
 }
 
 /** Each registered kind's runner, bound to the project's config. */

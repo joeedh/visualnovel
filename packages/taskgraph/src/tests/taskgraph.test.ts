@@ -1,4 +1,4 @@
-import type { ImageParams } from '@vn/types';
+import type { ImageParams, TaskInputs, TaskKind } from '@vn/types';
 import { makeTask, taskHash, TaskGraph } from '../index.js';
 
 const params: ImageParams = { modelId: 'gemini-2.5-flash-image', aspect: '16:9' };
@@ -20,9 +20,17 @@ describe('content-addressed dedupe', () => {
     const other: ImageParams = { ...params, modelId: 'openai/gpt-5-image' };
     const inputs = { characterId: 'aiko', prompt: 'p', refs: [], params };
     expect(taskHash('portrait', inputs)).toBe(taskHash('portrait', { ...inputs, params: other }));
-    expect(taskHash('prompt_refine', { basePrompt: 'p', defects: 'd', modelId: 'a' })).toBe(
-      taskHash('prompt_refine', { basePrompt: 'p', defects: 'd', modelId: 'b' }),
-    );
+    // A retired kind carried its model id at the top level, and an older record's hash stripped it
+    const retired = (modelId: string): string =>
+      taskHash(
+        'prompt_refine' as TaskKind,
+        {
+          basePrompt: 'p',
+          defects   : 'd',
+          modelId,
+        } as unknown as TaskInputs[TaskKind],
+      );
+    expect(retired('a')).toBe(retired('b'));
 
     const g = new TaskGraph();
     const first = g.add(makeTask('portrait', inputs));

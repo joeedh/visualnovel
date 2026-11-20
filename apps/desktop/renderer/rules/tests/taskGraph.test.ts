@@ -402,12 +402,13 @@ describe('clusterKeyOf', () => {
     expect(clusterKeyOf(taskView(portrait('p', 'aiko')))).toBe('char:aiko');
   });
 
-  it('stands a review on its own, since it is about one task rather than a subject', () => {
+  it('stands a record of a retired kind on its own, since it names no subject', () => {
+    // An older log may hold one, and `Task` names only the declared kinds
     const review = task({
       hash  : 'rv',
       kind  : 'vision_review',
       inputs: { target: 'assetPor', spec: '', refs: [], modelId: 'mock-text' },
-    });
+    } as unknown as Task);
     expect(clusterKeyOf(taskView(review))).toBe('other:rv');
   });
 
