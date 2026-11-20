@@ -4,7 +4,8 @@
  * jest's CJS runtime rejects outright (see `scripts/jest-esbuild.cjs`).
  */
 import { ConfigError, ProviderError, RetryableProviderError } from '@vn/util';
-import { providerError } from '../backends/transient.js';
+import { pins } from '@vn/contracts';
+import { providerError, providersTransientRetry } from '../backends/transient.js';
 import {
   createGeminiImage,
   faultKind,
@@ -59,95 +60,97 @@ const params = { modelId: 'gemini-2.5-flash-image', aspect: '16:9' as const };
 /** Bytes that pass the backend's own check that a reference is a picture. */
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4]);
 
-describe('isTransient', () => {
-  it('retries rate limits and the server’s own faults', () => {
-    expect(isTransient(httpError(429, 'rate limited'))).toBe(true);
-    expect(isTransient(httpError(503, 'Service Unavailable'))).toBe(true);
-    expect(isTransient(httpError(500, 'internal'))).toBe(true);
+describe(pins(providersTransientRetry), () => {
+  describe('isTransient', () => {
+    it('retries rate limits and the server’s own faults', () => {
+      expect(isTransient(httpError(429, 'rate limited'))).toBe(true);
+      expect(isTransient(httpError(503, 'Service Unavailable'))).toBe(true);
+      expect(isTransient(httpError(500, 'internal'))).toBe(true);
+    });
+
+    it('reads a status the SDK only stringified', () => {
+      expect(isTransient(new Error('got status: 503 Service Unavailable'))).toBe(true);
+      expect(isTransient(new Error('{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}'))).toBe(
+        true,
+      );
+      expect(isTransient(new Error('ECONNRESET'))).toBe(true);
+      expect(isTransient(new Error('fetch failed'))).toBe(true);
+    });
+
+    // Being wrong in this direction is expensive: retrying a refusal pays for it three times.
+    it('treats a bad request, a refusal, and anything unrecognized as terminal', () => {
+      expect(isTransient(httpError(400, 'invalid argument'))).toBe(false);
+      expect(isTransient(httpError(403, 'permission denied'))).toBe(false);
+      expect(isTransient(new Error('the prompt was blocked by safety filters'))).toBe(false);
+      expect(isTransient('something opaque')).toBe(false);
+      expect(isTransient(undefined)).toBe(false);
+    });
   });
 
-  it('reads a status the SDK only stringified', () => {
-    expect(isTransient(new Error('got status: 503 Service Unavailable'))).toBe(true);
-    expect(isTransient(new Error('{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}'))).toBe(
-      true,
-    );
-    expect(isTransient(new Error('ECONNRESET'))).toBe(true);
-    expect(isTransient(new Error('fetch failed'))).toBe(true);
-  });
+  describe('createGeminiImage — retry in place', () => {
+    it('rides out two 503s and returns the image the third call produced', async () => {
+      const unavailable = httpError(503, 'Service Unavailable');
+      const sdk = fakeSdk([unavailable, unavailable, oneImage]);
+      const backend = createGeminiImage('k', params.modelId, sdk.client);
 
-  // Being wrong in this direction is expensive: retrying a refusal pays for it three times.
-  it('treats a bad request, a refusal, and anything unrecognized as terminal', () => {
-    expect(isTransient(httpError(400, 'invalid argument'))).toBe(false);
-    expect(isTransient(httpError(403, 'permission denied'))).toBe(false);
-    expect(isTransient(new Error('the prompt was blocked by safety filters'))).toBe(false);
-    expect(isTransient('something opaque')).toBe(false);
-    expect(isTransient(undefined)).toBe(false);
-  });
-});
+      expect((await backend.generate('a room', [], params)).ext).toBe('png');
+      expect(sdk.calls()).toBe(3);
+    }, 15_000);
 
-describe('createGeminiImage — retry in place', () => {
-  it('rides out two 503s and returns the image the third call produced', async () => {
-    const unavailable = httpError(503, 'Service Unavailable');
-    const sdk = fakeSdk([unavailable, unavailable, oneImage]);
-    const backend = createGeminiImage('k', params.modelId, sdk.client);
+    it('gives up at once on a 400 — one call, and the class says why', async () => {
+      const sdk = fakeSdk([httpError(400, 'invalid argument')]);
+      const backend = createGeminiImage('k', params.modelId, sdk.client);
 
-    expect((await backend.generate('a room', [], params)).ext).toBe('png');
-    expect(sdk.calls()).toBe(3);
-  }, 15_000);
+      const err = await backend.generate('a room', [], params).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProviderError);
+      expect(err).not.toBeInstanceOf(RetryableProviderError);
+      expect((err as Error).message).toContain('invalid argument');
+      expect(sdk.calls()).toBe(1);
+    });
 
-  it('gives up at once on a 400 — one call, and the class says why', async () => {
-    const sdk = fakeSdk([httpError(400, 'invalid argument')]);
-    const backend = createGeminiImage('k', params.modelId, sdk.client);
+    it('exhausts the budget when the outage does not lift, and says it was transient', async () => {
+      const sdk = fakeSdk([httpError(503, 'Service Unavailable')]);
+      const backend = createGeminiImage('k', params.modelId, sdk.client);
 
-    const err = await backend.generate('a room', [], params).catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(ProviderError);
-    expect(err).not.toBeInstanceOf(RetryableProviderError);
-    expect((err as Error).message).toContain('invalid argument');
-    expect(sdk.calls()).toBe(1);
-  });
+      await expect(backend.generate('a room', [], params)).rejects.toBeInstanceOf(
+        RetryableProviderError,
+      );
+      expect(sdk.calls()).toBe(3);
+    }, 15_000);
 
-  it('exhausts the budget when the outage does not lift, and says it was transient', async () => {
-    const sdk = fakeSdk([httpError(503, 'Service Unavailable')]);
-    const backend = createGeminiImage('k', params.modelId, sdk.client);
+    it('reports each retry to the listener in scope, and to nobody outside one', async () => {
+      const unavailable = httpError(503, 'Service Unavailable');
+      const sdk = fakeSdk([unavailable, unavailable, oneImage]);
+      const backend = createGeminiImage('k', params.modelId, sdk.client);
 
-    await expect(backend.generate('a room', [], params)).rejects.toBeInstanceOf(
-      RetryableProviderError,
-    );
-    expect(sdk.calls()).toBe(3);
-  }, 15_000);
+      const heard: string[] = [];
+      await reportingRetries(
+        (note) => heard.push(note),
+        () => backend.generate('a room', [], params),
+      );
+      expect(heard).toHaveLength(2);
+      expect(heard[0]).toMatch(/^retry 1 of 2 in \d+m?s — Gemini image request failed/);
+      expect(heard[0]).toContain('Service Unavailable');
+      expect(heard[1]).toMatch(/^retry 2 of 2/);
 
-  it('reports each retry to the listener in scope, and to nobody outside one', async () => {
-    const unavailable = httpError(503, 'Service Unavailable');
-    const sdk = fakeSdk([unavailable, unavailable, oneImage]);
-    const backend = createGeminiImage('k', params.modelId, sdk.client);
+      // Outside any scope the same outage is retried silently: no report, no error
+      const again = fakeSdk([unavailable, oneImage]);
+      await createGeminiImage('k', params.modelId, again.client).generate('a room', [], params);
+      expect(heard).toHaveLength(2);
+    }, 15_000);
 
-    const heard: string[] = [];
-    await reportingRetries(
-      (note) => heard.push(note),
-      () => backend.generate('a room', [], params),
-    );
-    expect(heard).toHaveLength(2);
-    expect(heard[0]).toMatch(/^retry 1 of 2 in \d+m?s — Gemini image request failed/);
-    expect(heard[0]).toContain('Service Unavailable');
-    expect(heard[1]).toMatch(/^retry 2 of 2/);
+    // The reference is rejected before the network call, so another attempt would send the same
+    // bad bytes.
+    it('never retries an unusable reference image', async () => {
+      const sdk = fakeSdk([oneImage]);
+      const backend = createGeminiImage('k', params.modelId, sdk.client);
+      const notAnImage = { bytes: new Uint8Array([1, 2, 3, 4]), ext: 'png' };
 
-    // Outside any scope the same outage is retried silently: no report, no error
-    const again = fakeSdk([unavailable, oneImage]);
-    await createGeminiImage('k', params.modelId, again.client).generate('a room', [], params);
-    expect(heard).toHaveLength(2);
-  }, 15_000);
-
-  // The reference is rejected before the network call, so another attempt would send the same
-  // bad bytes.
-  it('never retries an unusable reference image', async () => {
-    const sdk = fakeSdk([oneImage]);
-    const backend = createGeminiImage('k', params.modelId, sdk.client);
-    const notAnImage = { bytes: new Uint8Array([1, 2, 3, 4]), ext: 'png' };
-
-    await expect(backend.generate('a room', [notAnImage], params)).rejects.toThrow(
-      /not a valid PNG/,
-    );
-    expect(sdk.calls()).toBe(0);
+      await expect(backend.generate('a room', [notAnImage], params)).rejects.toThrow(
+        /not a valid PNG/,
+      );
+      expect(sdk.calls()).toBe(0);
+    });
   });
 });
 

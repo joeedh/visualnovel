@@ -169,6 +169,36 @@ async function raceAbort<T>(
   }
 }
 
+export const executionRetryBudget = contract({
+  id      : 'execution.retryBudget',
+  rule: 'Once per run, after the first planning pass and before the wave loop, a planned `failed` task goes back to `pending` while it has fewer attempts carrying an `error` than `max_task_attempts` (default 2, one retry). `needs_human` is never requeued.',
+  prevents:
+    'A transient provider error leaving a task terminal for the life of the project, a retry spinning inside one run against the condition that just failed it, or an orphaned node paid for again.',
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#requeueFailed',
+    'function:packages/scheduler/src/scheduler.ts#RunSummary',
+    'function:apps/cli/src/commands.ts#cmdRun',
+    'function:apps/cli/src/commands.ts#cmdCost',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    '`max_task_attempts` is separate from `max_refine_attempts`, which caps the P7 loop within a ' +
+    'single run. The requeue happens once rather than inside the wave loop, because requeueing ' +
+    'there would re-run a task against the same transient condition that just blocked it, and ' +
+    'could spin. The budget counts attempt records that carry an `error`, never ' +
+    '`attempts.length`, which on a `needs_human` shot counts refine passes. `needs_human` is ' +
+    'never retried, because it asks for human attention rather than reporting a fault. The ' +
+    'requeue is bounded to what the last planning pass asked for, and to the `only` closure ' +
+    '(`execution.targetClosure`): nothing in production calls `TaskGraph.prune`, so a prompt or ' +
+    'reference change leaves the old `failed` node behind in `tasks.jsonl`, and requeueing it ' +
+    'would pay for art no plan asks for. A requeued task loses its `error`, and ' +
+    '`RunSummary.retried` names it. A dry run requeues in memory and writes nothing, so ' +
+    '`vngen cost` counts the retry the dry run would perform and leaves no divergent log.',
+});
+
 /**
  * Put `failed` tasks back to `pending` so the next run retries them — a failure is usually a
  * transient provider error, and without this a node is terminal for the life of the project.
@@ -195,6 +225,29 @@ export function requeueFailed(
   }
   return requeued;
 }
+
+export const executionAbandonedReleased = contract({
+  id      : 'execution.abandonedReleased',
+  rule: 'At the start of a run every task a previous owner left at `running` goes back to `pending` with `interrupted: true`, superseded versions included, and spends no failure budget. Each wave starts only ready tasks the current plan asked for.',
+  prevents:
+    'A task a killed process left `running` that nothing would ever pick up again, or a historical pending or abandoned task outside the current plan spending money.',
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#requeueAbandoned',
+    'function:packages/scheduler/src/scheduler.ts#runPipeline',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    'A run owns the graph while it lasts, so a task the log left at `running` was abandoned by a ' +
+    'process that died mid-task. The release runs after the first planning pass and before the ' +
+    'failure retries, writes each task back to the log (a dry run only in memory), and logs ' +
+    '`task.resume`. Releasing superseded versions as well is safe because each wave intersects ' +
+    '`ready()` with the current plan, even for an unrestricted run, so a released task outside ' +
+    'the plan stays `pending` and never starts. Recovery pushes no attempt carrying an `error`, ' +
+    'so it spends nothing of `max_task_attempts`.',
+});
 
 /**
  * Releases every execution a previous owner left running, including superseded versions.
@@ -254,7 +307,8 @@ export const executionTargetClosure = contract({
     'The closure is walked over `deps` in the graph as it stands at each wave, because a wave can ' +
     'plan nodes that did not exist before it: a shot task appears once the sheet it depends on is ' +
     'drawn. Planning still covers the whole project, so the storyboard files and the preview are ' +
-    'what a full run would leave. The failure and drift requeues are bounded to the same closure.',
+    'what a full run would leave. The failure and drift requeues are bounded to the same closure ' +
+    '(`execution.retryBudget`).',
 });
 
 /**
@@ -279,6 +333,87 @@ function inputRefHashes(task: AnyTask): string[] {
   const refs = (task.inputs as { refs?: { hash: string }[] }).refs;
   return refs ? refs.map((r) => r.hash) : [];
 }
+
+export const executionFailureRecorded = contract({
+  id      : 'execution.failureRecorded',
+  rule: "`Task.error` holds why a task reached a terminal state other than `done`. The scheduler writes the runner's error on every outcome, so `done` clears it, and a failure also pushes a `TaskAttempt` that carries the same reason.",
+  prevents:
+    'A failure whose reason lived only on a logger event nobody kept, so that the next run planned nothing for it and the CLI printed `Gate cleared — all reachable shots generated.` over a scene with no art.',
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#runPipeline',
+    'function:apps/cli/src/commands.ts#cmdRun',
+    'file:state/tasks.jsonl',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    'This rule and `execution.retryBudget` and `execution.reportFromPlan` each fix one part of the ' +
+    'same defect: a `shot_image` failed, the reason existed only on a logger event, the next run ' +
+    'planned nothing for it, and the CLI reported the gate cleared over a scene with no art. ' +
+    '`needs_human` carries the P7 give-up sentence (`execution.refineLoop`). A runner that threw ' +
+    'recorded no attempt of its own, so the scheduler pushes one holding the reason; that puts the ' +
+    'failure in the causal chain FLOOR renders, and it is what the retry budget counts. The log ' +
+    'line is a whole-node snapshot (`log.lastWriterWins`), so it already carries the field and a ' +
+    'replay restores it. Adding the field invalidates nothing, because `taskHash` covers `kind` ' +
+    'and `inputs` and never mutable node state (`identity.taskHash`).',
+});
+
+export const executionReportFromPlan = contract({
+  id      : 'execution.reportFromPlan',
+  rule: '`RunSummary.failed` and `needsHuman` are the tasks the last planning pass asked for that are in those states, not what this process ran, so a failure inherited from an earlier run still exits `vngen run` non-zero and an orphan is never reported.',
+  prevents:
+    'A run reporting success over a failure an earlier run left, or an orphaned `failed` node in the never-pruned log keeping the exit code failing forever.',
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#runPipeline',
+    'function:packages/scheduler/src/scheduler.ts#RunSummary',
+    'function:apps/cli/src/commands.ts#cmdRun',
+    'function:apps/cli/src/commands.ts#cmdStatus',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    'The live set is the last planning pass, deduped back to canonical nodes, and every ' +
+    'terminal-state report is derived from it rather than from what this process happened to ' +
+    'touch. A `needs_human` node does not fail `vngen run`, because its picture exists and wants ' +
+    'review. The failed-task retries (`execution.retryBudget`) and this report both intersect ' +
+    'with the planned set: nothing in production calls `TaskGraph.prune`, so `tasks.jsonl` ' +
+    'accumulates orphaned nodes whenever a prompt or reference change rehashes a task, and a ' +
+    'blind sweep would either pay again for art no plan asks for or leave the exit code failing ' +
+    'forever. `vngen status` does not plan, so its counts include orphans.',
+});
+
+export const executionStopAtRequest = contract({
+  id      : 'execution.stopAtRequest',
+  rule: 'A stop takes effect before the next API request: requests in flight settle, their successful responses are saved before the runner reads them, and an unfinished task goes back to `pending`, marked interrupted, with no failure attempt.',
+  prevents:
+    'A stop throwing away calls already paid for, charging a task the retry budget for an interruption that was not its fault, or a late answer writing after the run released the task.',
+  subjects: [
+    'function:packages/scheduler/src/scheduler.ts#runPipeline',
+    'function:packages/scheduler/src/scheduler.ts#RunOptions',
+    'function:packages/providers/src/requests.ts#withRequestStop',
+    'function:packages/providers/src/requests.ts#checkRequest',
+    'function:packages/providers/src/requests.ts#checkRequestWrite',
+    'function:packages/providers/src/requests.ts#RequestStopped',
+    'command:pipeline.stop',
+  ],
+  see     : ['docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
+  detail:
+    'Responses are written atomically under `vngen/state/requests/<execution-id>/`. A task ' +
+    'whose final request has completed may finish its local bookkeeping. Provider backoff is ' +
+    "interruptible, and the SDKs' own retries are disabled in favour of the application's " +
+    'request-boundary retry policy (`providers.transientRetry`). `RunOptions.abort` stops at ' +
+    'once: it releases the tasks in flight without waiting for their requests, putting each back ' +
+    'to `pending` and logging it so, as a task a killed process left `running` is on the next ' +
+    'run. Their late answers are fenced (`checkRequestWrite`) from response journals, attempt ' +
+    'records, asset writes, slot holds and the task log, and a write already under way is ' +
+    'drained before the task is released. An interruption never pushes an attempt carrying an ' +
+    '`error`, so it spends nothing of `max_task_attempts`. Resuming the work is ' +
+    '`execution.resumeFromJournal`.',
+});
 
 /**
  * Drive the task graph to completion under a concurrency cap (report §7, §10). The loop is

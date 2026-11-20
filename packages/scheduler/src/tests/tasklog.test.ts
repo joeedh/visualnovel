@@ -1,4 +1,5 @@
-import { readTaskLog } from '@vn/pipeline';
+import { pins } from '@vn/contracts';
+import { executionTaskLogDiagnostic, readTaskLog } from '@vn/pipeline';
 import type { ImageBackend } from '@vn/providers';
 import { SCRIPTS, makeProject } from '@vn/testkit';
 
@@ -14,7 +15,7 @@ function failingImages(message: string, cause?: Error): ImageBackend {
   };
 }
 
-describe('task logs', () => {
+describe(pins(executionTaskLogDiagnostic), () => {
   it('records every reviewer call by attempt, and why the task stopped', async () => {
     const p = await makeProject({ script: SCRIPTS.linear, config: { max_refine_attempts: 2 } });
     try {

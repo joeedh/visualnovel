@@ -4,6 +4,7 @@ import { deserialize, serialize } from 'node:v8';
 import type { GenServices } from '@vn/gengraph';
 import type { AssetStore, Providers } from '@vn/types';
 import { checkRequest, checkRequestWrite } from '@vn/providers';
+import { contract } from '@vn/contracts';
 import { hashParts, sha256, writeFileAtomic } from '@vn/util';
 export { RequestStopped, checkRequest, checkRequestWrite, withRequestStop } from '@vn/providers';
 
@@ -17,6 +18,31 @@ function requestArgs(value: unknown): unknown {
   }
   return value;
 }
+
+export const executionResumeFromJournal = contract({
+  id      : 'execution.resumeFromJournal',
+  rule: "A task's `checkpoint` names its execution journal. Resuming the task replays the successful image and review responses saved there, then makes only the requests that remain.",
+  prevents:
+    'Paying a second time for an image or a review answered before a stop, or a resumed run duplicating refine attempts or overwriting failure records.',
+  subjects: [
+    'function:packages/pipeline/src/requests.ts#TaskRequests',
+    'function:packages/scheduler/src/scheduler.ts#runPipeline',
+    'function:packages/pipeline/src/runners.ts#makeShotRunner',
+    'file:state/requests',
+  ],
+  see     : ['docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
+  detail:
+    'Reviews that ran in parallel and completed independently are replayed too. Attempt-record ' +
+    'indices (`checkpoint.records`) keep a replay from duplicating refine attempts or ' +
+    'overwriting failure records. Planning has its own resumable journal, and a stop cannot ' +
+    'persist a fallback decomposition. Graph requests are scoped by node key and run key, ' +
+    "alongside the graph's existing completed-node journal. Request arguments are hashed, and " +
+    'binary responses stay binary; a repeat of an identical request is a separate entry, ' +
+    "numbered by occurrence. Changing the task's inputs or the configuration starts a new " +
+    "execution (the checkpoint's `signature`), as does an explicit regeneration. A completed " +
+    "execution's journal is removed once the terminal task record is durable; interrupted and " +
+    'failed executions keep theirs.',
+});
 
 /** Saves successful responses before returning them to a runner; resumes across processes. */
 export class TaskRequests {

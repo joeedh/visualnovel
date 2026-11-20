@@ -5,6 +5,7 @@
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { ConfigError, ProviderError, RetryableProviderError, retry } from '@vn/util';
+import { contract } from '@vn/contracts';
 import { checkRequest, requestSignal } from '../requests.js';
 
 /** Attempts and backoff for one network call. Deliberately small — the scheduler retries too. */
@@ -201,6 +202,39 @@ export function providerError(what: string, err: unknown): ProviderError {
     ...(after === undefined ? {} : { retryAfterMs: after }),
   });
 }
+
+export const providersTransientRetry = contract({
+  id      : 'providers.transientRetry',
+  rule: 'The Gemini, Claude and OpenRouter backends retry a transient failure (429, 5xx or a transport error) in place, up to `ATTEMPTS` calls in all. Any other failure, an unrecognized one included, is terminal at once.',
+  prevents:
+    'A rate limit or a dropped connection failing a task that one more call would have finished, or a content refusal paid for three times over.',
+  subjects: [
+    'function:packages/providers/src/backends/transient.ts#callWithRetry',
+    'function:packages/providers/src/backends/transient.ts#isTransient',
+    'function:packages/providers/src/backends/transient.ts#providerError',
+    'function:packages/providers/src/backends/transient.ts#retryAfterMs',
+    'module:packages/providers/src/backends/gemini.ts',
+    'module:packages/providers/src/backends/anthropic.ts',
+    'module:packages/providers/src/backends/openrouter.ts',
+    'module:packages/providers/src/backends/openrouter-chat.ts',
+  ],
+  see: [
+    'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    '`isTransient` reads the status wherever the SDK put it (`status`, `code`, ' +
+    '`response.status`, or named in the message) and the transport errors by name. An ' +
+    'unrecognized error is terminal by default, because three refusals cost three times what ' +
+    'one refusal costs. `providerError` wraps a transient failure as `RetryableProviderError`, ' +
+    "carrying the provider's `retry-after` when it sent one; `callWithRetry` waits that long, " +
+    'and otherwise backs off exponentially from `BASE_MS`. A `ProviderError` the backend raised ' +
+    'itself, such as an unusable reference or an empty response, passes straight through. The ' +
+    "SDKs' own retries are off, the backoff stops for a stop (`execution.stopAtRequest`), and " +
+    'each retry is reported to the listener `reportingRetries` puts in scope, which `runTask` ' +
+    "turns into the task's activity line and a task-log entry. These retries sit beneath the " +
+    "scheduler's, which retries a failed task on the next run (`execution.retryBudget`).",
+});
 
 /**
  * Run one SDK call, retrying only while the failure looks transient. A `ProviderError` the

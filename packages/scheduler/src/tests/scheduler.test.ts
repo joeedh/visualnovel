@@ -6,6 +6,9 @@ import { TaskGraph, loadGraph, makeTask } from '@vn/taskgraph';
 import { SCRIPTS, makeProject } from '@vn/testkit';
 import {
   closureOf,
+  executionAbandonedReleased,
+  executionFailureRecorded,
+  executionRetryBudget,
   executionTargetClosure,
   requeueAbandoned,
   requeueFailed,
@@ -152,68 +155,72 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
     }
   }, 30_000);
 
-  it('records why a task failed — on the node, in the log, and as an attempt', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      const summary = await p.run({ imageBackend: flakyImages(Infinity, 'the model exploded') });
-      const failed = summary.ran.filter((t) => t.status === 'failed');
-      expect(failed.length).toBeGreaterThan(0);
-      expect(failed.every((t) => t.error === 'the model exploded')).toBe(true);
+  describe(pins(executionFailureRecorded), () => {
+    it('records why a task failed — on the node, in the log, and as an attempt', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        const summary = await p.run({ imageBackend: flakyImages(Infinity, 'the model exploded') });
+        const failed = summary.ran.filter((t) => t.status === 'failed');
+        expect(failed.length).toBeGreaterThan(0);
+        expect(failed.every((t) => t.error === 'the model exploded')).toBe(true);
 
-      // A runner that threw pushed no attempt of its own, so the scheduler records the failure.
-      for (const t of failed) {
-        expect(t.attempts).toHaveLength(1);
-        expect(t.attempts[0]).toMatchObject({ attempt: 1, error: 'the model exploded' });
+        // A runner that threw pushed no attempt of its own, so the scheduler records the failure.
+        for (const t of failed) {
+          expect(t.attempts).toHaveLength(1);
+          expect(t.attempts[0]).toMatchObject({ attempt: 1, error: 'the model exploded' });
+        }
+
+        // The reason is on the node, so the whole-node log line carries it and a replay restores it.
+        const replayed = await loadGraph(p.paths);
+        for (const t of failed) {
+          expect(replayed.get(t.hash)?.status).toBe('failed');
+          expect(replayed.get(t.hash)?.error).toBe('the model exploded');
+        }
+      } finally {
+        await p.cleanup();
       }
+    }, 30_000);
+  });
 
-      // The reason is on the node, so the whole-node log line carries it and a replay restores it.
-      const replayed = await loadGraph(p.paths);
-      for (const t of failed) {
-        expect(replayed.get(t.hash)?.status).toBe('failed');
-        expect(replayed.get(t.hash)?.error).toBe('the model exploded');
+  describe(pins(executionRetryBudget), () => {
+    it('retries a failed task on the next run, and the same identity succeeds', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        // One transient outage: exactly one task of the first wave fails.
+        const first = await p.run({ imageBackend: flakyImages(1, 'transient 503') });
+        const failed = first.ran.filter((t) => t.status === 'failed');
+        expect(failed).toHaveLength(1);
+        expect(first.retried).toEqual([]);
+        const hash = failed[0]!.hash;
+
+        // A fresh run requeues it before the wave loop — the retry is across runs, not within one.
+        const second = await p.run({ imageBackend: flakyImages(0, 'unused') });
+        expect(second.retried).toEqual([hash]);
+        const redone = second.ran.find((t) => t.hash === hash);
+        expect(redone?.status).toBe('done');
+        expect(redone?.error).toBeUndefined();
+        expect((await p.reload()).store.has(redone!.output!)).toBe(true);
+      } finally {
+        await p.cleanup();
       }
-    } finally {
-      await p.cleanup();
-    }
-  }, 30_000);
+    }, 30_000);
 
-  it('retries a failed task on the next run, and the same identity succeeds', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      // One transient outage: exactly one task of the first wave fails.
-      const first = await p.run({ imageBackend: flakyImages(1, 'transient 503') });
-      const failed = first.ran.filter((t) => t.status === 'failed');
-      expect(failed).toHaveLength(1);
-      expect(first.retried).toEqual([]);
-      const hash = failed[0]!.hash;
+    it('stops requeueing once max_task_attempts is spent', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear, config: { max_task_attempts: 1 } });
+      try {
+        const first = await p.run({ imageBackend: flakyImages(1, 'transient 503') });
+        const failed = first.ran.filter((t) => t.status === 'failed');
+        expect(failed).toHaveLength(1);
 
-      // A fresh run requeues it before the wave loop — the retry is across runs, not within one.
-      const second = await p.run({ imageBackend: flakyImages(0, 'unused') });
-      expect(second.retried).toEqual([hash]);
-      const redone = second.ran.find((t) => t.hash === hash);
-      expect(redone?.status).toBe('done');
-      expect(redone?.error).toBeUndefined();
-      expect((await p.reload()).store.has(redone!.output!)).toBe(true);
-    } finally {
-      await p.cleanup();
-    }
-  }, 30_000);
-
-  it('stops requeueing once max_task_attempts is spent', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear, config: { max_task_attempts: 1 } });
-    try {
-      const first = await p.run({ imageBackend: flakyImages(1, 'transient 503') });
-      const failed = first.ran.filter((t) => t.status === 'failed');
-      expect(failed).toHaveLength(1);
-
-      // The single attempt the budget allows is already spent, so the node stays terminal.
-      const second = await p.run({ imageBackend: flakyImages(0, 'unused') });
-      expect(second.retried).toEqual([]);
-      expect((await loadGraph(p.paths)).get(failed[0]!.hash)?.status).toBe('failed');
-    } finally {
-      await p.cleanup();
-    }
-  }, 30_000);
+        // The single attempt the budget allows is already spent, so the node stays terminal.
+        const second = await p.run({ imageBackend: flakyImages(0, 'unused') });
+        expect(second.retried).toEqual([]);
+        expect((await loadGraph(p.paths)).get(failed[0]!.hash)?.status).toBe('failed');
+      } finally {
+        await p.cleanup();
+      }
+    }, 30_000);
+  });
 
   it('reports what each task in flight is doing, and clears it when the task ends', async () => {
     const p = await makeProject({ script: SCRIPTS.linear });
@@ -312,7 +319,7 @@ describe('runPipeline — gate-as-barrier end-to-end', () => {
   });
 });
 
-describe('requeueFailed', () => {
+describe(pins(executionRetryBudget), () => {
   const params = { modelId: 'mock-image', aspect: '16:9' };
 
   /** A node in `status`, with one recorded attempt per entry in `errors`. */
@@ -343,17 +350,19 @@ describe('requeueFailed', () => {
     expect(graph.get(orphan.hash)?.status).toBe('failed');
   });
 
-  it('releases abandoned executions, including superseded versions', () => {
-    const live = node('live', 'running');
-    const orphan = node('orphan', 'running');
-    const done = node('done', 'done');
-    const graph = graphOf(live, orphan, done);
+  describe(pins(executionAbandonedReleased), () => {
+    it('releases abandoned executions, including superseded versions', () => {
+      const live = node('live', 'running');
+      const orphan = node('orphan', 'running');
+      const done = node('done', 'done');
+      const graph = graphOf(live, orphan, done);
 
-    const hashes = requeueAbandoned(graph).map((t) => t.hash);
-    expect(hashes).toEqual([live.hash, orphan.hash]);
-    expect(graph.get(live.hash)?.status).toBe('pending');
-    expect(graph.get(orphan.hash)).toMatchObject({ status: 'pending', interrupted: true });
-    expect(graph.get(done.hash)?.status).toBe('done');
+      const hashes = requeueAbandoned(graph).map((t) => t.hash);
+      expect(hashes).toEqual([live.hash, orphan.hash]);
+      expect(graph.get(live.hash)?.status).toBe('pending');
+      expect(graph.get(orphan.hash)).toMatchObject({ status: 'pending', interrupted: true });
+      expect(graph.get(done.hash)?.status).toBe('done');
+    });
   });
 
   it('counts only attempts that carry an error, and never requeues needs_human', () => {

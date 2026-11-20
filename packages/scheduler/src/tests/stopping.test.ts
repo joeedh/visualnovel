@@ -5,7 +5,8 @@ import { logTask } from '@vn/taskgraph/write';
 import { makeProject, SCRIPTS, type TestProject } from '@vn/testkit';
 import { rm } from 'node:fs/promises';
 import { GenDerivedPrompt, GenImage, GenOutput, Graph, registerGenRuntimes } from '@vn/gengraph';
-import { runPipeline } from '../scheduler.js';
+import { pins } from '@vn/contracts';
+import { executionAbandonedReleased, executionStopAtRequest, runPipeline } from '../scheduler.js';
 
 registerGenRuntimes();
 
@@ -49,7 +50,7 @@ const blocked: DefectReport = {
   ],
 };
 
-describe('request-boundary stopping', () => {
+describe(pins(executionStopAtRequest), () => {
   it('finishes local bookkeeping when the task has no API requests left', async () => {
     const p = await makeProject({ script: SCRIPTS.linear, config: { concurrency: 1 } });
     const stop = new AbortController();
@@ -370,34 +371,36 @@ describe('request-boundary stopping', () => {
     }
   });
 
-  it('never executes historical pending or abandoned tasks outside the current plan', async () => {
-    const p = await makeProject({ script: SCRIPTS.linear });
-    try {
-      const params = { modelId: 'mock-image' };
-      const old = makeTask('shot_image', {
-        shotId: 'superseded',
-        prompt: 'obsolete',
-        refs  : [],
-        params,
-      });
-      old.status = 'running';
-      await logTask(p.paths, old);
-      const pending = makeTask('shot_image', {
-        shotId: 'orphan',
-        prompt: 'obsolete',
-        refs  : [],
-        params,
-      });
-      await logTask(p.paths, pending);
-      const backend = new StubImageBackend();
-      const generate = jest.spyOn(backend, 'generate');
-      await p.run({ imageBackend: backend });
-      expect(generate.mock.calls.every(([prompt]) => prompt !== 'obsolete')).toBe(true);
-      const after = await loadGraph(p.paths);
-      expect(after.get(old.hash)).toMatchObject({ status: 'pending', interrupted: true });
-      expect(after.get(pending.hash)?.status).toBe('pending');
-    } finally {
-      await p.cleanup();
-    }
+  describe(pins(executionAbandonedReleased), () => {
+    it('never executes historical pending or abandoned tasks outside the current plan', async () => {
+      const p = await makeProject({ script: SCRIPTS.linear });
+      try {
+        const params = { modelId: 'mock-image' };
+        const old = makeTask('shot_image', {
+          shotId: 'superseded',
+          prompt: 'obsolete',
+          refs  : [],
+          params,
+        });
+        old.status = 'running';
+        await logTask(p.paths, old);
+        const pending = makeTask('shot_image', {
+          shotId: 'orphan',
+          prompt: 'obsolete',
+          refs  : [],
+          params,
+        });
+        await logTask(p.paths, pending);
+        const backend = new StubImageBackend();
+        const generate = jest.spyOn(backend, 'generate');
+        await p.run({ imageBackend: backend });
+        expect(generate.mock.calls.every(([prompt]) => prompt !== 'obsolete')).toBe(true);
+        const after = await loadGraph(p.paths);
+        expect(after.get(old.hash)).toMatchObject({ status: 'pending', interrupted: true });
+        expect(after.get(pending.hash)?.status).toBe('pending');
+      } finally {
+        await p.cleanup();
+      }
+    });
   });
 });

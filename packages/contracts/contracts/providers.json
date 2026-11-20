@@ -30,6 +30,27 @@
       ],
       "detail": "P5's baseline is one establishing shot carrying the scene's cast plus one medium shot per character, each on the location's first variant. The establishing shot carries the cast because it covers the narration and action beats, which describe the characters doing things; a scene with no cast gets a bare plate. `decomposeScene` never throws: a failure becomes a `baseline` decomposition with a `reason`, so a caller that persists can refuse to write it (`planning.storyboardOnRequest`). P1 keeps the mined location when enrichment fails. Changing the baseline changes the prompt and re-keys establishing tasks, but shots are persisted, so an existing project keeps its old decomposition until `vngen/work/shots/*.json` is deleted or edited.",
       "declared": "packages/stills/src/storyboard.ts"
+    },
+    {
+      "id"      : "providers.transientRetry",
+      "rule": "The Gemini, Claude and OpenRouter backends retry a transient failure (429, 5xx or a transport error) in place, up to `ATTEMPTS` calls in all. Any other failure, an unrecognized one included, is terminal at once.",
+      "prevents": "A rate limit or a dropped connection failing a task that one more call would have finished, or a content refusal paid for three times over.",
+      "subjects": [
+        "function:packages/providers/src/backends/transient.ts#callWithRetry",
+        "function:packages/providers/src/backends/transient.ts#isTransient",
+        "function:packages/providers/src/backends/transient.ts#providerError",
+        "function:packages/providers/src/backends/transient.ts#retryAfterMs",
+        "module:packages/providers/src/backends/gemini.ts",
+        "module:packages/providers/src/backends/anthropic.ts",
+        "module:packages/providers/src/backends/openrouter.ts",
+        "module:packages/providers/src/backends/openrouter-chat.ts"
+      ],
+      "see": [
+        "docs/plans/archive/INDEX.md#task-failure-visibility-and-retry",
+        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+      ],
+      "detail": "`isTransient` reads the status wherever the SDK put it (`status`, `code`, `response.status`, or named in the message) and the transport errors by name. An unrecognized error is terminal by default, because three refusals cost three times what one refusal costs. `providerError` wraps a transient failure as `RetryableProviderError`, carrying the provider's `retry-after` when it sent one; `callWithRetry` waits that long, and otherwise backs off exponentially from `BASE_MS`. A `ProviderError` the backend raised itself, such as an unusable reference or an empty response, passes straight through. The SDKs' own retries are off, the backoff stops for a stop (`execution.stopAtRequest`), and each retry is reported to the listener `reportingRetries` puts in scope, which `runTask` turns into the task's activity line and a task-log entry. These retries sit beneath the scheduler's, which retries a failed task on the next run (`execution.retryBudget`).",
+      "declared": "packages/providers/src/backends/transient.ts"
     }
   ]
 }

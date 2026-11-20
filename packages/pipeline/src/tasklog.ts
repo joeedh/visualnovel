@@ -4,6 +4,7 @@ import type { TaskLogDraft, TaskLogEntry } from '@vn/types';
 import { taskLogEntrySchema } from '@vn/types';
 import type { TaskLogSink } from '@vn/providers';
 import { checkRequestWrite } from '@vn/providers';
+import { contract } from '@vn/contracts';
 import { ensureDir, redactSecrets, sha256, writeFileAtomic } from '@vn/util';
 import type { TaskRequests } from './requests.js';
 
@@ -15,6 +16,42 @@ export const TASKLOG_MAX_BYTES = 2_000_000;
 function clip(text: string): string {
   return text.length > TASKLOG_FIELD_MAX ? `${text.slice(0, TASKLOG_FIELD_MAX)}…` : text;
 }
+
+export const executionTaskLogDiagnostic = contract({
+  id      : 'execution.taskLogDiagnostic',
+  rule: 'Each task keeps a diagnostic log at `vngen/state/tasklogs/<hash>.jsonl`, gitignored because it holds full model prompts and replies. It is not provenance: writes are best effort, and a failed append never fails a task.',
+  prevents:
+    "Losing a provider retry, an unparsed reviewer reply or a thrown error's causes, failing a task because its diagnostics could not be written, or committing full prompts and replies to git.",
+  subjects: [
+    'function:packages/pipeline/src/tasklog.ts#TaskLogFile',
+    'function:packages/pipeline/src/tasklog.ts#readTaskLog',
+    'function:packages/providers/src/tasklog.ts#withTaskLog',
+    'function:packages/pipeline/src/executors.ts#runTask',
+    'command:pipeline.taskLog',
+    'file:state/tasklogs',
+  ],
+  see: [
+    'docs/plans/task-pane-logs.md',
+    'docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+  ],
+  detail:
+    'The log records provider retries, reviewer replies that did not parse, the error that ' +
+    'stopped the task (with its causes), and every reviewer call in full: the system prompt ' +
+    '(stored once per file, by hash), the prompt, image hashes, raw replies, error and duration. ' +
+    "A reviewer's parsed verdict is not repeated there; it stays on `Task.attempts[n].reviews`. " +
+    'Each entry carries its execution (`checkpoint.id`) and its 1-based attempt index. Appends ' +
+    'are serialized per execution and drained by an abort like any other write, and an append ' +
+    'made after the owner abandoned the execution is dropped. Error text passes through ' +
+    '`redactSecrets` (`@vn/util`) before it is written, and a text field longer than ' +
+    '`TASKLOG_FIELD_MAX` is cut. A reviewer call answered from the response journal is not made ' +
+    'again, so it writes no second entry; a call that was made again after a stop writes one, ' +
+    'because it was a second paid call. Nothing deletes a log file: Clear finished deletes ' +
+    'nothing, and a tombstone can be undone. A file past `TASKLOG_MAX_BYTES` drops its oldest ' +
+    'other execution on the next append. Producers reach the log through `withTaskLog` in ' +
+    '`@vn/providers`, an `AsyncLocalStorage` scope `runTask` opens around each runner with the ' +
+    '`TaskLogFile` the scheduler creates for the execution. The Tasks pane reads it through ' +
+    '`pipeline:taskLog`, which answers what the `pipeline.taskLog` command answers.',
+});
 
 /**
  * The task log of one execution, appended to `vngen/state/tasklogs/<hash>.jsonl`. Appends are

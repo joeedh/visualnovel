@@ -25,6 +25,66 @@
       ]
     },
     {
+      "id"      : "execution.abandonedReleased",
+      "rule": "At the start of a run every task a previous owner left at `running` goes back to `pending` with `interrupted: true`, superseded versions included, and spends no failure budget. Each wave starts only ready tasks the current plan asked for.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#requeueAbandoned",
+        "function:packages/scheduler/src/scheduler.ts#runPipeline"
+      ]
+    },
+    {
+      "id"      : "execution.failureRecorded",
+      "rule": "`Task.error` holds why a task reached a terminal state other than `done`. The scheduler writes the runner's error on every outcome, so `done` clears it, and a failure also pushes a `TaskAttempt` that carries the same reason.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#runPipeline",
+        "function:apps/cli/src/commands.ts#cmdRun",
+        "file:state/tasks.jsonl"
+      ]
+    },
+    {
+      "id"      : "execution.reportFromPlan",
+      "rule": "`RunSummary.failed` and `needsHuman` are the tasks the last planning pass asked for that are in those states, not what this process ran, so a failure inherited from an earlier run still exits `vngen run` non-zero and an orphan is never reported.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#runPipeline",
+        "function:packages/scheduler/src/scheduler.ts#RunSummary",
+        "function:apps/cli/src/commands.ts#cmdRun",
+        "function:apps/cli/src/commands.ts#cmdStatus"
+      ]
+    },
+    {
+      "id"      : "execution.resumeFromJournal",
+      "rule": "A task's `checkpoint` names its execution journal. Resuming the task replays the successful image and review responses saved there, then makes only the requests that remain.",
+      "subjects": [
+        "function:packages/pipeline/src/requests.ts#TaskRequests",
+        "function:packages/scheduler/src/scheduler.ts#runPipeline",
+        "function:packages/pipeline/src/runners.ts#makeShotRunner",
+        "file:state/requests"
+      ]
+    },
+    {
+      "id"      : "execution.retryBudget",
+      "rule": "Once per run, after the first planning pass and before the wave loop, a planned `failed` task goes back to `pending` while it has fewer attempts carrying an `error` than `max_task_attempts` (default 2, one retry). `needs_human` is never requeued.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#requeueFailed",
+        "function:packages/scheduler/src/scheduler.ts#RunSummary",
+        "function:apps/cli/src/commands.ts#cmdRun",
+        "function:apps/cli/src/commands.ts#cmdCost"
+      ]
+    },
+    {
+      "id"      : "execution.stopAtRequest",
+      "rule": "A stop takes effect before the next API request: requests in flight settle, their successful responses are saved before the runner reads them, and an unfinished task goes back to `pending`, marked interrupted, with no failure attempt.",
+      "subjects": [
+        "function:packages/scheduler/src/scheduler.ts#runPipeline",
+        "function:packages/scheduler/src/scheduler.ts#RunOptions",
+        "function:packages/providers/src/requests.ts#withRequestStop",
+        "function:packages/providers/src/requests.ts#checkRequest",
+        "function:packages/providers/src/requests.ts#checkRequestWrite",
+        "function:packages/providers/src/requests.ts#RequestStopped",
+        "command:pipeline.stop"
+      ]
+    },
+    {
       "id"      : "execution.targetClosure",
       "rule": "A run given `RunOptions.only` starts only the ready tasks in `closureOf(graph, targets)`, the targets and every task they depend on, recomputed at each wave. Planning is unchanged; only which ready tasks start is.",
       "subjects": [
@@ -32,6 +92,18 @@
         "function:packages/scheduler/src/scheduler.ts#RunOptions",
         "command:asset.regenerate",
         "command:pipeline.draw"
+      ]
+    },
+    {
+      "id"      : "execution.taskLogDiagnostic",
+      "rule": "Each task keeps a diagnostic log at `vngen/state/tasklogs/<hash>.jsonl`, gitignored because it holds full model prompts and replies. It is not provenance: writes are best effort, and a failed append never fails a task.",
+      "subjects": [
+        "function:packages/pipeline/src/tasklog.ts#TaskLogFile",
+        "function:packages/pipeline/src/tasklog.ts#readTaskLog",
+        "function:packages/providers/src/tasklog.ts#withTaskLog",
+        "function:packages/pipeline/src/executors.ts#runTask",
+        "command:pipeline.taskLog",
+        "file:state/tasklogs"
       ]
     },
     {
@@ -349,6 +421,20 @@
       ]
     },
     {
+      "id"      : "providers.transientRetry",
+      "rule": "The Gemini, Claude and OpenRouter backends retry a transient failure (429, 5xx or a transport error) in place, up to `ATTEMPTS` calls in all. Any other failure, an unrecognized one included, is terminal at once.",
+      "subjects": [
+        "function:packages/providers/src/backends/transient.ts#callWithRetry",
+        "function:packages/providers/src/backends/transient.ts#isTransient",
+        "function:packages/providers/src/backends/transient.ts#providerError",
+        "function:packages/providers/src/backends/transient.ts#retryAfterMs",
+        "module:packages/providers/src/backends/gemini.ts",
+        "module:packages/providers/src/backends/anthropic.ts",
+        "module:packages/providers/src/backends/openrouter.ts",
+        "module:packages/providers/src/backends/openrouter-chat.ts"
+      ]
+    },
+    {
       "id"      : "script.entityByTag",
       "rule": "A character or set-location is a file whose front matter says `type: character` or `type: location`, found only in `characters/<id>/character.md`, `locations/<id>.md` and `wiki/**/*.md`, and it is read and written only in the file it was found in.",
       "subjects": [
@@ -597,6 +683,8 @@
     "command:gengraph.run": ["identity.stagingSheet"],
     "command:gengraph.setProp": ["graphs.groupNodeKey", "graphs.instanceEditsOverride"],
     "command:pipeline.draw": ["execution.targetClosure"],
+    "command:pipeline.stop": ["execution.stopAtRequest"],
+    "command:pipeline.taskLog": ["execution.taskLogDiagnostic"],
     "command:prompt.addRef": ["prompts.refOnClause", "prompts.refsAcyclic"],
     "command:prompt.clear"                                               : ["prompts.clauseList"],
     "command:prompt.repin": ["prompts.refOnClause", "takes.suspensionDerived"],
@@ -611,10 +699,24 @@
     "command:story.setSheetGroup": ["identity.stagingSheet"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:scenes": ["script.sceneOneFile", "script.sceneSourcesOneLoad"],
-    "file:state/tasks.jsonl": ["log.doneWriters", "log.lastWriterWins", "log.tombstoneRemoves"],
+    "file:state/requests": ["execution.resumeFromJournal"],
+    "file:state/tasklogs": ["execution.taskLogDiagnostic"],
+    "file:state/tasks.jsonl": [
+      "execution.failureRecorded",
+      "log.doneWriters",
+      "log.lastWriterWins",
+      "log.tombstoneRemoves"
+    ],
     "file:vngen/build/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:vngen/work/graphs/lib": ["graphs.instanceEditsOverride"],
     "file:vngen/work/shots": ["storage.storyboardKept"],
+    "function:apps/cli/src/commands.ts#cmdCost": ["execution.retryBudget"],
+    "function:apps/cli/src/commands.ts#cmdRun": [
+      "execution.failureRecorded",
+      "execution.reportFromPlan",
+      "execution.retryBudget"
+    ],
+    "function:apps/cli/src/commands.ts#cmdStatus": ["execution.reportFromPlan"],
     "function:apps/desktop/src/main/agent/promptedit.ts#applyPromptEdit" : ["prompts.refOnClause"],
     "function:packages/artgen/src/adoptslot.ts#adoptSlot": [
       "log.doneWriters",
@@ -694,6 +796,7 @@
     "function:packages/pipeline/src/decompose.ts#decomposeAllPreview": [
       "planning.storyboardOnRequest"
     ],
+    "function:packages/pipeline/src/executors.ts#runTask": ["execution.taskLogDiagnostic"],
     "function:packages/pipeline/src/graphload.ts#boundSlotsToDraw": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#driftedTasks": ["graphs.editInvalidates"],
     "function:packages/pipeline/src/graphrun.ts#graphFacts": ["graphs.editInvalidates"],
@@ -706,6 +809,22 @@
       "storage.baseUnavailable",
       "storage.storyboardKept"
     ],
+    "function:packages/pipeline/src/requests.ts#TaskRequests": ["execution.resumeFromJournal"],
+    "function:packages/pipeline/src/runners.ts#makeShotRunner": ["execution.resumeFromJournal"],
+    "function:packages/pipeline/src/tasklog.ts#TaskLogFile": ["execution.taskLogDiagnostic"],
+    "function:packages/pipeline/src/tasklog.ts#readTaskLog": ["execution.taskLogDiagnostic"],
+    "function:packages/providers/src/backends/transient.ts#callWithRetry": [
+      "providers.transientRetry"
+    ],
+    "function:packages/providers/src/backends/transient.ts#isTransient": [
+      "providers.transientRetry"
+    ],
+    "function:packages/providers/src/backends/transient.ts#providerError": [
+      "providers.transientRetry"
+    ],
+    "function:packages/providers/src/backends/transient.ts#retryAfterMs": [
+      "providers.transientRetry"
+    ],
     "function:packages/providers/src/factory.ts#createImageBackend": ["providers.modelIdRoutes"],
     "function:packages/providers/src/factory.ts#createProviders": ["providers.modelIdRoutes"],
     "function:packages/providers/src/factory.ts#resolveRoutes": ["providers.modelIdRoutes"],
@@ -713,9 +832,32 @@
       "providers.modelIdRoutes",
       "providers.textFallback"
     ],
-    "function:packages/scheduler/src/scheduler.ts#RunOptions": ["execution.targetClosure"],
+    "function:packages/providers/src/requests.ts#RequestStopped": ["execution.stopAtRequest"],
+    "function:packages/providers/src/requests.ts#checkRequest": ["execution.stopAtRequest"],
+    "function:packages/providers/src/requests.ts#checkRequestWrite": ["execution.stopAtRequest"],
+    "function:packages/providers/src/requests.ts#withRequestStop": ["execution.stopAtRequest"],
+    "function:packages/providers/src/tasklog.ts#withTaskLog": ["execution.taskLogDiagnostic"],
+    "function:packages/scheduler/src/scheduler.ts#RunOptions": [
+      "execution.stopAtRequest",
+      "execution.targetClosure"
+    ],
+    "function:packages/scheduler/src/scheduler.ts#RunSummary": [
+      "execution.reportFromPlan",
+      "execution.retryBudget"
+    ],
     "function:packages/scheduler/src/scheduler.ts#closureOf": ["execution.targetClosure"],
+    "function:packages/scheduler/src/scheduler.ts#requeueAbandoned": [
+      "execution.abandonedReleased"
+    ],
     "function:packages/scheduler/src/scheduler.ts#requeueDrifted": ["graphs.editInvalidates"],
+    "function:packages/scheduler/src/scheduler.ts#requeueFailed": ["execution.retryBudget"],
+    "function:packages/scheduler/src/scheduler.ts#runPipeline": [
+      "execution.abandonedReleased",
+      "execution.failureRecorded",
+      "execution.reportFromPlan",
+      "execution.resumeFromJournal",
+      "execution.stopAtRequest"
+    ],
     "function:packages/scriptedit/src/apply.ts#planSceneEdit": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/apply.ts#proveScenes": [
       "script.sceneEditAllOrNothing",
@@ -855,6 +997,10 @@
       "planning.incremental",
       "planning.sheetsOnlyWhenWorn"
     ],
+    "module:packages/providers/src/backends/anthropic.ts": ["providers.transientRetry"],
+    "module:packages/providers/src/backends/gemini.ts": ["providers.transientRetry"],
+    "module:packages/providers/src/backends/openrouter-chat.ts": ["providers.transientRetry"],
+    "module:packages/providers/src/backends/openrouter.ts": ["providers.transientRetry"],
     "module:packages/providers/src/factory.ts": ["providers.modelIdRoutes"],
     "module:packages/scheduler/src/scheduler.ts": ["storage.baseUnavailable"],
     "module:packages/scriptedit/src/lineops.ts": ["script.lineIdsAllocated"],

@@ -55,8 +55,8 @@ review merge. Both are unchanged, and so are their tests. The plan is in
     selects the task. It is rebuilt only when its read or its half changes, so scrolling
     and open folds survive the redraws a running wave causes. `renderer/rules/tasklist.ts`
     holds the offers (`foldAction`, `logModeAction`), and `editors/tasklog.ts` draws the
-    drawer. The contract for the file itself is in
-    [`pipeline-contracts.md`](pipeline-contracts.md).
+    drawer. The contract for the file itself is `execution.taskLogDiagnostic`
+    (`pnpm contracts execution.taskLogDiagnostic`).
 
 - **Explain an empty list by naming the control that emptied it.** Four controls hide
   tasks, and their effects overlap: `only done` keeps what succeeded, `only running` keeps
