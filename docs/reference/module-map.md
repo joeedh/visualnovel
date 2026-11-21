@@ -5,6 +5,7 @@
 - [Layer 0 — leaves](#layer-0--leaves)
     - [@vn/types — zod schemas and shared value types (`packages/types`)](#vntypes--zod-schemas-and-shared-value-types-packagestypes)
     - [@vn/util — fs, hashing, concurrency primitives (`packages/util`)](#vnutil--fs-hashing-concurrency-primitives-packagesutil)
+    - [@vn/contracts — contract declarations and their index (`packages/contracts`)](#vncontracts--contract-declarations-and-their-index-packagescontracts)
 - [Layer 1](#layer-1)
     - [@vn/config — project.yaml and key resolution (`packages/config`)](#vnconfig--projectyaml-and-key-resolution-packagesconfig)
     - [@vn/parse — authored inputs (`packages/parse`)](#vnparse--authored-inputs-packagesparse)
@@ -70,6 +71,15 @@ the file; the authoritative package responsibilities and import rules are in
 | `pool.ts`   | bounded async pool preserving input order              |
 | `logger.ts` | logging                                                |
 | `errors.ts` | shared error helpers                                   |
+
+### @vn/contracts — contract declarations and their index (`packages/contracts`)
+
+Imports nothing, and every package and app may import it.
+
+| module     | purpose                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------- |
+| `index.ts` | `contract`, `pins`, `Contract`, `ContractArea` and `Subject`; carries no JSON                             |
+| `query.ts` | the `@vn/contracts/query` subpath: the committed index (`INDEX`), `byId`, `bySubject`, `search`, `answer` |
 
 ## Layer 1
 
