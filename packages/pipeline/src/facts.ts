@@ -4,7 +4,8 @@
  */
 import type { Asset, BaseAssets, ProjectModel } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';
-import type { PlanFacts, StillsFacts } from '@vn/stills';
+import type { StillsFacts } from '@vn/stills';
+import type { HostFacts } from './workflows.js';
 
 const NO_TASKS: StillsFacts['tasks'] = { get: () => undefined };
 
@@ -22,7 +23,7 @@ export function waveFacts(opts: {
   assets?: readonly Asset[];
   base?: BaseAssets;
   angleOf?: StillsFacts['angleOf'];
-}): PlanFacts {
+}): HostFacts {
   return {
     model : opts.model,
     config: opts.config,

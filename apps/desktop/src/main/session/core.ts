@@ -53,10 +53,16 @@ import {
 import { readModelCatalog } from '@vn/gengraph/state';
 
 import { loadGraph, type TaskGraph } from '@vn/taskgraph';
-import { familyOf, repairCurrent, type DecomposeAllResult, type LoadedGraph } from '@vn/pipeline';
+import {
+  familyOf,
+  repairCurrent,
+  type DecomposeAllResult,
+  type HostFacts,
+  type LoadedGraph,
+} from '@vn/pipeline';
 import { type AdoptVia, type ProjectFinding } from '@vn/artgen';
 import { suspensions, type Suspension } from '@vn/constraint-solver';
-import { angleOfTask, driftOf, slotLabel, type PlanFacts, type PromptRung } from '@vn/stills';
+import { angleOfTask, driftOf, slotLabel, type PromptRung } from '@vn/stills';
 import {
   chatBackendFor,
   chatRoute,
@@ -389,7 +395,7 @@ export async function withShots(project: LoadedProject): Promise<ProjectModel> {
  * sheet row's angle read off its task. The kinds memoise on the object returned, so a caller
  * builds new facts after changing either.
  */
-export function sessionFacts(project: LoadedProject, model: ProjectModel): PlanFacts {
+export function sessionFacts(project: LoadedProject, model: ProjectModel): HostFacts {
   return {
     model,
     config : project.config,
