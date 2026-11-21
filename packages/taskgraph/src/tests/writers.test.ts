@@ -3,7 +3,9 @@
  * maintenance writers in `@vn/taskgraph/maintain`, which cannot record new work. The first test
  * holds the line against a raw append that would go around both.
  */
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { pins } from '@vn/contracts';
@@ -16,22 +18,21 @@ import { logDoneWriters } from '../write.js';
 
 const REPO = resolve(__dirname, '../../../..');
 
-/** Every `.ts` file under `dir`, skipping installs and build output. */
-async function sources(dir: string): Promise<string[]> {
-  const out: string[] = [];
-  let entries;
-  try {
-    entries = await readdir(dir, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const entry of entries) {
-    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
-    const at = join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...(await sources(at)));
-    else if (entry.name.endsWith('.ts')) out.push(at);
-  }
-  return out;
+/**
+ * Lists every `.ts` file under `dir` that git tracks or would track, so installs and gitignored
+ * build output (`dist/`, the desktop's packaged copies of the source) are never scanned.
+ */
+function sources(dir: string): string[] {
+  const listed = execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', dir],
+    { cwd: REPO, encoding: 'utf8' },
+  );
+  return listed
+    .split('\0')
+    .filter((f) => f.endsWith('.ts'))
+    .map((f) => join(REPO, f))
+    .filter((f) => existsSync(f));
 }
 
 async function project(): Promise<{ paths: ProjectPaths; cleanup: () => Promise<void> }> {
@@ -77,10 +78,9 @@ describe(pins(logDoneWriters), () => {
       'artgen',
     ]);
 
-    const files = [
-      ...(await sources(join(REPO, 'packages'))),
-      ...(await sources(join(REPO, 'apps'))),
-    ].map((f) => relative(REPO, f).replace(/\\/g, '/'));
+    const files = [...sources(join(REPO, 'packages')), ...sources(join(REPO, 'apps'))].map((f) =>
+      relative(REPO, f).replace(/\\/g, '/'),
+    );
     const writers: string[] = [];
     for (const file of files.filter((f) => !f.includes('/tests/'))) {
       if (/from '@vn\/taskgraph\/write'/.test(await readFile(join(REPO, file), 'utf8'))) {
@@ -101,9 +101,9 @@ describe(pins(logDoneWriters), () => {
       'packages/taskgraph/src/maintain.ts',
     ]);
     const files = [
-      ...(await sources(join(REPO, 'packages'))),
-      ...(await sources(join(REPO, 'apps'))),
-      ...(await sources(join(REPO, 'plugins'))),
+      ...sources(join(REPO, 'packages')),
+      ...sources(join(REPO, 'apps')),
+      ...sources(join(REPO, 'plugins')),
     ];
     const offenders: string[] = [];
     for (const file of files) {
