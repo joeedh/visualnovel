@@ -403,7 +403,7 @@
         "command:story.setBubbles",
         "tool:propose_storyboard",
         "tool:set_panels",
-        "function:packages/authoring/src/tools/storyboard.ts#setBubblesTool",
+        "tool:set_bubbles",
         "task:shot_image"
       ]
     },
@@ -789,7 +789,6 @@
     "function:packages/artgen/src/setnotes.ts#setArtSeed": ["prompts.artRungsShared"],
     "function:packages/artgen/src/takes.ts#migrateCurrent": ["takes.currencyExclusive"],
     "function:packages/artgen/src/takes.ts#repairCurrent": ["takes.currencyExclusive"],
-    "function:packages/authoring/src/tools/storyboard.ts#setBubblesTool" : ["prompts.pagePanels"],
     "function:packages/constraint-solver/src/drift.ts#boundDrift": ["graphs.editInvalidates"],
     "function:packages/constraint-solver/src/keep.ts#keepSet": ["collect.unusedRemoved"],
     "function:packages/constraint-solver/src/refuse.ts#baseRefusal": ["storage.baseUnavailable"],
@@ -1142,6 +1141,7 @@
     "tool:propose_storyboard": ["prompts.decomposeByLineId", "prompts.pagePanels"],
     "tool:regenerate_asset": ["prompts.artRungsShared"],
     "tool:set_art_notes": ["prompts.artRungsShared"],
+    "tool:set_bubbles"                                                   : ["prompts.pagePanels"],
     "tool:set_panels"                                                    : ["prompts.pagePanels"],
     "tool:write_storyboard": ["planning.storyboardOnRequest", "prompts.decomposeByLineId"]
   }

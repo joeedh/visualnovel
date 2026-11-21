@@ -31,7 +31,7 @@ The pipeline spine (`pipeline → scheduler → cli`) and the authoring branch
 providers, git) but must never import `@vn/pipeline` or `@vn/scheduler`.
 `vn/element-types` enforces this.
 
-Four leaves share that same constrained allow-list, and each has its own reason:
+Six leaves share that same constrained allow-list, and each has its own reason:
 
 - **`@vn/export`** projects the manifest into `story.play.json`. It is also forbidden from
   using the generative pipeline or the scheduler.
@@ -48,6 +48,13 @@ Four leaves share that same constrained allow-list, and each has its own reason:
   is not a way around the pipeline ban, because the boundaries rule applies per import
   statement and is not transitive
   ([`../plans/archive/INDEX.md#on-demand-concept-images`](../plans/archive/INDEX.md#on-demand-concept-images)).
+- **`@vn/gengraph`** holds the generation-graph rules. It has a third host besides the
+  desktop app and `vnauthor`: `@vn/pipeline` runs a bound graph. It may not import the
+  pipeline or the scheduler, for the same reason `@vn/artgen` may not
+  ([`gen-graphs.md`](gen-graphs.md)).
+- **`@vn/agentreport`** analyses agent transcripts into reports. Its one host is the
+  desktop app, and it also imports `@vn/commands` for the command records that transcripts
+  do not contain.
 
 `@vn/stills` sits below `@vn/artgen` and holds the stills family's rules: prompt
 composition (moved out of `@vn/pipeline`, which re-exports the builders), the slot graph,

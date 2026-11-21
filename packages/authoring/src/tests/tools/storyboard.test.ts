@@ -478,6 +478,62 @@ describe('storyboard tools', () => {
     }
   });
 
+  it('set_bubbles is in the registry, places a bubble on a lettered line, and refuses an unlettered one', async () => {
+    const { ctx, dir, cleanup } = await tempProject();
+    try {
+      await run(
+        'write_storyboard',
+        {
+          scene: 'ending',
+          shots: [
+            {
+              id         : 'page1',
+              location   : 'day',
+              subjects   : [{ characterId: 'aiko' }],
+              aspect     : '3:4',
+              layout     : 'two-tier',
+              panels: [
+                { framing: 'wide', subjects: [], coversLines: ['ending:L1'] },
+                { framing: 'close', subjects: [], coversLines: ['ending:L2'] },
+              ],
+              coversLines: ['ending:L1', 'ending:L2'],
+            },
+          ],
+        },
+        ctx,
+      );
+      const placed = await run(
+        'set_bubbles',
+        {
+          scene  : 'ending',
+          shot   : 'ending__page1',
+          bubbles: [{ lineId: 'ending:L1', anchor: [0.3, 0.2], tail: [0.5, 0.35] }],
+        },
+        ctx,
+      );
+      expect(placed.ok).toBe(true);
+      expect(placed.written).toEqual(['vngen/work/shots/ending.json']);
+      const shot = (await readShots(new ProjectPaths(dir), 'ending'))?.shots[0];
+      expect(shot?.panels?.[0]?.bubbles).toEqual([
+        { lineId: 'ending:L1', anchor: [0.3, 0.2], tail: [0.5, 0.35] },
+      ]);
+
+      const stray = await run(
+        'set_bubbles',
+        {
+          scene  : 'ending',
+          shot   : 'ending__page1',
+          bubbles: [{ lineId: 'ending:L3', anchor: [0.3, 0.2] }],
+        },
+        ctx,
+      );
+      expect(stray.ok).toBe(false);
+      expect(stray.written ?? []).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   it('write_storyboard rejects a shot key it does not take, rather than dropping it', () => {
     const shape = tool('write_storyboard').args;
     const shot = {

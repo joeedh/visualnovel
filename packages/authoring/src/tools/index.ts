@@ -28,6 +28,7 @@ import {
   readShotsTool,
   setCoverageTool,
   setPanelsTool,
+  setBubblesTool,
   proposeStoryboardTool,
   writeStoryboardTool,
 } from './storyboard.js';
@@ -87,6 +88,7 @@ export const ALL_TOOLS: Tool[] = [
   readShotsTool,
   setCoverageTool,
   setPanelsTool,
+  setBubblesTool,
   proposeStoryboardTool,
   writeStoryboardTool,
   generateImageTool,

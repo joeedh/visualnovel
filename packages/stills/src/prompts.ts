@@ -512,7 +512,7 @@ export const promptsPagePanels = contract({
     'command:story.setBubbles',
     'tool:propose_storyboard',
     'tool:set_panels',
-    'function:packages/authoring/src/tools/storyboard.ts#setBubblesTool',
+    'tool:set_bubbles',
     'task:shot_image',
   ],
   see     : ['docs/plans/manga-style.md', 'docs/research/manga-live-tests.md'],
@@ -543,8 +543,6 @@ export const promptsPagePanels = contract({
     '(`PanelBubble`: the line, an anchor, an optional tail and an optional name flag, in page ' +
     'fractions) are authored and outside the prompt: no builder reads them, so `story.setBubbles` ' +
     "and the agent's `set_bubbles` (one rule, `setBubbles` in `@vn/scriptedit`) re-key nothing. " +
-    "`set_bubbles` is defined and exported, but `ALL_TOOLS` does not list it, so the agent's " +
-    'registry does not offer it. ' +
     '`setBubbles` refuses a frame, a line no panel letters, a line named twice and a point off the ' +
     "page. A bubble's line must be one its panel letters: `readShots` drops a bubble whose line " +
     'left the panel, and `setPanels` drops one whose line it moved to another panel, since the ' +
