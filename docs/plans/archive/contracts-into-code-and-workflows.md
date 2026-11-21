@@ -1980,18 +1980,22 @@ built:
   `@vn/contracts` section under layer 0.
 - **Tests touched:** `page.test.ts` 8 tests and their `expect` calls, unchanged in count;
   one block wrapped. No assertion was changed or removed.
-- **Left over:**
-    - `set_bubbles` is missing from `ALL_TOOLS`, so the authoring agent cannot place
-      bubbles, though `context.ts` and the `full-production` skill tell it to. Registering
-      it changes the agent's tool catalog, so it was not done here.
+- **Fixed after the stage landed:**
+    - `set_bubbles` was missing from `ALL_TOOLS`, so the authoring agent could not place
+      bubbles, though `context.ts` and the `full-production` skill told it to. It is
+      registered now (`e9c6cbd9`).
     - `packages.md`'s "Four leaves share that same constrained allow-list" and
-      `docs/index.md`'s summary of `packages.md` predate `@vn/gengraph` and
-      `@vn/agentreport`; `CLAUDE.md` counts six.
-    - `plannerwaves.test.ts` and `plannerpins.test.ts` cite this plan by its path before
-      archiving. They are held byte-identical, so their doc comments were not updated.
-    - Unchanged from stage 8: `slotOfTask`'s `bindingOf` switch, `familyOf`'s
-      `Family<StillsFacts>` type, one solve per desktop read, every host loading every
-      contract shard, and the retired task kinds' remaining answers (decision 7).
+      `docs/index.md`'s summary of `packages.md` predated `@vn/gengraph` and
+      `@vn/agentreport`. Both count six now, and `packages.md` describes the two
+      (`e9c6cbd9`).
+    - `plannerwaves.test.ts` and `plannerpins.test.ts` cited this plan by its path before
+      archiving. The author allowed that one comment edit in each frozen file, and both
+      now cite the archived path.
+- **Left over:**
+    - `slotOfTask`'s `bindingOf` switch and `familyOf`'s `Family<StillsFacts>` type, now
+      being taken on as their own change.
+    - One solve per desktop read, every host loading every contract shard, and the retired
+      task kinds' remaining answers (decision 7).
 
 The plan as written before it landed:
 

@@ -1,5 +1,5 @@
 /**
- * The planner on the stage 1 fixtures (`docs/plans/contracts-into-code-and-workflows.md`), which
+ * The planner on the stage 1 fixtures (`docs/plans/archive/contracts-into-code-and-workflows.md`), which
  * reach what `prompthash.test.ts` does not: it plans the waves the stage 1 oracle recorded, keeps
  * the task hashes pinned below, and reaches the case each fixture is named for.
  *

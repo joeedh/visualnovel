@@ -1,7 +1,7 @@
 /**
  * The planner, which plans from `solve(stillsFamily, facts)`, emits the waves recorded in
  * `__fixtures__/waves/`, which the stage 1 oracle produced on master before stage 6e
- * (`docs/plans/contracts-into-code-and-workflows.md`). Each wave's tasks are compared with their
+ * (`docs/plans/archive/contracts-into-code-and-workflows.md`). Each wave's tasks are compared with their
  * `deps`, and the shots the planner stamps are compared once the waves are over.
  *
  * The cases are the six stage 1 fixtures, three more that the planner and the slot graph once
