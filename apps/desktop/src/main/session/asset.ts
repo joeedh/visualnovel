@@ -556,7 +556,7 @@ export class AssetPart {
     project: LoadedProject,
     task: AnyTask,
   ): Promise<string | undefined> {
-    const slot = slotOfTask(task, sessionFacts(project, project.model));
+    const slot = slotOfTask(task, sessionFacts(project, await withShots(project)));
     if (slot === undefined) return undefined;
 
     for (const slug of await graphSlugs(this.session.dir)) {

@@ -139,7 +139,8 @@ remove a place where `@vn/pipeline` assumes the stills family.
       so `invalidateBound` never resolves a `shot_image` task's slot. A regenerated shot
       whose slot a graph binds is not invalidated first, and its cached nodes may resume.
       Fixing it means passing `await withShots(project)` there. That is a behaviour
-      change, so it is left for its own change and named in the report.
+      change, so it was left for its own change, which made it after this plan landed;
+      `graphrun.test.ts`'s "drawing a bound frame again" pins it.
     - `sessionFacts` copies the manifest that `fromInputs` does not read.
       `invalidateBound` runs once per requeue, so the copy is not worth a second builder.
 
@@ -283,9 +284,9 @@ remove a place where `@vn/pipeline` assumes the stills family.
       `sceneOfShot`. That is the nearest to this change's purpose, but the renderer may
       reach `@vn/stills` only through `slotaddr` and `layout`, so it cannot call the
       family.
-- **Known defect, kept:** the desktop's `invalidateBound` still resolves no `shot_image`
-  task's slot, because `project.model` holds no storyboards. The fix (`withShots`) is a
-  behaviour change for its own commit.
+- **Known defect, fixed afterwards:** the desktop's `invalidateBound` resolved no
+  `shot_image` task's slot, because `project.model` holds no storyboards. It now passes
+  `withShots`, in its own commit after this plan landed.
 
 ## Review
 

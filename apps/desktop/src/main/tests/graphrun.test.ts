@@ -124,3 +124,28 @@ describe('an interactive graph run', () => {
     });
   });
 });
+
+describe('drawing a bound frame again', () => {
+  let p: TestProject;
+  let session: WorkspaceSession;
+
+  beforeAll(async () => {
+    p = await makeProject({ script: SCRIPTS.linear });
+    session = new WorkspaceSession(p.dir, true, deps);
+    await p.run(); // no character appears in the rooftop frame, so the portrait gate lets it run
+  });
+
+  afterAll(async () => {
+    await p.cleanup();
+  });
+
+  // The frame's scene comes from the storyboard, which the session's bare model does not load
+  it('invalidates the graph bound to the frame, reading its scene from the storyboard', async () => {
+    const slot = 'shot:rooftop/rooftop__establishing';
+    await writeGraph(p.dir, 'frame', plainGraph(slot).graph);
+    expect(await session.drawSlot(slot)).toMatchObject({
+      ok     : true,
+      written: ['vngen/state/tasks.jsonl', expect.stringContaining('frame')],
+    });
+  });
+});
