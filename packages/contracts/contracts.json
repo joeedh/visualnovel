@@ -381,6 +381,33 @@
       ]
     },
     {
+      "id"      : "prompts.pagePanels",
+      "rule": "A storyboard is single frames or manga pages, as `shot_form` decides. A page's panels carry their own cast, drawn from the shot's, and their own lettered lines. Under `lettering: model` those lines are in the page's prompt and hash; a panel's bubbles are in no prompt.",
+      "subjects": [
+        "function:packages/stills/src/storyboard.ts#decompSystem",
+        "function:packages/stills/src/storyboard.ts#MAX_PANELS",
+        "function:packages/stills/src/prompts.ts#buildShotChunks",
+        "function:packages/stills/src/layout.ts#matchPanels",
+        "function:packages/stills/src/layout.ts#LAYOUT_IOU",
+        "function:packages/types/src/production/shots.ts#PagePanel",
+        "function:packages/types/src/production/shots.ts#PanelBubble",
+        "function:packages/store/src/shots.ts#readShots",
+        "function:packages/scriptedit/src/bubbles.ts#setBubbles",
+        "function:packages/scriptedit/src/panels.ts#setPanels",
+        "function:packages/scriptedit/src/coverage.ts#letteredPagesNote",
+        "function:packages/pipeline/src/runners.ts#layoutReport",
+        "module:packages/pipeline/src/planner.ts",
+        "function:packages/export/src/playable.ts#buildPlayable",
+        "command:project.setShotForm",
+        "command:story.setPanels",
+        "command:story.setBubbles",
+        "tool:propose_storyboard",
+        "tool:set_panels",
+        "function:packages/authoring/src/tools/storyboard.ts#setBubblesTool",
+        "task:shot_image"
+      ]
+    },
+    {
       "id"      : "prompts.refOnClause",
       "rule": "A reference is a `ChunkRef` on one clause: muting the clause drops it, the task hashes its `pin` rather than its slot, authored refs follow the derived ones in `TaskInputs.refs`, and a ref with no `from` names an asset by hash and never drifts.",
       "subjects": [
@@ -704,6 +731,7 @@
     "command:pipeline.draw": ["execution.targetClosure"],
     "command:pipeline.stop": ["execution.stopAtRequest"],
     "command:pipeline.taskLog": ["execution.taskLogDiagnostic"],
+    "command:project.setShotForm"                                        : ["prompts.pagePanels"],
     "command:prompt.addRef": ["prompts.refOnClause", "prompts.refsAcyclic"],
     "command:prompt.clear"                                               : ["prompts.clauseList"],
     "command:prompt.repin": ["prompts.refOnClause", "takes.suspensionDerived"],
@@ -713,8 +741,10 @@
     "command:story.moveShot": ["script.shotOrderFromProse"],
     "command:story.newShot": ["planning.storyboardOnRequest"],
     "command:story.requireCast"                                          : ["prompts.reviewerSpec"],
+    "command:story.setBubbles"                                           : ["prompts.pagePanels"],
     "command:story.setHeading": ["identity.headingRekeysShots", "script.headingRestagesShots"],
     "command:story.setLineText": ["script.proseDriftReported"],
+    "command:story.setPanels"                                            : ["prompts.pagePanels"],
     "command:story.setSheetGroup": ["identity.stagingSheet"],
     "file:assets/manifest.json": ["storage.manifestQueue", "storage.twoRoots"],
     "file:scenes": ["script.sceneOneFile", "script.sceneSourcesOneLoad"],
@@ -759,6 +789,7 @@
     "function:packages/artgen/src/setnotes.ts#setArtSeed": ["prompts.artRungsShared"],
     "function:packages/artgen/src/takes.ts#migrateCurrent": ["takes.currencyExclusive"],
     "function:packages/artgen/src/takes.ts#repairCurrent": ["takes.currencyExclusive"],
+    "function:packages/authoring/src/tools/storyboard.ts#setBubblesTool" : ["prompts.pagePanels"],
     "function:packages/constraint-solver/src/drift.ts#boundDrift": ["graphs.editInvalidates"],
     "function:packages/constraint-solver/src/keep.ts#keepSet": ["collect.unusedRemoved"],
     "function:packages/constraint-solver/src/refuse.ts#baseRefusal": ["storage.baseUnavailable"],
@@ -780,6 +811,7 @@
       "takes.approvedMeansAccepted",
       "takes.currencyExclusive"
     ],
+    "function:packages/export/src/playable.ts#buildPlayable"             : ["prompts.pagePanels"],
     "function:packages/gengraph/src/collect.ts#applyCollection"          : ["collect.applyOrder"],
     "function:packages/gengraph/src/collect.ts#collectProject": ["collect.unusedRemoved"],
     "function:packages/gengraph/src/drift.ts#graphDrift": ["graphs.editInvalidates"],
@@ -836,6 +868,7 @@
       "storage.storyboardKept"
     ],
     "function:packages/pipeline/src/requests.ts#TaskRequests": ["execution.resumeFromJournal"],
+    "function:packages/pipeline/src/runners.ts#layoutReport"             : ["prompts.pagePanels"],
     "function:packages/pipeline/src/runners.ts#makeShotRunner": [
       "execution.refineLoop",
       "execution.resumeFromJournal"
@@ -894,6 +927,8 @@
       "script.sceneEditAllOrNothing",
       "script.sceneRoundTrip"
     ],
+    "function:packages/scriptedit/src/bubbles.ts#setBubbles"             : ["prompts.pagePanels"],
+    "function:packages/scriptedit/src/coverage.ts#letteredPagesNote"     : ["prompts.pagePanels"],
     "function:packages/scriptedit/src/lineops.ts#nextIdOf": ["script.lineIdsAllocated"],
     "function:packages/scriptedit/src/lineops.ts#setHeading": [
       "identity.headingRekeysShots",
@@ -901,6 +936,7 @@
     ],
     "function:packages/scriptedit/src/markers.ts#applyMarkerPlan": ["script.sceneEditAllOrNothing"],
     "function:packages/scriptedit/src/markers.ts#planMarkerEdit": ["script.sceneEditAllOrNothing"],
+    "function:packages/scriptedit/src/panels.ts#setPanels"               : ["prompts.pagePanels"],
     "function:packages/scriptedit/src/shotfallout.ts#shotFallout": ["script.headingRestagesShots"],
     "function:packages/scriptedit/src/shotorder.ts#moveShot": ["script.shotOrderFromProse"],
     "function:packages/scriptedit/src/shotorder.ts#planShotMove": ["script.shotOrderFromProse"],
@@ -925,6 +961,8 @@
     ],
     "function:packages/stills/src/gate.ts#approvedPortraitOf"            : ["gate.perUnit"],
     "function:packages/stills/src/kept.ts#keptSlots": ["collect.unusedRemoved"],
+    "function:packages/stills/src/layout.ts#LAYOUT_IOU"                  : ["prompts.pagePanels"],
+    "function:packages/stills/src/layout.ts#matchPanels"                 : ["prompts.pagePanels"],
     "function:packages/stills/src/prompts.ts#artClause": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#aspectFor"                  : ["identity.taskHash"],
     "function:packages/stills/src/prompts.ts#buildLocationChunks": ["prompts.artNotesAppended"],
@@ -932,7 +970,8 @@
     "function:packages/stills/src/prompts.ts#buildPortraitChunks": ["prompts.artNotesAppended"],
     "function:packages/stills/src/prompts.ts#buildShotChunks": [
       "identity.headingRekeysShots",
-      "prompts.artNotesAppended"
+      "prompts.artNotesAppended",
+      "prompts.pagePanels"
     ],
     "function:packages/stills/src/prompts.ts#buildShotPrompt": ["script.proseDriftReported"],
     "function:packages/stills/src/prompts.ts#modelFor": [
@@ -958,6 +997,8 @@
     "function:packages/stills/src/sheet.ts#sheetSeeds": ["identity.stagingSheet"],
     "function:packages/stills/src/slotgraph.ts#heldBy": ["takes.currencyExclusive"],
     "function:packages/stills/src/slotgraph.ts#planSlot"                 : ["planning.incremental"],
+    "function:packages/stills/src/storyboard.ts#MAX_PANELS"              : ["prompts.pagePanels"],
+    "function:packages/stills/src/storyboard.ts#decompSystem"            : ["prompts.pagePanels"],
     "function:packages/stills/src/storyboard.ts#decomposeScene": [
       "prompts.decomposeByLineId",
       "providers.textFallback"
@@ -982,7 +1023,10 @@
     "function:packages/store/src/entities.ts#entityIdentity"             : ["script.entityByTag"],
     "function:packages/store/src/scenes.ts#readSceneChunks"              : ["script.sceneOneFile"],
     "function:packages/store/src/shots.ts#readProduction": ["storage.storyboardKept"],
-    "function:packages/store/src/shots.ts#readShots": ["storage.storyboardKept"],
+    "function:packages/store/src/shots.ts#readShots": [
+      "prompts.pagePanels",
+      "storage.storyboardKept"
+    ],
     "function:packages/store/src/shots.ts#withProduction": ["storage.storyboardKept"],
     "function:packages/store/src/shots.ts#writeShots": ["storage.storyboardKept"],
     "function:packages/store/src/worktree.ts#findScreenplay": ["script.sceneSourcesOneLoad"],
@@ -999,6 +1043,8 @@
     "function:packages/taskgraph/src/maintain.ts#logTombstone"           : ["log.tombstoneRemoves"],
     "function:packages/taskgraph/src/maintain.ts#restoreDone"            : ["log.tombstoneRemoves"],
     "function:packages/taskgraph/src/write.ts#logTask"                   : ["log.lastWriterWins"],
+    "function:packages/types/src/production/shots.ts#PagePanel"          : ["prompts.pagePanels"],
+    "function:packages/types/src/production/shots.ts#PanelBubble"        : ["prompts.pagePanels"],
     "function:packages/types/src/production/storyboard.ts#ProductionData": [
       "storage.storyboardKept"
     ],
@@ -1026,7 +1072,8 @@
     "module:packages/pipeline/src/decompose.ts": ["planning.storyboardOnRequest"],
     "module:packages/pipeline/src/planner.ts": [
       "planning.incremental",
-      "planning.sheetsOnlyWhenWorn"
+      "planning.sheetsOnlyWhenWorn",
+      "prompts.pagePanels"
     ],
     "module:packages/providers/src/backends/anthropic.ts": ["providers.transientRetry"],
     "module:packages/providers/src/backends/gemini.ts": ["providers.transientRetry"],
@@ -1085,15 +1132,17 @@
       "gate.perUnit",
       "identity.headingRekeysShots",
       "identity.stagingSheet",
+      "prompts.pagePanels",
       "prompts.reviewerSpec"
     ],
     "tool:art_notes": ["prompts.artRungsShared"],
     "tool:collect_unused_assets": ["collect.applyOrder", "collect.unusedRemoved"],
     "tool:edit_scene": ["script.lineIdsAllocated"],
     "tool:list_assets": ["prompts.artRungsShared"],
-    "tool:propose_storyboard": ["prompts.decomposeByLineId"],
+    "tool:propose_storyboard": ["prompts.decomposeByLineId", "prompts.pagePanels"],
     "tool:regenerate_asset": ["prompts.artRungsShared"],
     "tool:set_art_notes": ["prompts.artRungsShared"],
+    "tool:set_panels"                                                    : ["prompts.pagePanels"],
     "tool:write_storyboard": ["planning.storyboardOnRequest", "prompts.decomposeByLineId"]
   }
 }

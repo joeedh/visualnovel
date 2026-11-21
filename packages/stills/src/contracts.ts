@@ -3,6 +3,7 @@ import type { Contract } from '@vn/contracts';
 import {
   identityHeadingRekeysShots,
   promptsArtNotesAppended,
+  promptsPagePanels,
   promptsReviewerSpec,
 } from './prompts.js';
 import {
@@ -22,6 +23,7 @@ export const CONTRACTS: readonly Contract[] = [
   promptsArtNotesAppended,
   promptsRefsAcyclic,
   promptsReviewerSpec,
+  promptsPagePanels,
   promptsDecomposeByLineId,
   providersTextFallback,
   planningSheetsOnlyWhenWorn,

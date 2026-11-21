@@ -487,6 +487,80 @@ function letteringClause(
   return parts.length ? `Lettering, verbatim: ${parts.join('; ')}.` : '';
 }
 
+export const promptsPagePanels = contract({
+  id      : 'prompts.pagePanels',
+  rule: "A storyboard is single frames or manga pages, as `shot_form` decides. A page's panels carry their own cast, drawn from the shot's, and their own lettered lines. Under `lettering: model` those lines are in the page's prompt and hash; a panel's bubbles are in no prompt.",
+  prevents:
+    "Storyboard notes or an art style turning frames into pages on their own, a panel casting someone no sheet was drawn for, a lettered page's redraw left out of a coverage edit's price, and a bubble placement re-rendering the page it sits on.",
+  subjects: [
+    'function:packages/stills/src/storyboard.ts#decompSystem',
+    'function:packages/stills/src/storyboard.ts#MAX_PANELS',
+    'function:packages/stills/src/prompts.ts#buildShotChunks',
+    'function:packages/stills/src/layout.ts#matchPanels',
+    'function:packages/stills/src/layout.ts#LAYOUT_IOU',
+    'function:packages/types/src/production/shots.ts#PagePanel',
+    'function:packages/types/src/production/shots.ts#PanelBubble',
+    'function:packages/store/src/shots.ts#readShots',
+    'function:packages/scriptedit/src/bubbles.ts#setBubbles',
+    'function:packages/scriptedit/src/panels.ts#setPanels',
+    'function:packages/scriptedit/src/coverage.ts#letteredPagesNote',
+    'function:packages/pipeline/src/runners.ts#layoutReport',
+    'module:packages/pipeline/src/planner.ts',
+    'function:packages/export/src/playable.ts#buildPlayable',
+    'command:project.setShotForm',
+    'command:story.setPanels',
+    'command:story.setBubbles',
+    'tool:propose_storyboard',
+    'tool:set_panels',
+    'function:packages/authoring/src/tools/storyboard.ts#setBubblesTool',
+    'task:shot_image',
+  ],
+  see     : ['docs/plans/manga-style.md', 'docs/research/manga-live-tests.md'],
+  detail:
+    '`shot_form` (`frames`, the default, or `pages`) decides whether a new storyboard is single ' +
+    'frames or manga pages of panels. Under `pages`, `decompSystem` tells the model to make every ' +
+    'shot a page and adds the page vocabulary: the layout template names with their panel counts, ' +
+    'the camera vocabulary and the `MAX_PANELS` bound. Under `frames` it adds none of that, whatever ' +
+    'the art style or the notes say, so the notes cannot turn frames into pages on their own. ' +
+    'Storyboard notes add the staging-sheet paragraph, and either `pages` or notes brings the wider ' +
+    "answer format, whose optional `panels?` key is then the only mention of panels in the prompt's " +
+    "own text. The agent's `propose_storyboard` reads the same field and takes a `form` argument " +
+    'that overrides it for one scene, to be passed only when the author explicitly asks for the ' +
+    'other form. The desktop writes the field through `project.setShotForm`, a dropdown on the ' +
+    'Project pane. A shot with `panels` is a page: one image of several panels, each with an ' +
+    'outline in page fractions, its own framing, camera and cast, and the lines it letters. ' +
+    "`readShots` refuses a file whose panel casts someone outside the shot's `subjects`, with " +
+    '`panel_subject_not_in_cast`. A covered line no panel letters comes back in ' +
+    '`LoadedShots.unpanelled`, the planner logs it as a `line_in_no_panel` warning, `setPanels` ' +
+    "names it in its message, and the page still renders. A page's prompt is built by " +
+    '`buildPageChunks`, which `buildShotChunks` calls for a shot with panels. Under ' +
+    '`lettering: model` the lettered lines are in the prompt verbatim, so the text and its panel ' +
+    'assignment are in the task hash: a coverage take on a page, or a line edit inside one, re-keys ' +
+    "the page. Every host's coverage take says so through `letteredPagesNote` in `@vn/scriptedit`. " +
+    "`lettering` defaults to `runner`, which draws the page wordless, because the manga plan's " +
+    'Stage 2 live check found the default image model unfit for lettering and only the expensive ' +
+    "ones fit; a project that wants the model to letter says so. A panel's `bubbles` " +
+    '(`PanelBubble`: the line, an anchor, an optional tail and an optional name flag, in page ' +
+    'fractions) are authored and outside the prompt: no builder reads them, so `story.setBubbles` ' +
+    "and the agent's `set_bubbles` (one rule, `setBubbles` in `@vn/scriptedit`) re-key nothing. " +
+    "`set_bubbles` is defined and exported, but `ALL_TOOLS` does not list it, so the agent's " +
+    'registry does not offer it. ' +
+    '`setBubbles` refuses a frame, a line no panel letters, a line named twice and a point off the ' +
+    "page. A bubble's line must be one its panel letters: `readShots` drops a bubble whose line " +
+    'left the panel, and `setPanels` drops one whose line it moved to another panel, since the ' +
+    'anchor was placed against the old one. The exporter (`buildPlayable`) copies bubbles into the ' +
+    'playable only under `lettering: runner`. `shotData.panelBoxes` holds the panel boxes a ' +
+    "reviewer measured on the image the shot holds (a `done` output, or a `needs_human` shot's " +
+    'last attempt), from `DefectReport.observed`, which the review fills only for a page. It is ' +
+    'derived, like `proseHash`: the planner stamps it only with new image bytes, so a rerun that ' +
+    "reports the same image leaves it alone. The runner's `layoutReport` matches every measuring " +
+    "reviewer's boxes against the intended outlines (`matchPanels`, IoU at or above `LAYOUT_IOU`) " +
+    "and files a `layout` defect of its own only when none of them match, because a reviewer's " +
+    'measurement can be off while none invents a match for a wrong page; a page no reviewer ' +
+    "measured gets no layout verdict. The boxes stamped are the matching reviewer's, or the first " +
+    "reviewer's when none matched.",
+});
+
 /**
  * P6 chunks for a page shot. In place of the frame's `framing`, `subject` and `camera` chunks the
  * page carries one `page` chunk (the panel count, the location and the derived layout), one
