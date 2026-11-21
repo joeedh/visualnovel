@@ -10,7 +10,10 @@ Status: partly built.
 [`../plans/archive/contracts-into-code-and-workflows.md`](../plans/archive/contracts-into-code-and-workflows.md)
 built the seams this note proposes for the stills family and the narrative engine:
 `workflow:` and `narrative:` in `project.yaml`, `@vn/stills`, `@vn/constraint-solver` and
-the `linear` engine. The other workflows and the storylet engine are not built.
+the `linear` engine. The other workflows and the storylet engine are not built. The slot
+switch that step 3 lists was replaced by `SlotKind.fromInputs` in
+[`../plans/archive/family-facts-and-task-slot-inverse.md`](../plans/archive/family-facts-and-task-slot-inverse.md),
+which also lets a second workflow's family register with facts of its own.
 
 <!-- toc -->
 

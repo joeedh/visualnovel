@@ -192,16 +192,17 @@ it ([`history-pane.md`](history-pane.md)).
 
 Pure, and names nothing a family defines; `@vn/stills` is its first family.
 
-| module       | purpose                                                                      |
-| ------------ | ---------------------------------------------------------------------------- |
-| `family.ts`  | `SolverFacts`, `SlotKind`, `Family`, `Slot` and `slot`, and `Decided`        |
-| `solve.ts`   | `solve` and `unitGates`: each slot's identity or refusal, edges, order, gate |
-| `take.ts`    | the take (`pick`, `newestFirst`, `loggedTake`) and `overHeld`'s keep rule    |
-| `suspend.ts` | `suspensions`: which rows a moved reference suspends, transitively           |
-| `keep.ts`    | `keepSet`: the slots, task hashes and outputs a collection keeps             |
-| `refuse.ts`  | project-level refusals (`projectRefusal`, `baseRefusal`)                     |
-| `drift.ts`   | `DriftReason`, `BoundGraphFact` and `boundDrift`                             |
-| `index.ts`   | barrel                                                                       |
+| module         | purpose                                                                      |
+| -------------- | ---------------------------------------------------------------------------- |
+| `family.ts`    | `SolverFacts`, `SlotKind`, `Family`, `Slot`, `slot`, `taskSlot`, `Decided`   |
+| `withfacts.ts` | `withFacts`: registers a family over facts other than its own                |
+| `solve.ts`     | `solve` and `unitGates`: each slot's identity or refusal, edges, order, gate |
+| `take.ts`      | the take (`pick`, `newestFirst`, `loggedTake`) and `overHeld`'s keep rule    |
+| `suspend.ts`   | `suspensions`: which rows a moved reference suspends, transitively           |
+| `keep.ts`      | `keepSet`: the slots, task hashes and outputs a collection keeps             |
+| `refuse.ts`    | project-level refusals (`projectRefusal`, `baseRefusal`)                     |
+| `drift.ts`     | `DriftReason`, `BoundGraphFact` and `boundDrift`                             |
+| `index.ts`     | barrel                                                                       |
 
 ### @vn/stills — the stills family: prompts, slot graph, approvals (`packages/stills`)
 
@@ -308,7 +309,7 @@ and `pending` requeues).
 | `p5.ts` / `p6.ts`              | P5 decomposition (from `@vn/stills`) and P6 prompt refinement (`execution.refineLoop`)      |
 | `runners.ts`                   | task runners                                                                                |
 | `executors.ts`                 | the executor registry: each task kind's runner and cost line; `createRunners`, `runTask`    |
-| `workflows.ts`                 | `familyOf`: the family each `workflow:` in `project.yaml` is drawn by                       |
+| `workflows.ts`                 | `familyOf`: the family each `workflow:` in `project.yaml` is drawn by; `HostFacts`          |
 | `genservices.ts`               | generation services wiring                                                                  |
 | `graphrun.ts` / `graphload.ts` | bound generation-graph runs                                                                 |
 | `prompts.ts`                   | pipeline LLM prompts                                                                        |

@@ -449,16 +449,17 @@ implementation. The testkit passes a mock.
   folder of a graph whose document is gone. A blob a graph document or group definition
   names is kept, as is one a kept asset row names. See `collect.unusedRemoved`
   (`pnpm contracts collect`).
-- **The runner wrapper** lives in `@vn/pipeline` (`graphrun.ts`). When a task's slot is
-  bound, the runner seeds the Derived-prompt and Task-refs inputs from the task, executes
-  the graph against the slot's active output, and writes the terminal picture through the
-  same `deps.store.write` the unbound runners use, with the same metadata, so downstream
-  code sees no difference between the two paths. `params` come from the graph's own image
-  nodes rather than from the task, since the author added those nodes in order to choose
-  them; the asset record still names the task's refs, because the manifest addresses
-  assets and a graph reference may be a blob. `runBoundGraph` advances the binding's
-  journal to the state the run produced, so a refine attempt resumes from the nodes the
-  previous attempt already ran.
+- **The runner wrapper** lives in `@vn/pipeline` (`graphrun.ts`). It finds a task's slot
+  with `slotOfTask`, which asks the project's family to read the task's inputs back into a
+  slot binding (`SlotKind.fromInputs`). When a task's slot is bound, the runner seeds the
+  Derived-prompt and Task-refs inputs from the task, executes the graph against the slot's
+  active output, and writes the terminal picture through the same `deps.store.write` the
+  unbound runners use, with the same metadata, so downstream code sees no difference
+  between the two paths. `params` come from the graph's own image nodes rather than from
+  the task, since the author added those nodes in order to choose them; the asset record
+  still names the task's refs, because the manifest addresses assets and a graph reference
+  may be a blob. `runBoundGraph` advances the binding's journal to the state the run
+  produced, so a refine attempt resumes from the nodes the previous attempt already ran.
 - **The refine loop wraps the graph run.** It applies to `shot_image` only, because
   reviewers judge against a `ShotSpec` and the other kinds have no loop today. The critic
   and `max_refine_attempts` stay host policy in the runner. The critique enters through a

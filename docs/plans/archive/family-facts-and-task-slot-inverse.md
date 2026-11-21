@@ -1,9 +1,9 @@
 # Widening `familyOf`, and reading a task back into its slot through the family
 
 Two follow-ups left over from
-[`archive/contracts-into-code-and-workflows.md`](archive/contracts-into-code-and-workflows.md)
-(stage 7's "For 8" list and stage 9's "Left over" list). Neither changes what the pipeline
-does. Both remove a place where `@vn/pipeline` assumes the stills family.
+[`contracts-into-code-and-workflows.md`](contracts-into-code-and-workflows.md) (stage 7's
+"For 8" list and stage 9's "Left over" list). Neither changes what the pipeline does. Both
+remove a place where `@vn/pipeline` assumes the stills family.
 
 ## The two problems
 
@@ -243,6 +243,49 @@ does. Both remove a place where `@vn/pipeline` assumes the stills family.
 3. The inverse: `fromInputs`, `retired`, `taskSlot`, the stills kinds, `slotOfTask`
    through the family, and `RunDeps.config`, with their tests.
 4. Docs, the archived plan's leftover bullet, and this plan marked shipped and archived.
+
+## As shipped
+
+- **Commits**, on the `family-seams` branch:
+    - `98dcf053` adds this plan and its index row.
+    - `00e4d2cc` adds `slotoftask.test.ts` on its own, against the old switch, so the next
+      commit's diff shows its expectations unchanged. The plan had put the test in the
+      inverse's commit.
+    - `a6d4d28b` widens `familyOf` and adds `withFacts`.
+    - `b68cc8bc` adds the inverse.
+    - The last commit updates the docs and moves this plan into `archive/`.
+- **Deviations from the text above:**
+    - `graphrun.test.ts`'s cast `RunDeps` gained `config` as well. Once `config` was
+      required, TypeScript refused the cast of `{ model, store, providers }` as a likely
+      mistake. No assertion changed.
+    - `executors.test.ts`'s `RunDeps` gained `config` as its last field, which leaves the
+      other fields' alignment alone.
+    - `stillsKind` takes each kind's inverse as a fourth argument, `from`.
+- **Tests:** the suite went from 420 suites and 5895 passed (7 skipped) to 425 suites and
+  5917 passed (7 skipped). The 22 new tests are `withfacts.test.ts` (5),
+  `taskslot.test.ts` (4), `frominputs.test.ts` (5), `slotoftask.test.ts` (6) and
+  `workflows.test.ts` (2). No existing assertion was changed or removed, and the frozen
+  planner and hash tests are untouched.
+- **Contracts and layering:** `pnpm gen:contracts` left `contracts.json` unchanged, and no
+  lintrix allow-list changed.
+- **Still switching on stills kind names, left alone because each answers a different
+  question:**
+    - `planner.ts` stamps a planned `shot_image` task's prompt and outcome onto its shot
+      (`state.task === 'shot_image'`).
+    - `executors.ts` keys the runner registry and `RETIRED_COST` by kind, which is a
+      registry rather than a switch.
+    - The desktop's `assetlabel.ts` (an asset's display name) and `assetprompt.ts` (its
+      prompt clauses) switch on an asset's kind, `outfit_sheet` included.
+      `session/core.ts` lists `IMAGE_KINDS` and `ACCEPTABLE`, and `session/asset.ts` and
+      `gate.ts` single out `portrait` for the gate.
+    - The renderer's `rules/taskGraph.ts` (`subjectOf`, `clusterKeyOf`) and
+      `rules/selection.ts` read a task's inputs by field name, with their own
+      `sceneOfShot`. That is the nearest to this change's purpose, but the renderer may
+      reach `@vn/stills` only through `slotaddr` and `layout`, so it cannot call the
+      family.
+- **Known defect, kept:** the desktop's `invalidateBound` still resolves no `shot_image`
+  task's slot, because `project.model` holds no storyboards. The fix (`withShots`) is a
+  behaviour change for its own commit.
 
 ## Review
 

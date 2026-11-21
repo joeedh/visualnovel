@@ -82,6 +82,17 @@ The CLI and the scheduler may import neither the solver nor `@vn/stills`, so
 `@vn/pipeline`'s barrel re-exports `baseRefusal`, `suspensions` and `unapprovedTakes` for
 them by name, and they reach the family through `familyOf(config.workflow)`.
 
+`familyOf` answers a `Family<HostFacts>`. `HostFacts` is the type both hosts' facts
+builders return (`waveFacts`, and the desktop's `sessionFacts`), and today it is the
+stills family's `PlanFacts`. A family that reads only what `HostFacts` carries is
+registered as it is. A family whose facts carry fields of their own is registered as
+`withFacts(family, build)`, where `build` derives those fields from the host's facts, so
+the family's package never imports the type the hosts build. Reading a task back into the
+slot it fills is also the family's job. Each `SlotKind` has a `fromInputs`, the inverse of
+`resolve`, and may list the `retired` task kinds whose old records still fill it. The
+solver's `taskSlot` finds the kind, so `@vn/pipeline`'s `slotOfTask` names no stills kind
+([`../plans/archive/family-facts-and-task-slot-inverse.md`](../plans/archive/family-facts-and-task-slot-inverse.md)).
+
 `@vn/contracts` sits beneath every other package: it imports nothing (`"contracts": []`),
 and every package and app may import it. Its main entry carries `contract`, `pins` and the
 types, and no JSON, so the desktop renderer can declare a contract without bundling the

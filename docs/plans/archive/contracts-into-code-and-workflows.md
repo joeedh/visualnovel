@@ -1992,8 +1992,12 @@ built:
       archiving. The author allowed that one comment edit in each frozen file, and both
       now cite the archived path.
 - **Left over:**
-    - `slotOfTask`'s `bindingOf` switch and `familyOf`'s `Family<StillsFacts>` type, now
-      being taken on as their own change.
+    - `slotOfTask`'s `bindingOf` switch and `familyOf`'s `Family<StillsFacts>` type are
+      done, in
+      [`family-facts-and-task-slot-inverse.md`](family-facts-and-task-slot-inverse.md).
+      `familyOf` answers `Family<HostFacts>`, and `slotOfTask` asks the family's
+      `SlotKind.fromInputs`. The retired `outfit_sheet` keeps its answer there, through
+      the sheet kind's `retired` list.
     - One solve per desktop read, every host loading every contract shard, and the retired
       task kinds' remaining answers (decision 7).
 
