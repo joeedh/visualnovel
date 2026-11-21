@@ -457,11 +457,10 @@ at the root; `vngen/work/` is human-editable generated state; `vngen/build/` and
   hash.
 - A take is referenced by: `Asset.refs` of every asset drawn from it (`entities.ts:401`);
   `TaskInputs.*.refs` of every task that used it (a shot's plate and portrait,
-  `pipeline-contracts.md` "Content-addressed task graph"); `approved_portrait:` on a
-  sheet; `Shot.image` in a storyboard; `ChunkRef.pin` in a prompt override
-  (`prompt.ts:116`); the other root's manifest when adoption copied it across
-  (`asset-stores.md`, "One hash then has two rows"); a gen-graph journal's `done` records;
-  `story.play.json`; `vngen/state/reviews/<taskHash>`.
+  `identity.taskHash`); `approved_portrait:` on a sheet; `Shot.image` in a storyboard;
+  `ChunkRef.pin` in a prompt override (`prompt.ts:116`); the other root's manifest when
+  adoption copied it across (`asset-stores.md`, "One hash then has two rows"); a gen-graph
+  journal's `done` records; `story.play.json`; `vngen/state/reviews/<taskHash>`.
 - Suspension is derived on read, never stored (`packages/artgen/src/suspend.ts:5`), so a
   reference to a removed hash produces no stored state to clean up, but `asset.suspended`
   and every prompt pane would report the pin as drifted.
@@ -565,8 +564,7 @@ at the root; `vngen/work/` is human-editable generated state; `vngen/build/` and
   (`packages/taskgraph/src/graph.ts:94`; the only callers are tests). The contracts doc
   says so and names the consequence: orphaned nodes accumulate, and both the failed-task
   requeue and the run report intersect with the planned set to avoid paying for art no
-  plan asks for (`../reference/pipeline-contracts.md`, "Both the requeue and the report
-  must intersect").
+  plan asks for (`execution.retryBudget` and `execution.reportFromPlan`).
 - A `done` record is the authority for whether work happened. `adoptSlot` is the one
   writer of a `done` record outside the scheduler, and the contracts doc treats a forged
   `done` as a provenance corruption. Removing a `done` record has no precedent and would
@@ -680,10 +678,10 @@ Two sub-shapes:
   "Deleted" branch, or hides the row behind a filter.
 - **Move.** The file moves to `trash/<original path>` (a new `affects` root). Entity
   discovery walks three places only (`characters/`, `locations/`, `wiki/**`,
-  `pipeline-contracts.md` "An entity is found by its tag"), so a moved sheet simply leaves
-  the model; the tree can list `trash/` as the file tree already lists everything. A
-  variant for entities is dropping the `type:` tag (the move the `doc.write` refusal at
-  `docfile.ts:239` currently forbids), which turns a sheet into a wiki note in place.
+  `script.entityByTag`), so a moved sheet simply leaves the model; the tree can list
+  `trash/` as the file tree already lists everything. A variant for entities is dropping
+  the `type:` tag (the move the `doc.write` refusal at `docfile.ts:239` currently
+  forbids), which turns a sheet into a wiki note in place.
 
 - **What the author sees.** Delete is reversible from the app without git. A restore
   command puts the row or file back. A purge command, confirm-gated, makes it option (a)

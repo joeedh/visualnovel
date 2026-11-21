@@ -2,10 +2,11 @@
 
 This page describes what `vngen` does, what it needs, and what a project looks like on
 disk. [`../history/vn-generator-report.md`](../history/vn-generator-report.md) covers the
-pipeline behind it, and
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) covers the
-invariants it obeys. Run it as `node apps/cli/dist/cli.js <cmd>` or `pnpm vngen <cmd>`
-after `pnpm build`.
+pipeline behind it, and the invariants it obeys are `contract({...})` declarations in the
+code, indexed in
+[`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json) and
+listed by `pnpm contracts <query>`. Run it as `node apps/cli/dist/cli.js <cmd>` or
+`pnpm vngen <cmd>` after `pnpm build`.
 
 <!-- toc -->
 

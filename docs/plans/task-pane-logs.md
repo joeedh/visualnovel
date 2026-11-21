@@ -83,8 +83,9 @@ The schema is zod, in `packages/types/src/tasks.ts`, beside `Task`. Every entry 
     - **Fencing:** every append calls `checkRequestWrite()` and is registered through
       `requests.write(...)` (`pipeline/src/requests.ts:70-79`), so `writesSettled()`
       drains it on abort. A late answer after a stop is dropped, and a swallowed
-      `RequestStopped` is silent. Add this fence to `docs/reference/pipeline-contracts.md`
-      beside the journal/attempt fence (:356-357).
+      `RequestStopped` is silent. Add this fence to the pipeline contracts beside the
+      journal/attempt fence; both are contracts now (`execution.stopAtRequest`,
+      `execution.resumeFromJournal`).
     - **Redaction:** error text passes through a redactor that strips `key=`/`api_key=`
       query params, `Authorization`/`x-api-key`/`x-goog-api-key` header values, and
       anything matching a resolved key's prefix pattern. Stacks are not written;
@@ -243,8 +244,9 @@ and `written`. Add `vngen/state/tasklogs` to each, add it to the closed vocabula
 
 ## Docs
 
-- `docs/reference/pipeline-contracts.md`: the task log file; that it is best effort,
-  local, gitignored and not provenance; and the fence from §1.
+- The pipeline contracts, where the task log file is now `execution.taskLogDiagnostic`:
+  the task log file; that it is best effort, local, gitignored and not provenance; and the
+  fence from §1.
 - `docs/reference/desktopAppState.md`: a row for `vngen/state/tasklogs/` (local,
   gitignored).
 - `docs/guides/cli.md` on-disk layout: `vngen/state/tasklogs/`.

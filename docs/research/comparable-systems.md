@@ -98,9 +98,10 @@ agent generating a working Ren'Py VN end-to-end in about ten minutes
 This camp gives an agent the ability to act, but no information about production
 economics. A tool surface defines how to place a sprite. It carries no information about
 whether that sprite has been approved, whether it has already been generated, what it
-cost, or whether the line it illustrates still exists. Every property in
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) is absent by
-construction, because a tool server is stateless with respect to production.
+cost, or whether the line it illustrates still exists. Every property in the pipeline
+contracts
+([`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json)) is
+absent by construction, because a tool server is stateless with respect to production.
 
 This camp's shape is closest to a piece of this project — `vnauthor`'s tool registry is
 the same idea ([`../reference/vnauthor.md`](../reference/vnauthor.md)) — and it has the
@@ -123,8 +124,9 @@ consumed most of this repo (a paper does not need to): resumability across a cra
 content-addressed dedupe so identical work is not bought twice, bounded retry with a
 persisted reason, a report derived from the live plan rather than from what one process
 happened to touch, or any notion of an artifact drifting out of date. Those are the
-contracts in [`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md),
-and each was written after the corresponding failure.
+contracts in
+[`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json), and
+each was written after the corresponding failure.
 
 The reading worth taking from this camp is that the generative decomposition is the solved
 part and the infrastructure around it is the unsolved part. Attention runs the other way

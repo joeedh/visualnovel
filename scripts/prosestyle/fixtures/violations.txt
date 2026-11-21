@@ -139,7 +139,7 @@ Keys resolve from four places and the *first* answer wins.
 
 === id: backtick-01
 === rule: backticks-non-code
-The rule is stated in full in `docs/reference/pipeline-contracts.md`, which the plan links.
+The rule is stated in full in `docs/reference/story-bible.md`, which the plan links.
 === end
 
 === id: backtick-02

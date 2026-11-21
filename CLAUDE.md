@@ -19,8 +19,9 @@ in the generative pipeline.
 
 - Docs index: [`docs/index.md`](docs/index.md)
 - Design: [`docs/history/vn-generator-report.md`](docs/history/vn-generator-report.md)
-- Pipeline contracts (the invariants below, in full):
-  [`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md)
+- Pipeline contracts (the invariants below, in full): `pnpm contracts <query>`, over the
+  generated index in
+  [`packages/contracts/contracts.json`](packages/contracts/contracts.json)
 - Debugging guide: [`docs/guides/debugGuide.md`](docs/guides/debugGuide.md). Read it
   before debugging anything in this repo; it orders the tools cheapest-first and prefers
   evidence over reproduction.
@@ -161,25 +162,22 @@ providers   │      ╲ ╲  │
 ### Core ideas
 
 The core application contracts — the ones that cost money or corrupt provenance when
-broken — are written up in full in
-[`docs/reference/pipeline-contracts.md`](docs/reference/pipeline-contracts.md), each with
-the failure it prevents and a link to the plan that established it. Read the linked doc in
-full, and any doc it links in turn, before changing the invariant it names. Look there
-for: the content-addressed task graph and asset store, task tombstones, the unused-art
-collector and recovering a missing picture, the P3 approval gate, sheet planning,
-incremental planning, the slot graph, explicit decomposition, failure records, outfit
-inheritance, art direction (including the agent's own art-revision tools), concept images,
-adoption, prose drift reporting, generation-graph drift, the scene round-trip, entity
-discovery, the P7 refine loop, and provider seams. The invariants are moving into code as
-`contract({...})` declarations, starting with allocated line ids and the writers of `done`
-records; `pnpm contracts <query>` lists the ones that have moved, by file, command, tool
-or text. Story-bible access is the one core idea documented on its own, in
+broken — are `contract({...})` declarations beside the code that enforces them, each with
+the failure it prevents and the plans behind it. `pnpm gen:contracts` collects them into
+[`packages/contracts/contracts.json`](packages/contracts/contracts.json) (summaries and a
+subject map) and one `packages/contracts/contracts/<area>.json` shard per area (full
+records). Before changing a file, command or agent tool, query the contracts attached to
+it: `pnpm contracts module:<path>`, `command:<id>` or `tool:<name>`, a contract id, or
+free text, with `--full` for the whole record. The derivation rules over slots (identity,
+takes, approval, the gate, suspension, the keep set, drift) run in one place,
+`@vn/constraint-solver`, over the slot kinds a family declares. Story-bible access is the
+one core idea documented on its own, in
 [`docs/reference/story-bible.md`](docs/reference/story-bible.md), because it has no
 pipeline-contract failure mode of its own — only the query-only access rule. Generation
 graphs — `@vn/gengraph`, the `gengraph.*` commands, the run journal, groups, the Gen Graph
 pane and plugins — are written up end to end in
-[`docs/reference/gen-graphs.md`](docs/reference/gen-graphs.md); the contracts doc keeps
-only their three invariants.
+[`docs/reference/gen-graphs.md`](docs/reference/gen-graphs.md); their invariants are the
+`graphs.*` contracts and `execution.redrawDrifted`.
 
 ## CLI
 

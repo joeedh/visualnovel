@@ -122,7 +122,7 @@ differently, both are cited.
 | Which take a shot shows                                         | `shotData.image` and `shotData.proseHash` in `work/shots/<scene>.json`                                           | Rewritten wholesale each planning pass. `packages/store/src/shots.ts:224-238`.                                                                                                                                                                                     |
 | Which portrait is approved                                      | `approved_portrait:` and `status:` in `character.md`, plus `approved.png`                                        | Also mirrored as `accepted` on the manifest row by `approveCharacter` (`apps/desktop/src/main/session/gate.ts:89`); the only reader of that mirror is the exporter's fallback for a sheet with no `approved_portrait` (`packages/export/src/playable.ts:149-151`). |
 | Human approval of anything else                                 | `accepted` on the manifest row                                                                                   | Set by `asset.accept`, `asset.restore`, and by the shot runner on a clean review.                                                                                                                                                                                  |
-| Suspension, prompt staleness, prose drift, graph drift          | Not stored; derived on every read                                                                                | By design (`docs/reference/pipeline-contracts.md:474-482`).                                                                                                                                                                                                        |
+| Suspension, prompt staleness, prose drift, graph drift          | Not stored; derived on every read                                                                                | By design (`takes.suspensionDerived`, `script.proseDriftReported`, `graphs.editInvalidates`).                                                                                                                                                                      |
 
 ### How a take enters a slot
 
@@ -391,7 +391,7 @@ Each entry names the code and the symptom an author sees.
   attempt (`packages/artgen/src/overaccept.ts:57-61`). `lastRenderedAt` is keyed by task
   hash. Two takes of one identity (a regeneration without a re-key) share a `sourceTask`
   and get the same stamp, so the tiebreak falls to hash order.
-- Nothing else in the code computes recency. `pipeline-contracts.md:159-161` states that a
+- Nothing else in the code computes recency. `takes.currencyExclusive` states that a
   surface that cannot resolve a slot must report that rather than guess which take is
   newest, which is the constraint every surface above is working around.
 
@@ -742,9 +742,9 @@ review of the options (below). The plan starts from this list; nothing is left o
       every base slot whose identity has no terminal record here but whose `current` row
       exists, a `done` record with the row's hash as output and `via: 'shared'`. This is
       the don't-forge-work bound `regenerate=false` and adoption already rest on
-      (`docs/reference/pipeline-contracts.md:494-496`): existing bytes recorded as a
-      task's output. An identity mismatch, from different art notes in the second
-      project's sheet, is the re-key state of decision 4 rather than a failure.
+      (`log.doneWriters`): existing bytes recorded as a task's output. An identity
+      mismatch, from different art notes in the second project's sheet, is the re-key
+      state of decision 4 rather than a failure.
         - Approval is per base repo by construction, since the bit is on the shared row;
           this is the answer decision 8 waits on. Stated plainly: a project whose art
           notes differ from the base's has a portrait identity of its own with no output,
@@ -820,13 +820,12 @@ review of the options (below). The plan starts from this list; nothing is left o
     or `asset.restore`; that run resumes the graph's nodes from the journal and spends
     only on the dependents. Any other target, an unbound graph, a non-active output or an
     intermediate node, stays journal-only, since there is no slot for it to be a take of.
-    The one-writer sentence in `docs/reference/gen-graphs.md`, and the "exactly once"
-    entry in `docs/reference/pipeline-contracts.md:79-93`, become the scheduler,
-    `adoptSlot` and an interactive run of a bound output. The run seeds from
-    `resolveSlot`'s inputs and refuses when the identity cannot be stated, as `adoptSlot`
-    does; today it seeds from `resolveBinding` over the manifest
-    (`apps/desktop/src/main/session/graphseeds.ts`), which in decision 4's re-key window
-    names a plate the graph did not draw from.
+    The one-writer sentence in `docs/reference/gen-graphs.md`, and the "exactly once" rule
+    that is now `log.doneWriters`, become the scheduler, `adoptSlot` and an interactive
+    run of a bound output. The run seeds from `resolveSlot`'s inputs and refuses when the
+    identity cannot be stated, as `adoptSlot` does; today it seeds from `resolveBinding`
+    over the manifest (`apps/desktop/src/main/session/graphseeds.ts`), which in decision
+    4's re-key window names a plate the graph did not draw from.
 12. Follows from decision 1: `accepted` as an attempt outcome is retired, since list
     position no longer implies acceptance.
 

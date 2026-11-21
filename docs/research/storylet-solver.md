@@ -579,6 +579,5 @@ Each probe records the state counts, slice sizes and run times of every check, s
   [`../reference/command-system.md`](../reference/command-system.md): an upper bound on
   what may be written, which the system enforces.
 - Caching check results under a hash of their slice follows the same idea as the
-  content-addressed task graph in
-  [`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md). A result is
-  reused while its inputs are unchanged, and it is recomputed when they change.
+  content-addressed task graph (`identity.taskHash`). A result is reused while its inputs
+  are unchanged, and it is recomputed when they change.

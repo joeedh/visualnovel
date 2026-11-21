@@ -109,9 +109,9 @@ Strip every dead marker and flatten each scene to the prose that should render. 
 propose exactly what stays.
 
 Stripping `[[line:]]` from all forty scenes discards every allocated line id in the
-project. Shots are keyed on line ids (docs/pipeline-contracts.md), `driftOf` compares
-them, and `Shot.lines` names them. Once the ids are re-derived they are positional again,
-so every shot in the storyboard covers different prose than it was drawn for. The agent
+project. Shots are keyed on line ids (`script.lineIdsAllocated`), `driftOf` compares them,
+and `Shot.lines` names them. Once the ids are re-derived they are positional again, so
+every shot in the storyboard covers different prose than it was drawn for. The agent
 proposed the change in good faith, having correctly concluded from its own instructions
 that the markers were not part of the format. One click by the author would have caused a
 project-wide data loss.

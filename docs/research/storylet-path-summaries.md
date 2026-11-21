@@ -312,10 +312,8 @@ supplies the compression.
 
 ## Relation to this repository
 
-- **Line ids**
-  ([`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md)) are the
-  citation target for summary claims. Nothing new is needed for the mechanism; the
-  storylet model inherits it.
+- **Line ids** (`script.lineIdsAllocated`) are the citation target for summary claims.
+  Nothing new is needed for the mechanism; the storylet model inherits it.
 - **The content-addressed task graph** is the shape of the two-tier summary cache: a
   result keyed by a hash of its inputs, reused while they are unchanged.
 - **Prose drift reporting** is the existing precedent for a derived text that is checked

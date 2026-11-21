@@ -265,9 +265,11 @@ only signal meaning 'decompose this'" keeps its meaning for the batch, but it mu
 also say that a hand-made first shot ends that signal. The sentence appears in:
 
 - CLAUDE.md carries the "Decomposing every scene is an explicit act" bullet;
-- [`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) — the
-  decomposition contract, the P5 section, and the second statement inside the
-  scene-heading contract;
+- the contracts index — the decomposition contract (now `storage.storyboardKept`, whose
+  detail says a hand-placed first shot ends decomposition), the P5 contracts, and the
+  scene-heading contract (`identity.headingRekeysShots`). They moved there from the
+  pipeline contracts page, which
+  [`contracts-into-code-and-workflows.md`](contracts-into-code-and-workflows.md) deleted;
 - [`../guides/cli.md`](../guides/cli.md) states the whole contract ("an absent one is the
   only signal … the file wins forever"), and the first draft of this list missed that
   class of surface entirely;

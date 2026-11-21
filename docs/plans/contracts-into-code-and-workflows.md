@@ -1,8 +1,9 @@
 # Pipeline contracts into code, shaped for more than one workflow
 
-This plan moves every rule in
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) into code and
-then deletes that document. It does the move along the seams that
+This plan moves every rule in `docs/reference/pipeline-contracts.md` into code and then
+deletes that document; stage 9 deleted it, and the rules are now the index in
+[`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json). It
+does the move along the seams that
 [`../research/workflows-and-narrative-engines.md`](../research/workflows-and-narrative-engines.md)
 proposes, so the derivation code is extracted once, in a form a second workflow and a
 second narrative engine can use, rather than extracted in its current VN shape and

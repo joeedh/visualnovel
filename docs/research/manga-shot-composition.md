@@ -312,9 +312,9 @@ connected to anything.
 Two limitations matter for a decision of this size.
 
 The count covers the graph as it stands, and the planner runs once per wave, so a project
-whose P3 character gate has not opened reports zero shot tasks. The contract in
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) means the
-number an author sees before approving differs from the number they will pay.
+whose P3 character gate has not opened reports zero shot tasks. The incremental-planning
+contract (`planning.incremental`, with `gate.perUnit`) means the number an author sees
+before approving differs from the number they will pay.
 
 There is no price per image anywhere in the repository. `costPreview` returns call counts,
 the desktop equivalent in apps/desktop/src/main/commands/pipeline/pipeline.ts prints the

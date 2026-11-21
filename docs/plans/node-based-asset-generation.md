@@ -974,7 +974,7 @@ installed depends on that backend.
 
 - In CLAUDE.md, the package graph diagram and packages.md gain `gengraph`. Once Stage 6
   ships, add a Core-ideas bullet describing graphs as runners.
-- docs/reference/packages.md, docs/reference/pipeline-contracts.md,
+- docs/reference/packages.md, the pipeline contracts (now the `graphs.*` contracts),
   docs/reference/command-system.md (the `gengraph.*` namespace),
   docs/reference/desktop-app.md and desktopAppState.md (the pane, `work/graphs/`,
   `vngen/state/graphs/`) are each updated in the stage that makes them stale.

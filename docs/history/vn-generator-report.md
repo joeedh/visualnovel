@@ -45,9 +45,9 @@ consume.
 
 This is the original design report, kept as written. The architecture it proposes is the
 one that got built, but nine specifics came out differently once implemented. For the
-invariants as they actually hold today, read
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md); the list below
-records only the differences.
+invariants as they actually hold today, query the contracts index
+([`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json), or
+`pnpm contracts <query>`); the list below records only the differences.
 
 | Report says                                                                                                | Shipped                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

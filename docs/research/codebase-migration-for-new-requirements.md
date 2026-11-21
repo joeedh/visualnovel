@@ -30,10 +30,11 @@ that must be settled before a plan is written.
 Each section below takes one requirement, states what exists today and names the file that
 shows it, states what the requirement demands, gives the smallest migration that satisfies
 it without breaking a shipped contract, and names any decision a plan must settle first.
-This document treats the contracts in
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) as fixed, and
-rejects any migration that breaks content-addressed task identity, the lossless scene
-round-trip, or the single-write-path rule, even where that migration would be less code.
+This document treats the pipeline contracts (now the index in
+[`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json)) as
+fixed, and rejects any migration that breaks content-addressed task identity, the lossless
+scene round-trip, or the single-write-path rule, even where that migration would be less
+code.
 
 The renderer itself and the §UX pane/editor requirements are out of scope, and belong to
 the path.ux rewrite plan. Everything a new editor would present is in scope, because the

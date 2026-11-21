@@ -55,9 +55,9 @@ The following implementation details have been validated against the codebase:
   cache invalidation. This contract is codified in four locations: `set_coverage`
   documentation (`packages/authoring/src/tools/storyboard.ts:100-105`),
   `WorkspaceSession.setCoverage` documentation
-  (`apps/desktop/src/main/session/story.ts:428-430`),
-  `docs/reference/pipeline-contracts.md` (two occurrences), and the `full-production`
-  agent skill.
+  (`apps/desktop/src/main/session/story.ts:428-430`), the pipeline contracts page (two
+  occurrences; its rules are now in the contracts index), and the `full-production` agent
+  skill.
 - `shotSpec` defines reviewer input (`packages/artgen/src/prompts.ts`, re-exported in
   `packages/pipeline/src/prompts.ts`) and is excluded from task hashing, allowing safe
   modifications. It is invoked without config context from
@@ -442,8 +442,8 @@ done. The OpenRouter plugin the live checks need is Stage 1's first commit.
   situation to the shot-menu rule module (`apps/desktop/renderer/rules/shotmenu/`) and
   regenerate via `pnpm gen:uxmodel`.
 - Export: preserve single-image export for page shots.
-- Documentation: update `pipeline-contracts.md` (Decision 11, `observed`) and
-  `playable-format.md`.
+- Documentation: update the page contract, now `prompts.pagePanels` (Decision 11,
+  `observed`), and `playable-format.md`.
 
 ### Stage 3 — panel stepping and the panel editor
 
@@ -490,7 +490,8 @@ done. The OpenRouter plugin the live checks need is Stage 1's first commit.
   for a member shot is invalidated by `extra.sheet`. Accepted: only member shots carry it,
   and none exists before this stage.
 - Documentation: update `gen-graphs.md` (node tables, seeded inputs, pixel capability
-  interface, `Blend` notes, force-run constraints) and `pipeline-contracts.md`.
+  interface, `Blend` notes, force-run constraints) and the pipeline contracts, now the
+  contracts index.
 
 ### Stage 5 — runner-drawn bubbles
 
@@ -554,9 +555,9 @@ falls back to.
   than the outline it asked for. The tool's description says to leave `tail` off unless
   the speaker's position in the panel is known, since the agent cannot see the render.
 - **Docs.** `playable-format.md` (the field and the runner rule), the Page editor's page
-  in `desktop-app-editors-story.md`, `pipeline-contracts.md` (bubbles outside the hash,
-  the new default), the `full-production` skill and `templates/basic/project.yaml`'s
-  comment.
+  in `desktop-app-editors-story.md`, the page contract, now `prompts.pagePanels` (bubbles
+  outside the hash, the new default), the `full-production` skill and
+  `templates/basic/project.yaml`'s comment.
 
 ## Designing the editor surfaces
 
@@ -677,7 +678,8 @@ The plugin is gone; the "Between Stages 2 and 3" subsection of As-shipped says w
 
 ## Contracts to update
 
-- `pipeline-contracts.md`: identity specifications for `Shot.aspect` in `params`,
+- The pipeline contracts (now the contracts index; the page rules are
+  `prompts.pagePanels`): identity specifications for `Shot.aspect` in `params`,
   `params.extra.sheet`, and the invalidation exception for lettered page shots (Decision
   11). Update generation and review sections with `ShotSpec.panels`/`lettering`,
   `DefectReport.observed`, and `panelBoxes` persistence rules.
@@ -889,8 +891,8 @@ specification:
   names with their panel counts, the camera vocabulary, the bound) and the wider answer
   format. _Superseded (September 2026): the gate is now `project.yaml`'s `shot_form`, so
   frames or pages is a field rather than something inferred from the notes; the notes
-  bring only the staging-sheet paragraph. See
-  [`pipeline-contracts.md`](../reference/pipeline-contracts.md)._
+  bring only the staging-sheet paragraph. See the `prompts.pagePanels` contract
+  (`pnpm contracts prompts.pagePanels`)._
 - **`panel_subject_not_in_cast` is thrown by `readShots`, and `line_in_no_panel` is a list
   it returns.** The plan filed both under "the model validator", but `@vn/model` never
   reads a shots file; the store does. A panel naming someone outside the shot's cast makes
@@ -977,12 +979,12 @@ specification:
   so a restatement needs no template, and `read_shots` prints a page as
   `[page · N @variant]` with one line per panel. `set_coverage`'s description says a frame
   is free and a lettered page is not.
-- **Docs.** `pipeline-contracts.md` gained the page shape, the lettering exception to
-  "coverage edits do not rehash", `panelBoxes`/`observed` and the runner's layout verdict;
-  `playable-format.md` says a page is shown whole with its lines stepped beneath it;
-  `desktop-app-editors-story.md` and the `full-production` skill carry the same exception.
-  The plan's "Export: preserve single-image export" needed no code, since the exporter
-  never read panels.
+- **Docs.** The pipeline contracts page (now `prompts.pagePanels`) gained the page shape,
+  the lettering exception to "coverage edits do not rehash", `panelBoxes`/`observed` and
+  the runner's layout verdict; `playable-format.md` says a page is shown whole with its
+  lines stepped beneath it; `desktop-app-editors-story.md` and the `full-production` skill
+  carry the same exception. The plan's "Export: preserve single-image export" needed no
+  code, since the exporter never read panels.
 - **The Stage 2 live check
   ([`../research/manga-live-tests.md`](../research/manga-live-tests.md#stage-2--layout-and-lettering-2026-09-15))
   settled four of its five questions the way the code already had, and changed two

@@ -330,11 +330,11 @@ dependency, so `EXTERNAL` in `scripts/aliases.mjs` and the desktop bundle are un
   committed file would follow the project for ever. This is decided before the image stage
   ships, not after.
 - The manifest's per-asset generation record gains an optional `transport: Transport`
-  field, always written (`docs/reference/pipeline-contracts.md` lists what a record
-  carries; this adds a field and changes no invariant). For an author-spelled OpenRouter
-  id, `native` and `transport` are both `openrouter` and the field says nothing new; it is
-  written anyway so a reader never has to know the rule to read the record. Failure
-  records are not touched: a `TaskAttempt` holds a thrown error's message, and the
+  field, always written (the pipeline contracts, now the contracts index, list what a
+  record carries; this adds a field and changes no invariant). For an author-spelled
+  OpenRouter id, `native` and `transport` are both `openrouter` and the field says nothing
+  new; it is written anyway so a reader never has to know the rule to read the record.
+  Failure records are not touched: a `TaskAttempt` holds a thrown error's message, and the
   backend's `OpenRouter (<native>) …` prefix already names the transport there.
 - `seed` refusal: the catalog's `seed` flag is looked up by the wire id, since that is
   what `models.json` lists. A Gemini image model reached through OpenRouter that the
@@ -399,10 +399,10 @@ dependency, so `EXTERNAL` in `scripts/aliases.mjs` and the desktop bundle are un
   optional") and the OpenRouter section (a **Fallback** paragraph with the preference
   rule; `billing` becomes the general models page; `pnpm check:keylinks` after);
   `docs/guides/cli.md`'s key section; `docs/reference/packages.md:68` ("Gemini + Claude
-  backends"); `docs/reference/pipeline-contracts.md:224-225` ("the Gemini and Claude
-  backends retry a transient failure in place") and its record-field list; the doc comment
-  at `packages/config/src/keys.ts:9-10` ("`openrouter` is an image vendor only");
-  CLAUDE.md's key-resolution bullet gains one sentence.
+  backends"); the pipeline contracts' transient-retry rule, now `providers.transientRetry`
+  ("the Gemini and Claude backends retry a transient failure in place") and its
+  record-field list; the doc comment at `packages/config/src/keys.ts:9-10` ("`openrouter`
+  is an image vendor only"); CLAUDE.md's key-resolution bullet gains one sentence.
 
 ## Decision 8: what this deliberately does not do
 
@@ -540,14 +540,14 @@ thirty-six findings. Each is fixed above or answered here.
   were missed — Decisions 5, 7. (12) The `SYSTEM (out-of-band)` prefix is the structured
   path's, not `messagesOf`'s — Decision 3 now says role swap only, and the four-vendors
   plan is flagged. (13) `callWithRetry` / `retryAfterMs` already live in `transient.ts` —
-  the common file now lists what actually moves. (14, 15) `packages.md`,
-  `pipeline-contracts.md`, `keys.ts`'s comment and `api-keys.md`'s intro all state the old
-  rule — Decision 7 lists them. (16) `ResumeHeader` and `resumeHeaderOf` are in `convo.ts`
-  / `notify/threads.ts` — named. (17) The pane has no key status — the check is main-only.
-  (18) String assistant turns — accepted. (19) `TRANSPORTS` labels, the `ResumeBinding`
-  doc comment and its test — named. (20) The anchor sweep is owed for `onboarding.ts` —
-  stage 6. (21, 34) `factory.test.ts` — deleted in the same commit. (22) "Five members" —
-  four methods.
+  the common file now lists what actually moves. (14, 15) `packages.md`, the pipeline
+  contracts (now `providers.transientRetry`), `keys.ts`'s comment and `api-keys.md`'s
+  intro all state the old rule — Decision 7 lists them. (16) `ResumeHeader` and
+  `resumeHeaderOf` are in `convo.ts` / `notify/threads.ts` — named. (17) The pane has no
+  key status — the check is main-only. (18) String assistant turns — accepted. (19)
+  `TRANSPORTS` labels, the `ResumeBinding` doc comment and its test — named. (20) The
+  anchor sweep is owed for `onboarding.ts` — stage 6. (21, 34) `factory.test.ts` — deleted
+  in the same commit. (22) "Five members" — four methods.
 - **Deferred, now decided.** (23) `resolveRoutes` returns `Map<string, Route>`. (24) The
   session keeps `this.native.transport`. (25) An author-spelled OpenRouter id records
   `transport: 'openrouter'` beside `native: 'openrouter'`, written anyway. (26) Failure

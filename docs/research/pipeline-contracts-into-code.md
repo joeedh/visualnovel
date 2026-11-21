@@ -1,6 +1,12 @@
 # Moving the pipeline contracts into code
 
-[`../reference/pipeline-contracts.md`](../reference/pipeline-contracts.md) lists about
+Status: done.
+[`../plans/contracts-into-code-and-workflows.md`](../plans/contracts-into-code-and-workflows.md)
+carried this out, and its stage 9 deleted the page this note set out to retire. The rules
+are now the index in
+[`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json).
+
+The pipeline contracts page (`docs/reference/pipeline-contracts.md`) listed about
 thirty-five invariants, each with the failure it prevents. This note looks at how to move
 all of them into code so the document can be deleted. It also looks at splitting the
 pipeline into a generation graph (merged with `@vn/gengraph`) and a separate contract
@@ -356,9 +362,9 @@ to one function needs only its doc comment and its test.
 
 ## Retargeting what links to the document
 
-- About thirty docs link to `pipeline-contracts.md`, including `CLAUDE.md` (two links and
-  the "read the linked doc in full" instruction), `packages.md`, `gen-graphs.md`,
-  `asset-stores.md` and `.commentlintrc.json`. Ten of these links use a section anchor.
+- About thirty docs linked to the page, including `CLAUDE.md` (two links and the "read the
+  linked doc in full" instruction), `packages.md`, `gen-graphs.md`, `asset-stores.md` and
+  `.commentlintrc.json`. Ten of these links use a section anchor.
 - `pnpm check:doclinks` fails on every dead link, so it finds them all. Each one is
   retargeted to the solver module, the package that now enforces the rule, or the contract
   id.

@@ -43,8 +43,8 @@ For each entry in `candidatesNeedingExtraction`:
 2. At each backlink site, read the sentence/paragraph around the link to see what the
    reference is actually doing — usually citing a decision, an invariant, or the reason
    something is built the way it is, per
-   [`docs/reference/conventions.md`](../../../docs/reference/conventions.md) and the
-   pipeline-contracts pattern in `CLAUDE.md`.
+   [`docs/reference/conventions.md`](../../../docs/reference/conventions.md) and the `see`
+   field of a `contract({...})` declaration, which names the plans behind a rule.
 3. Draft the fix: inline the load-bearing nugget as plain prose directly in the
    referencing doc (matching its existing style — see `docs/reference/proseStyle.md`),
    then replace the dead-ending link with a pointer to
