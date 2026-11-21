@@ -5,17 +5,7 @@
  * written to the asset store through the same call the legacy runners use. A slot nothing
  * is bound to never reaches this file.
  */
-import type {
-  AnyTask,
-  AssetMeta,
-  AssetRef,
-  ProjectModel,
-  RefBinding,
-  RetiredTaskKind,
-  TaskKind,
-} from '@vn/types';
-import { shotsOf } from '@vn/types';
-import { slotKey } from '@vn/stills';
+import type { AnyTask, AssetMeta, AssetRef } from '@vn/types';
 import {
   applyRecord,
   bindSlots,
@@ -34,9 +24,11 @@ import type {
   GraphJournalRecord,
 } from '@vn/gengraph';
 import { authoredHashes, executeGenGraph, isDefaultGraph } from '@vn/gengraph/state';
-import { boundDrift, type BoundGraphFact } from '@vn/constraint-solver';
+import { boundDrift, taskSlot, type BoundGraphFact } from '@vn/constraint-solver';
 import type { GenRunContext, GenRunResult } from '@vn/gengraph/state';
 import type { RunDeps } from './pipeline.js';
+import { waveFacts } from './facts.js';
+import { familyOf, type HostFacts } from './workflows.js';
 import { checkRequest, checkRequestWrite } from '@vn/providers';
 
 /** The type names of the three nodes a host seeds, which are also the seed's keys. */
@@ -94,66 +86,18 @@ export function indexGraphs(loaded: readonly LoadedGraph[]): GraphIndex {
   return { runtime: { bound: (slot) => index.get(slot) }, conflicts };
 }
 
-/** The slot a task fills, which is the address a graph binds itself to. */
-export function slotOfTask(task: AnyTask, model: ProjectModel): string | undefined {
-  const said = task.inputs as {
-    characterId?: string;
-    outfit?: string;
-    angle?: string;
-    locationId?: string;
-    variant?: string;
-    shotId?: string;
-  };
-  const binding = bindingOf(task.kind, said, model);
-  return binding === undefined ? undefined : slotKey(binding);
+/**
+ * Answers the address of the slot a task fills, which is the address a graph binds itself to. The
+ * project's family reads it off the task through the slot kind that fills it.
+ */
+export function slotOfTask(task: AnyTask, facts: HostFacts): string | undefined {
+  const found = taskSlot(familyOf(facts.config.workflow), task, facts);
+  return found?.kind.key(found.binding);
 }
 
-function bindingOf(
-  kind: TaskKind | RetiredTaskKind,
-  said: {
-    characterId?: string;
-    outfit?: string;
-    angle?: string;
-    locationId?: string;
-    variant?: string;
-    shotId?: string;
-  },
-  model: ProjectModel,
-): RefBinding | undefined {
-  switch (kind) {
-    case 'portrait':
-      return said.characterId ? { kind: 'portrait', characterId: said.characterId } : undefined;
-    case 'location_ref':
-      return said.locationId && said.variant
-        ? { kind: 'plate', locationId: said.locationId, variant: said.variant }
-        : undefined;
-    // The retired `outfit_sheet` is kept so a record of one in an older log names its sheet slot
-    case 'model_sheet':
-    case 'outfit_sheet':
-      return said.characterId && said.outfit && said.angle
-        ? {
-            kind       : 'sheet',
-            characterId: said.characterId,
-            outfit     : said.outfit,
-            angle      : said.angle,
-          }
-        : undefined;
-    case 'shot_image': {
-      const sceneId = said.shotId === undefined ? undefined : sceneOfShot(model, said.shotId);
-      return sceneId && said.shotId ? { kind: 'shot', sceneId, shotId: said.shotId } : undefined;
-    }
-    default:
-      return undefined;
-  }
-}
-
-function sceneOfShot(model: ProjectModel, shotId: string): string | undefined {
-  for (const scene of model.scenes.values()) {
-    if (shotsOf(model, scene.id).some((shot) => shot.id === shotId)) {
-      return scene.id;
-    }
-  }
-  return undefined;
+/** Builds the facts a runner asks `slotOfTask` with, which hold no manifest and no task log. */
+function runFacts(deps: RunDeps): HostFacts {
+  return waveFacts({ model: deps.model, config: deps.config });
 }
 
 let registered = false;
@@ -173,7 +117,7 @@ export function boundGraph(task: AnyTask, deps: RunDeps): GraphBinding | undefin
     return undefined;
   }
 
-  const slot = slotOfTask(task, deps.model);
+  const slot = slotOfTask(task, runFacts(deps));
   if (slot === undefined) {
     return undefined;
   }
@@ -232,9 +176,10 @@ export function driftedTasks(tasks: Iterable<AnyTask>, deps: RunDeps): AnyTask[]
     return [];
   }
 
+  const host = runFacts(deps);
   const slotted: { task: AnyTask; slot: string }[] = [];
   for (const task of tasks) {
-    const slot = slotOfTask(task, deps.model);
+    const slot = slotOfTask(task, host);
     if (slot !== undefined) {
       slotted.push({ task, slot });
     }

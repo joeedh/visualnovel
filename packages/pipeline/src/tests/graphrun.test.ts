@@ -199,7 +199,7 @@ describe('the journal the runner wrapper advances', () => {
     try {
       const { model, store, config } = await p.reload();
       const providers = createMockProviders();
-      const deps = { model, store, providers } as RunDeps;
+      const deps = { model, config, store, providers } as RunDeps;
       const graph = plainGraph('portrait:aiko');
       const output = graph.nodes.find((n) => n instanceof GenOutput)!;
       const appended: GraphJournalRecord[] = [];

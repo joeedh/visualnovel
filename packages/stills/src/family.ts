@@ -316,11 +316,58 @@ export function heldAccepted(_binding: unknown, _facts: StillsFacts, held: Held)
   return !!held.pick && held.rows.some((a) => a.hash === held.pick && a.accepted);
 }
 
+/** Reads a plate task's location and variant back into its plate slot. */
+function plateFrom(inputs: Partial<TaskInputs['location_ref']>): Bound<'plate'> | undefined {
+  return inputs.locationId && inputs.variant
+    ? { kind: 'plate', locationId: inputs.locationId, variant: inputs.variant }
+    : undefined;
+}
+
+/** Reads a portrait task's character back into its portrait slot. */
+function portraitFrom(inputs: Partial<TaskInputs['portrait']>): Bound<'portrait'> | undefined {
+  return inputs.characterId ? { kind: 'portrait', characterId: inputs.characterId } : undefined;
+}
+
+/** Reads a model-sheet task's character, outfit and angle back into its sheet slot. */
+function sheetFrom(inputs: Partial<TaskInputs['model_sheet']>): Bound<'sheet'> | undefined {
+  return inputs.characterId && inputs.outfit && inputs.angle
+    ? {
+        kind       : 'sheet',
+        characterId: inputs.characterId,
+        outfit     : inputs.outfit,
+        angle      : inputs.angle,
+      }
+    : undefined;
+}
+
+/** Answers the scene whose storyboard in the production map holds the shot. */
+function sceneOfShot(model: ProjectModel, shotId: string): string | undefined {
+  for (const scene of model.scenes.values()) {
+    if (shotsOf(model, scene.id).some((shot) => shot.id === shotId)) {
+      return scene.id;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Reads a shot task's shot back into its shot slot. The inputs do not name the scene, so it is
+ * found in the model's storyboards, and a shot no storyboard holds fills no slot.
+ */
+function shotFrom(
+  inputs: Partial<TaskInputs['shot_image']>,
+  facts: StillsFacts,
+): Bound<'shot'> | undefined {
+  const sceneId = inputs.shotId === undefined ? undefined : sceneOfShot(facts.model, inputs.shotId);
+  return sceneId && inputs.shotId ? { kind: 'shot', sceneId, shotId: inputs.shotId } : undefined;
+}
+
 /** Builds one stills slot kind over the shared slot-address and slot-graph functions. */
 function stillsKind<P extends SlotPrefix, K extends TaskKind>(
   prefix: P,
   task: K,
   contracts: readonly Contract[],
+  from: (inputs: Partial<TaskInputs[K]>, facts: StillsFacts) => Bound<P> | undefined,
 ): SlotKind<StillsFacts, Bound<P>, K> {
   return {
     prefix,
@@ -334,6 +381,7 @@ function stillsKind<P extends SlotPrefix, K extends TaskKind>(
     label     : slotLabel,
     refs      : (binding, facts) => refsOfSlot(binding, facts).map(slotKey),
     resolve   : (binding, facts) => inputsFor(task, planOf(binding, facts)),
+    fromInputs: from,
     deps: (binding, facts) => {
       const planned = planOf(binding, facts);
       return planned.ok ? planned.plan.deps : [];
@@ -373,12 +421,16 @@ function portraitClears(binding: Bound<'portrait'>, facts: StillsFacts): boolean
 const EVERY_KIND = [identitySlotsBeforeTasks, takesApprovedMeansAccepted, takesCurrencyExclusive];
 const AUTHORED = [...EVERY_KIND, planningSheetsOnlyWhenWorn];
 
-export const plateKind = stillsKind('plate', 'location_ref', AUTHORED);
+export const plateKind = stillsKind('plate', 'location_ref', AUTHORED, plateFrom);
 export const portraitKind: SlotKind<StillsFacts, Bound<'portrait'>, 'portrait'> = {
-  ...stillsKind('portrait', 'portrait', [...AUTHORED, gatePerUnit]),
+  ...stillsKind('portrait', 'portrait', [...AUTHORED, gatePerUnit], portraitFrom),
   clears: portraitClears,
 };
-export const sheetKind = stillsKind('sheet', 'model_sheet', AUTHORED);
+export const sheetKind: SlotKind<StillsFacts, Bound<'sheet'>, 'model_sheet'> = {
+  ...stillsKind('sheet', 'model_sheet', AUTHORED, sheetFrom),
+  // An older log's record of the retired `outfit_sheet` still names its sheet slot
+  retired: ['outfit_sheet'],
+};
 const PROSE_DRIFT: DriftReason = {
   source: 'prose',
   reason: 'The lines this shot covers have changed since its picture was drawn.',
@@ -392,7 +444,12 @@ function proseDrift(binding: Bound<'shot'>, facts: StillsFacts): readonly DriftR
 }
 
 export const shotKind: SlotKind<StillsFacts, Bound<'shot'>, 'shot_image'> = {
-  ...stillsKind('shot', 'shot_image', [...EVERY_KIND, gatePerUnit, scriptProseDriftReported]),
+  ...stillsKind(
+    'shot',
+    'shot_image',
+    [...EVERY_KIND, gatePerUnit, scriptProseDriftReported],
+    shotFrom,
+  ),
   named: shotImages,
   drift: proseDrift,
 };

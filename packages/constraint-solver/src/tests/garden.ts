@@ -73,6 +73,7 @@ export const seedKind: SlotKind<Garden, { id: string }, typeof SEED_TASK> = {
     facts.seeds.includes(b.id)
       ? { ok: true, plan: seedInputs(b.id) }
       : { ok: false, code: 'NO_SEED', reason: `no seed "${b.id}" is planted` },
+  fromInputs: (inputs) => (inputs.characterId ? { id: inputs.characterId } : undefined),
   candidates: (b, facts) => rowsOf(`seed:${b.id}`, facts),
   approved  : (_b, _facts, held) => held.rows.some((a) => a.hash === held.pick && a.accepted),
   // Looser than `approved`: any accepted row clears a bed, held or not
@@ -101,6 +102,7 @@ export const sproutKind: SlotKind<Garden, { id: string }, typeof SPROUT_TASK> = 
       return { ok: false, code: 'NOT_GROWN', reason: `seed ${s.seed} has not grown yet` };
     return { ok: true, plan: sproutInputs(grown.output, b.id) };
   },
+  fromInputs: (inputs) => (inputs.variant ? { id: inputs.variant } : undefined),
   deps: (b, facts) => {
     const s = sproutOf(facts, b.id);
     return s ? [taskHash(SEED_TASK, seedInputs(s.seed))] : [];

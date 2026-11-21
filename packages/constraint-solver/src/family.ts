@@ -51,6 +51,14 @@ export interface SlotKind<F extends SolverFacts, B = unknown, K extends TaskKind
   /** Answers the task inputs this slot would run with, or the sentence saying why there are none. */
   resolve(binding: B, facts: F): Decided<TaskInputs[K]>;
   /**
+   * Reads the inputs of a task that fills a slot of this kind back into the slot's binding, or
+   * answers `undefined` when they name none. It reads none of the solver's fields, because a runner
+   * asks with facts that hold no manifest and an empty task log.
+   */
+  fromInputs(inputs: Partial<TaskInputs[K]>, facts: F): B | undefined;
+  /** Names task kinds no longer planned whose records still fill this slot, read by `fromInputs`. */
+  readonly retired?: readonly string[];
+  /**
    * Lists the task hashes the slot's task runs after, which become `Task.deps`. Only asked of a
    * slot that resolved; a kind without it runs after nothing.
    */
@@ -90,6 +98,20 @@ export function slot<F extends SolverFacts, B, K extends TaskKind>(
   unit?: string,
 ): Slot<F> {
   return unit === undefined ? { kind, binding } : { kind, binding, unit };
+}
+
+/**
+ * Answers the slot a task fills, through the first of the family's kinds whose `task` or `retired`
+ * names the task's kind. The slot carries no unit, since a task does not record one.
+ */
+export function taskSlot<F extends SolverFacts>(
+  family: Family<F>,
+  task: Pick<AnyTask, 'kind' | 'inputs'>,
+  facts: F,
+): Slot<F> | undefined {
+  const kind = family.kinds.find((k) => k.task === task.kind || k.retired?.includes(task.kind));
+  const binding = kind?.fromInputs(task.inputs, facts);
+  return kind && binding !== undefined ? { kind, binding } : undefined;
 }
 
 /** A body of production code the solver runs its rules over. */

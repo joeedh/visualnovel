@@ -22,6 +22,8 @@ import { costOf, EXECUTORS } from './executors.js';
  */
 export interface RunDeps {
   model: ProjectModel;
+  /** The project's config, which names the workflow whose family fills each task's slot. */
+  config: ProjectConfig;
   store: AssetStore;
   providers: Providers;
   logger?: Logger;

@@ -1,11 +1,31 @@
 /**
- * `withFacts` over the toy family in `garden.ts`, solved over host facts that carry the garden as
- * one nested field. A family wrapped this way must answer exactly what it answers over its own
- * facts.
+ * Tests `withFacts` over the toy family in `garden.ts`, solved over host facts that carry the
+ * garden's own fields under one key. A family wrapped this way must answer exactly what it answers
+ * over its own facts.
  */
+import type { AnyTask } from '@vn/types';
 import { makeTask } from '@vn/taskgraph';
-import { keepSet, solve, suspensions, unitGates, withFacts, type SolverFacts } from '../index.js';
-import { garden, log, planted, row, seedInputs, SEED_TASK, type Garden } from './garden.js';
+import {
+  keepSet,
+  solve,
+  suspensions,
+  taskSlot,
+  unitGates,
+  withFacts,
+  type Family,
+  type SolverFacts,
+} from '../index.js';
+import {
+  garden,
+  log,
+  planted,
+  row,
+  seedInputs,
+  seedKind,
+  sproutKind,
+  SEED_TASK,
+  type Garden,
+} from './garden.js';
 
 /** Host facts that hold the garden's own fields under one key, as no family's facts do. */
 interface Shed extends SolverFacts {
@@ -92,5 +112,29 @@ describe('withFacts', () => {
     expect(wrapped.kinds.map((k) => [k.prefix, k.task])).toEqual(
       garden.kinds.map((k) => [k.prefix, k.task]),
     );
+  });
+
+  it("reads a task's slot through the wrapped kind, retired kinds included", () => {
+    // Binds only a planted seed, so the answer shows that `fromInputs` saw the family's facts
+    const keeper = {
+      ...seedKind,
+      retired   : ['outfit_sheet'],
+      fromInputs: (inputs: { characterId?: string }, facts: Garden) =>
+        inputs.characterId && facts.seeds.includes(inputs.characterId)
+          ? { id: inputs.characterId }
+          : undefined,
+    };
+    const keeping: Family<Garden> = { ...garden, kinds: [keeper, sproutKind] };
+    const wrapped = withFacts(keeping, (h: Shed) => h.plot);
+    const host = shed(busy());
+
+    expect(wrapped.kinds[0]!.retired).toEqual(['outfit_sheet']);
+    const old = (characterId: string) =>
+      ({ kind: 'outfit_sheet', inputs: { characterId } }) as unknown as AnyTask;
+    expect(taskSlot(wrapped, old('rose'), host)).toEqual({
+      kind   : wrapped.kinds[0],
+      binding: { id: 'rose' },
+    });
+    expect(taskSlot(wrapped, old('moss'), host)).toBeUndefined();
   });
 });

@@ -3,9 +3,11 @@
  * the one `graphrun.ts`'s switch on task kind names answered when this test was written, so the
  * cases show that moving the lookup onto the stills family's slot kinds changed no answer.
  */
-import type { AnyTask, ProjectModel } from '@vn/types';
+import { projectConfig, type AnyTask, type ProjectModel } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';
-import { slotOfTask } from '../index.js';
+import { slotOfTask, waveFacts } from '../index.js';
+
+const config = projectConfig.parse({ title: 'Test' });
 
 /** Builds a project with Aiko in one scene at the cafe, whose storyboard holds one shot. */
 function project(): ProjectModel {
@@ -37,7 +39,8 @@ const task = (kind: string, inputs: object): AnyTask =>
   }) as unknown as AnyTask;
 
 /** Answers the address of the slot `t` fills in `m`. */
-const keyOf = (t: AnyTask, m: ProjectModel = project()): string | undefined => slotOfTask(t, m);
+const keyOf = (t: AnyTask, m: ProjectModel = project()): string | undefined =>
+  slotOfTask(t, waveFacts({ model: m, config }));
 
 const drawn = { prompt: 'p', refs: [], params: { modelId: 'mock-image' } };
 

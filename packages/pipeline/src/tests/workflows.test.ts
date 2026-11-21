@@ -23,7 +23,7 @@ interface ReelFacts extends SolverFacts {
   readonly reels: readonly string[];
 }
 
-/** Fills one reel per scene, with a stills task kind, because TaskKind names only the stills family's. */
+/** Fills one reel per scene. It borrows a stills task kind, since `TaskKind` names only those. */
 const reelKind: SlotKind<ReelFacts, { scene: string }, 'portrait'> = {
   prefix    : 'reel',
   task      : 'portrait',
@@ -35,6 +35,7 @@ const reelKind: SlotKind<ReelFacts, { scene: string }, 'portrait'> = {
     ok  : true,
     plan: { characterId: b.scene, prompt: '', refs: [], params: { modelId: 'toy' } },
   }),
+  fromInputs: (inputs) => (inputs.characterId ? { scene: inputs.characterId } : undefined),
   candidates: () => [],
   approved  : () => false,
 };

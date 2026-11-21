@@ -55,6 +55,7 @@ import type { WorkspaceSession, LoadedProject, PromptWriteResult } from './core.
 import {
   relPath,
   ACCEPTABLE,
+  sessionFacts,
   suspensionsOf,
   withShots,
   loadProject,
@@ -555,7 +556,7 @@ export class AssetPart {
     project: LoadedProject,
     task: AnyTask,
   ): Promise<string | undefined> {
-    const slot = slotOfTask(task, project.model);
+    const slot = slotOfTask(task, sessionFacts(project, project.model));
     if (slot === undefined) return undefined;
 
     for (const slug of await graphSlugs(this.session.dir)) {

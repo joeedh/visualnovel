@@ -102,6 +102,7 @@ describe('a record of a kind no executor takes', () => {
       model    : model([], [], []),
       store    : {} as AssetStore,
       providers: createMockProviders(),
+      config,
     };
     const runners = createRunners(config);
     for (const task of graph.all()) {

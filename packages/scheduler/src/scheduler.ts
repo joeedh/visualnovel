@@ -525,6 +525,7 @@ async function runOwnedPipeline(opts: RunOptions, planning?: TaskRequests): Prom
   };
   const deps: RunDeps = {
     model,
+    config,
     store,
     providers,
     logger,
