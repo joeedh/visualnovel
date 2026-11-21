@@ -1897,6 +1897,104 @@ The plan as written before it landed:
 
 ### Stage 9: delete the document
 
+**9 landed 2026-11-21 on the `retire-doc` branch, as `1123c379`, `cd85f7c9`, `7692dbdc`,
+the commit that adds this note, and the commit after it that archives this plan.** As
+built:
+
+- **The last bullet became one contract, `prompts.pagePanels`** (`1123c379`), by the
+  author's decision of one contract rather than one per sub-bullet. The index holds 59.
+    - It is declared in `packages/stills/src/prompts.ts`, above `buildPageChunks`, and
+      pinned by `page.test.ts`, whose page-prompt block is wrapped in
+      `describe(pins(promptsPagePanels), …)`.
+    - The area is `prompts`: the rule is about what reaches the decomposer's prompt and a
+      page's prompt and hash, and what stays out of both (bubbles).
+    - `rule` and `prevents` state the two halves in one sentence each, and `detail`
+      carries the four sub-bullets (`shot_form`, the page shape and lettering, bubbles,
+      `shotData.panelBoxes`).
+    - The subjects reach seven packages and both hosts: `decompSystem` and `MAX_PANELS`,
+      `buildShotChunks`, `matchPanels` and `LAYOUT_IOU` in `@vn/stills`; `PagePanel` and
+      `PanelBubble` in `@vn/types`; `readShots` in `@vn/store`; `setBubbles`, `setPanels`
+      and `letteredPagesNote` in `@vn/scriptedit`; `layoutReport` and the planner module
+      in `@vn/pipeline`; `buildPlayable` in `@vn/export`; the commands
+      `project.setShotForm`, `story.setPanels` and `story.setBubbles`; the tools
+      `propose_storyboard` and `set_panels`; and `task:shot_image`. `buildPageChunks`
+      itself is not exported, so the subject is `buildShotChunks`, which calls it.
+    - `set_bubbles` is named as
+      `function:packages/authoring/src/tools/storyboard.ts#setBubblesTool` rather than
+      `tool:set_bubbles`, because the generator refused the `tool:` subject: the tool is
+      defined and exported but `ALL_TOOLS` does not list it, so the agent's registry does
+      not offer it. The detail says so.
+- **Five statements were corrected against the code** on the way over:
+    - Under `frames`, the decomposer's prompt is not free of the word "panel" when
+      storyboard notes are set, because the notes bring the wider answer format and its
+      optional `panels?` key. What holds is that `frames` adds no page vocabulary.
+    - `readShots` does not report `line_in_no_panel`; it returns the lines in
+      `LoadedShots.unpanelled`, and the planner logs the warning.
+    - `letteredPagesNote` is in `@vn/scriptedit`, and `matchPanels` and `LAYOUT_IOU` are
+      in `@vn/stills`, where the bullet's placement implied `@vn/stills` and
+      `@vn/pipeline`.
+    - `panelBoxes` is stamped from the matching reviewer's boxes or, when none matched,
+      the first reviewer's.
+    - It is stamped for a `needs_human` shot's last attempt as well as for a `done`
+      output, where the bullet said "the accepted image".
+- **The page was deleted** (`cd85f7c9`) and every reference retargeted.
+    - `CLAUDE.md`'s "Pipeline contracts" bullet points at `contracts.json` and
+      `pnpm contracts <query>`. "Core ideas" says where contracts are declared and
+      indexed, restates the instruction as "query the contracts attached to a file,
+      command or agent tool before changing it", and names `@vn/constraint-solver`. The
+      gen-graphs sentence names the `graphs.*` contracts and `execution.redrawDrifted`.
+    - `docs/index.md`'s row for the page became a row for
+      `packages/contracts/contracts.json`.
+    - A citation of the page as a whole now links `contracts.json`, in `cli.md`,
+      `vn-generator-report.md`, `codebase-migration-for-new-requirements.md` and
+      `comparable-systems.md`. A citation of one bullet names its contract id, as in
+      `deleting-things.md` (`identity.taskHash`, `execution.retryBudget`,
+      `execution.reportFromPlan`, `script.entityByTag`), `slots-as-asset-history.md`
+      (`takes.suspensionDerived`, `takes.currencyExclusive`, `log.doneWriters`) and the
+      storylet notes (`script.lineIdsAllocated`, `identity.taskHash`).
+    - The active plans' mentions name the contract or the index: `manga-style.md`
+      (`prompts.pagePanels`), `task-pane-logs.md`,
+      `openrouter-as-a-fallback-transport.md`, `node-based-asset-generation.md` and
+      `creating-shots-by-hand-and-by-agent.md`.
+    - `pipeline-contracts-into-code.md` and `workflows-and-narrative-engines.md` gained
+      status lines pointing at this plan. The other research notes only cited the page,
+      and their status lines are about their own subjects, so they were left as they were.
+    - This plan's own mentions of the page are kept, since they are the record of what it
+      set out to delete; its opening link now points at `contracts.json`.
+- **The three non-Markdown mentions**, each changed to keep its purpose:
+    - `.commentlintrc.json` listed the page in `markdownFiles`, the whitelist of Markdown
+      files commentlint reads as prose. The entry was removed. The prose now lives in
+      contract strings, which commentlint does not read.
+    - `.claude/skills/archive-plans/SKILL.md` cited "the pipeline-contracts pattern in
+      `CLAUDE.md`" as the way a reference cites the plan behind a rule. It now names a
+      contract's `see` field.
+    - `scripts/prosestyle/fixtures/violations.txt`'s `backtick-01` needs a backticked
+      documentation path to violate `backticks-non-code`. It now names
+      `docs/reference/story-bible.md`, a page that exists. No grader checks the rule
+      mechanically, and `fixtures.test.ts` passed unchanged.
+- **Archived plans were left alone.** Six of them mention the page, all in plain text, as
+  records of what they changed at the time; none links it, so nothing broke.
+- **`packages.md` and the module map** (`7692dbdc`). `packages.md` already covered
+  `@vn/constraint-solver` in its layering section and its table, and gained
+  `@vn/contracts` in both. `module-map.md` had no stale mention, and gained a
+  `@vn/contracts` section under layer 0.
+- **Tests touched:** `page.test.ts` 8 tests and their `expect` calls, unchanged in count;
+  one block wrapped. No assertion was changed or removed.
+- **Left over:**
+    - `set_bubbles` is missing from `ALL_TOOLS`, so the authoring agent cannot place
+      bubbles, though `context.ts` and the `full-production` skill tell it to. Registering
+      it changes the agent's tool catalog, so it was not done here.
+    - `packages.md`'s "Four leaves share that same constrained allow-list" and
+      `docs/index.md`'s summary of `packages.md` predate `@vn/gengraph` and
+      `@vn/agentreport`; `CLAUDE.md` counts six.
+    - `plannerwaves.test.ts` and `plannerpins.test.ts` cite this plan by its path before
+      archiving. They are held byte-identical, so their doc comments were not updated.
+    - Unchanged from stage 8: `slotOfTask`'s `bindingOf` switch, `familyOf`'s
+      `Family<StillsFacts>` type, one solve per desktop read, every host loading every
+      contract shard, and the retired task kinds' remaining answers (decision 7).
+
+The plan as written before it landed:
+
 - Runs only when the document has no contract bullets left; every earlier stage deleted
   its own.
 - Delete `docs/reference/pipeline-contracts.md`.
@@ -1935,7 +2033,7 @@ enforced.
 | 303  | A terminal task records why, is retried once                    | 8      | Executor declarations on `requeueFailed` and `requeueAbandoned`                                                     |
 | 391  | An entity is found by its tag                                   | 3      | `@vn/store` declaration (`entities.ts` is there) and test; the id-matches-file half in `@vn/model`, as built        |
 | 422  | Each scene occupies one file                                    | 3      | `@vn/model` (`sceneFromDoc`) and two in `@vn/scriptedit` (one load, all-or-nothing edits), as built                 |
-| 453  | Shot decompositions are persisted                               | 4      | `@vn/store` declaration; the production map. Page and bubble rules stay on the page, as built                       |
+| 453  | Shot decompositions are persisted                               | 4, 9   | `@vn/store` declaration; the production map. Page and bubble rules: `prompts.pagePanels` in `@vn/stills`, stage 9   |
 | 520  | Reordering a shot means editing the prose                       | 3      | `@vn/scriptedit` declaration and test                                                                               |
 | 536  | A character inherits what it wears                              | 3      | `@vn/model` declaration and test                                                                                    |
 | 562  | Art direction is authored and appended                          | 3      | The builders' half in `@vn/stills`, the rungs' half in `@vn/artgen`, as built                                       |
