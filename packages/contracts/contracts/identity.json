@@ -40,7 +40,7 @@
         "slot:shot"
       ],
       "see": [
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
       ],
       "detail": "The first enumeration of an address wins and later ones are dropped. `Solution.order` is upstream first, and a walk that meets a reference cycle already on disk stops rather than hanging. A ref to an address with no slot is an opaque upstream, such as an authored pin. `Task.deps` is incomplete and is not hashed, so edges are never derived from it. Each slot kind that carries this contract adds its `slot:` prefix to the subjects in the index.",
       "declared": "packages/constraint-solver/src/solve.ts"
@@ -86,7 +86,7 @@
         "docs/history/vn-generator-report.md",
         "docs/plans/archive/openrouter-backend-and-the-image-model-default.md",
         "docs/plans/openrouter-as-a-fallback-transport.md",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "The model id is left out so that changing `models.image` in `project.yaml` does not re-key every task: a rendered slot keeps its picture, and the new model is used for slots not yet drawn, for a regenerate, and where a slot's own `model` override names it. `taskHash` removes `modelId` from the inputs and from their `params` before hashing. A node that has not drawn yet (`pending` or `failed`) takes the inputs of the latest planning pass in `TaskGraph.add`, so it follows the project's current model; a `done` or `needs_human` node keeps the inputs it ran with. The asset records the model that drew it (`Asset.modelId`, always the author's spelling, never OpenRouter's) and, optionally, the key that carried the call (`Asset.transport`). A picture drawn through OpenRouter has the same identity as one drawn natively, so adding a vendor's key later redraws nothing. `params` is `image_params` with the narrowest authored seed applied (`seedFor`) and, for a shot, its own `aspect` in place of the project's (`aspectFor`). Both return the project's params by identity when nothing was authored, so a project that authored neither hashes as it did before either field existed. The model id is resolved the same way (`modelFor`: the narrowest `imageModel` rung, else `models.image`) but, being outside the hash, changes nothing about identity. Because identical work collapses to one node, dedupe, resumability and staleness come at no extra cost: `TaskGraph.add` answers the existing node for a known hash and adds any new dependency edges to it. `packages/pipeline/src/tests/prompthash.test.ts` guards the hashes of a real project against a committed baseline that is never regenerated; this rule's pinning test checks `taskHash` and `TaskGraph.add` directly.",
       "declared": "packages/taskgraph/src/hash.ts"

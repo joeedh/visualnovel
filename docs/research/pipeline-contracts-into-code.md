@@ -1,7 +1,7 @@
 # Moving the pipeline contracts into code
 
 Status: done.
-[`../plans/contracts-into-code-and-workflows.md`](../plans/contracts-into-code-and-workflows.md)
+[`../plans/archive/contracts-into-code-and-workflows.md`](../plans/archive/contracts-into-code-and-workflows.md)
 carried this out, and its stage 9 deleted the page this note set out to retire. The rules
 are now the index in
 [`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json).

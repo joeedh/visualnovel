@@ -192,7 +192,7 @@ export const takesCurrencyExclusive = contract({
   ],
   see: [
     'docs/plans/archive/slot-history-on-the-manifest-row.md',
-    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
   ],
   detail:
     '`pick` reads `current` and never `accepted`: one current row is the take, two resolve to ' +
@@ -283,7 +283,7 @@ export const gatePerUnit = contract({
     'command:gate.lock',
   ],
   see: [
-    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
     'docs/plans/archive/slot-history-on-the-manifest-row.md',
   ],
   detail:

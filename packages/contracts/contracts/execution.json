@@ -10,7 +10,7 @@
       ],
       "see": [
         "docs/plans/archive/INDEX.md#task-failure-visibility-and-retry",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "A run owns the graph while it lasts, so a task the log left at `running` was abandoned by a process that died mid-task. The release runs after the first planning pass and before the failure retries, writes each task back to the log (a dry run only in memory), and logs `task.resume`. Releasing superseded versions as well is safe because each wave intersects `ready()` with the current plan, even for an unrestricted run, so a released task outside the plan stays `pending` and never starts. Recovery pushes no attempt carrying an `error`, so it spends nothing of `max_task_attempts`.",
       "declared": "packages/scheduler/src/scheduler.ts"
@@ -26,7 +26,7 @@
       ],
       "see": [
         "docs/plans/archive/INDEX.md#task-failure-visibility-and-retry",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "This rule and `execution.retryBudget` and `execution.reportFromPlan` each fix one part of the same defect: a `shot_image` failed, the reason existed only on a logger event, the next run planned nothing for it, and the CLI reported the gate cleared over a scene with no art. `needs_human` carries the P7 give-up sentence (`execution.refineLoop`). A runner that threw recorded no attempt of its own, so the scheduler pushes one holding the reason; that puts the failure in the causal chain FLOOR renders, and it is what the retry budget counts. The log line is a whole-node snapshot (`log.lastWriterWins`), so it already carries the field and a replay restores it. Adding the field invalidates nothing, because `taskHash` covers `kind` and `inputs` and never mutable node state (`identity.taskHash`).",
       "declared": "packages/scheduler/src/scheduler.ts"
@@ -45,8 +45,8 @@
       "see": [
         "docs/reference/gen-graphs.md#identity-the-journal-and-drift",
         "docs/plans/node-based-asset-generation.md",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-7-the-executor-reads-the-slot-kinds",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-7-the-executor-reads-the-slot-kinds",
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "Which tasks have drifted is `graphs.editInvalidates`: `driftedTasks` asks the solver's `boundDrift`, over `graphFacts`, for the tasks whose bound graph would no longer draw the picture their slot holds. The requeue clears the task's `output` and `error`, writes it to the log (a dry run only in memory) and logs `task.redraw`. It runs after `requeueFailed`, so a task that both a failure and a graph edit want back is requeued once, and it is bounded to the current plan and the `only` closure (`execution.targetClosure`). A successful redraw writes the graph's new authored hash into the journal, which clears the drift; for a graph bound to a slot the built-in runner drew, the redraw writes the output's first `done` record, so it is asked for once. That holds for a redraw the executor resumed from a cached answer too, because a node that resumes while its latest `done` record carries stale hashes writes a fresh `done` record under the current ones. Without that record an edit that leaves the output unchanged (an empty `{varC}` added to a template) would keep the slot drifted and requeue it on every run. A failed redraw writes no such record, so `failed` is left to `requeueFailed` and its own attempt budget (`execution.retryBudget`) rather than requeued here forever. The requeue happens at run time rather than at the graph write, because undo excludes `vngen/state/`: undoing a graph edit restores the authored hash, so the drift disappears before anything is redrawn. `vngen cost` prices a redraw from this same decision: `boundSlotsToDraw` reads the task graph the dry run left and prices a drawn bound slot whose task is `pending`, so the estimate covers both arms of drift.",
       "declared": "packages/scheduler/src/scheduler.ts"
@@ -64,7 +64,7 @@
       "see": [
         "docs/history/vn-generator-report.md",
         "docs/plans/archive/INDEX.md#refine-loop-inspector",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "Folding the loop into the runner is a documented deviation from the report's separate `vision_review` and `prompt_refine` nodes, which are now retired task kinds with no executor. Every attempt is recorded on the task for provenance: its prompt, refs, output and every review, in `Task.attempts`. `max_refine_attempts` caps the attempts within one run, and is at least one; it is separate from `max_task_attempts` (`execution.retryBudget`). Refinement is deterministic (`refinePrompt` folds each defect's suggested fix, or its description, into a `Corrections:` clause), so the loop also stops early when a refinement repeats one an earlier attempt of the task already tried: the critique repeated, and the next attempt would issue a request already made, so spending the rest of the cap would repeat that request rather than refine it. A bound graph with a refine node takes the critique through that node, which re-runs only the graph's tail, and the repeat check then compares critiques; a graph without one takes it on the derived prompt. A clean frame becomes the take its slot holds, and the reviewers' verdict approves nothing, which stays a person's act. The last flawed frame holds the slot too, because it is what the author needs to see and fix. The give-up sentence is the task's `error` (`execution.failureRecorded`).",
       "declared": "packages/pipeline/src/runners.ts"
@@ -81,7 +81,7 @@
       ],
       "see": [
         "docs/plans/archive/INDEX.md#task-failure-visibility-and-retry",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "The live set is the last planning pass, deduped back to canonical nodes, and every terminal-state report is derived from it rather than from what this process happened to touch. A `needs_human` node does not fail `vngen run`, because its picture exists and wants review. The failed-task retries (`execution.retryBudget`) and this report both intersect with the planned set: nothing in production calls `TaskGraph.prune`, so `tasks.jsonl` accumulates orphaned nodes whenever a prompt or reference change rehashes a task, and a blind sweep would either pay again for art no plan asks for or leave the exit code failing forever. `vngen status` does not plan, so its counts include orphans.",
       "declared": "packages/scheduler/src/scheduler.ts"
@@ -96,7 +96,9 @@
         "function:packages/pipeline/src/runners.ts#makeShotRunner",
         "file:state/requests"
       ],
-      "see"     : ["docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"],
+      "see": [
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+      ],
       "detail": "Reviews that ran in parallel and completed independently are replayed too. Attempt-record indices (`checkpoint.records`) keep a replay from duplicating refine attempts or overwriting failure records. Planning has its own resumable journal, and a stop cannot persist a fallback decomposition. Graph requests are scoped by node key and run key, alongside the graph's existing completed-node journal. Request arguments are hashed, and binary responses stay binary; a repeat of an identical request is a separate entry, numbered by occurrence. Changing the task's inputs or the configuration starts a new execution (the checkpoint's `signature`), as does an explicit regeneration. A completed execution's journal is removed once the terminal task record is durable; interrupted and failed executions keep theirs.",
       "declared": "packages/pipeline/src/requests.ts"
     },
@@ -112,7 +114,7 @@
       ],
       "see": [
         "docs/plans/archive/INDEX.md#task-failure-visibility-and-retry",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "`max_task_attempts` is separate from `max_refine_attempts`, which caps the P7 loop within a single run. The requeue happens once rather than inside the wave loop, because requeueing there would re-run a task against the same transient condition that just blocked it, and could spin. The budget counts attempt records that carry an `error`, never `attempts.length`, which on a `needs_human` shot counts refine passes. `needs_human` is never retried, because it asks for human attention rather than reporting a fault. The requeue is bounded to what the last planning pass asked for, and to the `only` closure (`execution.targetClosure`): nothing in production calls `TaskGraph.prune`, so a prompt or reference change leaves the old `failed` node behind in `tasks.jsonl`, and requeueing it would pay for art no plan asks for. A requeued task loses its `error`, and `RunSummary.retried` names it. A dry run requeues in memory and writes nothing, so `vngen cost` counts the retry the dry run would perform and leaves no divergent log.",
       "declared": "packages/scheduler/src/scheduler.ts"
@@ -130,7 +132,9 @@
         "function:packages/providers/src/requests.ts#RequestStopped",
         "command:pipeline.stop"
       ],
-      "see"     : ["docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"],
+      "see": [
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+      ],
       "detail": "Responses are written atomically under `vngen/state/requests/<execution-id>/`. A task whose final request has completed may finish its local bookkeeping. Provider backoff is interruptible, and the SDKs' own retries are disabled in favour of the application's request-boundary retry policy (`providers.transientRetry`). `RunOptions.abort` stops at once: it releases the tasks in flight without waiting for their requests, putting each back to `pending` and logging it so, as a task a killed process left `running` is on the next run. Their late answers are fenced (`checkRequestWrite`) from response journals, attempt records, asset writes, slot holds and the task log, and a write already under way is drained before the task is released. An interruption never pushes an attempt carrying an `error`, so it spends nothing of `max_task_attempts`. Resuming the work is `execution.resumeFromJournal`.",
       "declared": "packages/scheduler/src/scheduler.ts"
     },
@@ -144,7 +148,9 @@
         "command:asset.regenerate",
         "command:pipeline.draw"
       ],
-      "see"     : ["docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"],
+      "see": [
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+      ],
       "detail": "The closure is walked over `deps` in the graph as it stands at each wave, because a wave can plan nodes that did not exist before it: a shot task appears once the sheet it depends on is drawn. Planning still covers the whole project, so the storyboard files and the preview are what a full run would leave. The failure and drift requeues are bounded to the same closure (`execution.retryBudget`, `execution.redrawDrifted`).",
       "declared": "packages/scheduler/src/scheduler.ts"
     },
@@ -162,7 +168,7 @@
       ],
       "see": [
         "docs/plans/task-pane-logs.md",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "The log records provider retries, reviewer replies that did not parse, the error that stopped the task (with its causes), and every reviewer call in full: the system prompt (stored once per file, by hash), the prompt, image hashes, raw replies, error and duration. A reviewer's parsed verdict is not repeated there; it stays on `Task.attempts[n].reviews`. Each entry carries its execution (`checkpoint.id`) and its 1-based attempt index. Appends are serialized per execution and drained by an abort like any other write, and an append made after the owner abandoned the execution is dropped. Error text passes through `redactSecrets` (`@vn/util`) before it is written, and a text field longer than `TASKLOG_FIELD_MAX` is cut. A reviewer call answered from the response journal is not made again, so it writes no second entry; a call that was made again after a stop writes one, because it was a second paid call. Nothing deletes a log file: Clear finished deletes nothing, and a tombstone can be undone. A file past `TASKLOG_MAX_BYTES` drops its oldest other execution on the next append. Producers reach the log through `withTaskLog` in `@vn/providers`, an `AsyncLocalStorage` scope `runTask` opens around each runner with the `TaskLogFile` the scheduler creates for the execution. The Tasks pane reads it through `pipeline:taskLog`, which answers what the `pipeline.taskLog` command answers.",
       "declared": "packages/pipeline/src/tasklog.ts"

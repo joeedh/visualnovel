@@ -21,7 +21,7 @@ export const storageBaseUnavailable = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#base-and-project-asset-stores',
-    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
   ],
   detail:
     'A checkout missing the base repo leaves the same state behind. The planner produces no ' +

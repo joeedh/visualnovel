@@ -30,7 +30,7 @@ export const executionResumeFromJournal = contract({
     'function:packages/pipeline/src/runners.ts#makeShotRunner',
     'file:state/requests',
   ],
-  see     : ['docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
+  see     : ['docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
   detail:
     'Reviews that ran in parallel and completed independently are replayed too. Attempt-record ' +
     'indices (`checkpoint.records`) keep a replay from duplicating refine attempts or ' +

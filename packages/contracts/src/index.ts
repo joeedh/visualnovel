@@ -1,7 +1,7 @@
 /**
  * `@vn/contracts`: how a pipeline contract is declared in code, as data beside the code that
  * enforces it, so a model can ask which contracts apply to the file, command or tool in front of
- * it (`docs/plans/contracts-into-code-and-workflows.md`, "Contracts as data").
+ * it (`docs/plans/archive/contracts-into-code-and-workflows.md`, "Contracts as data").
  *
  * This entry carries no JSON and imports nothing, so any package, the desktop renderer included,
  * can declare a contract. The generated index and the functions that query it are the

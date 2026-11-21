@@ -21,7 +21,7 @@ export const graphsEditInvalidates = contract({
   see: [
     'docs/reference/gen-graphs.md#identity-the-journal-and-drift',
     'docs/plans/node-based-asset-generation.md',
-    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
   ],
   detail:
     "A bound graph runs the slot, and the graph is the slot's runner rather than part of what " +

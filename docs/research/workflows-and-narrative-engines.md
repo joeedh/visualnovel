@@ -7,7 +7,7 @@ today, proposes where the seams should go, and lists the decisions that need to 
 before anyone writes a plan. A storylet engine is assumed to live in its own repository.
 
 Status: partly built.
-[`../plans/contracts-into-code-and-workflows.md`](../plans/contracts-into-code-and-workflows.md)
+[`../plans/archive/contracts-into-code-and-workflows.md`](../plans/archive/contracts-into-code-and-workflows.md)
 built the seams this note proposes for the stills family and the narrative engine:
 `workflow:` and `narrative:` in `project.yaml`, `@vn/stills`, `@vn/constraint-solver` and
 the `linear` engine. The other workflows and the storylet engine are not built.

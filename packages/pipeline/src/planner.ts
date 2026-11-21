@@ -180,7 +180,7 @@ export const planningIncremental = contract({
     'function:packages/constraint-solver/src/solve.ts#solve',
   ],
   see: [
-    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
   ],
   detail:
     'A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no ' +

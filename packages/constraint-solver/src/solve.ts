@@ -88,7 +88,7 @@ export const identitySlotsBeforeTasks = contract({
     'function:packages/constraint-solver/src/solve.ts#solve',
   ],
   see: [
-    'docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
   ],
   detail:
     'The first enumeration of an address wins and later ones are dropped. `Solution.order` is ' +

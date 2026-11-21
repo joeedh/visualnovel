@@ -14,7 +14,7 @@
       ],
       "see": [
         "docs/plans/archive/INDEX.md#base-and-project-asset-stores",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
       ],
       "detail": "A checkout missing the base repo leaves the same state behind. The planner produces no plan when the root is `unavailable`, because the work downstream of base art references it, and it logs `plan.refused` with the root. The run stops before its wave loop and reports a single sentence, `baseRefusal`, that names the root and says to restore it rather than regenerate. On-demand art, adoption, promotion and upload refuse with the same sentence. An `absent` root (a new or legacy project) and a `ready` one refuse nothing, and facts with no base root have no opinion.",
       "declared": "packages/constraint-solver/src/refuse.ts"

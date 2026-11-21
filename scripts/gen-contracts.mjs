@@ -1,6 +1,6 @@
 /**
  * Regenerate the contract index from every package's and app's `contracts.ts`
- * (`docs/plans/contracts-into-code-and-workflows.md`, "The index"): the summary file,
+ * (`docs/plans/archive/contracts-into-code-and-workflows.md`, "The index"): the summary file,
  * `packages/contracts/contracts.json`, and one shard per area of full records,
  * `packages/contracts/contracts/<area>.json`. The files are committed, and
  * `scripts/contracts/tests/index.test.ts` fails when they no longer equal a fresh run, so this is

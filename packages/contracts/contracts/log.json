@@ -18,7 +18,7 @@
       "see": [
         "docs/plans/archive/INDEX.md#adopting-an-uploaded-asset",
         "docs/plans/archive/INDEX.md#on-demand-concept-images",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-1-tooling-and-guards"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-1-tooling-and-guards"
       ],
       "detail": "`vn/element-types` lets only the scheduler and `@vn/artgen/adopt` import `@vn/taskgraph/write`, and a test refuses any other file passing `tasksLog` to `appendJsonl`. `adopt` hashes the inputs it is handed, derived from the project as it stands, so it can only mark done the node whose output these bytes now are. Its callers live in `adoptslot.ts`: `adoptSlot` (an author hands bytes to a slot), `fileGraphDraw` (the picture an interactive graph run ended on, `via: graph`), `holdPortrait` (an older portrait draft the gate approves, `via: restore`, so `repairCurrent` does not hand the slot back to the logged output) and `repinAdoption` (the desktop repin keeping its bytes). Adoption is refused for a `portrait:` slot (the gate owns it), for mock-marked bytes, and for superseding a render that already holds the slot without an explicit `replace`. `promoteConcept` is one caller of adoption. In `@vn/taskgraph/maintain`, `restoreDone` and `logRestored` append a copy of a record a tombstone replaced, and `logTombstone` and `logRequeue` write `pending`.",
       "declared": "packages/taskgraph/src/write.ts"
@@ -35,7 +35,7 @@
       ],
       "see": [
         "docs/history/vn-generator-report.md",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "`logTask` (`@vn/taskgraph/write`) appends a whole-node snapshot rather than a change, so a field added to a task, such as `Task.error`, reaches the log without a format change. `loadGraph` keeps the last record per hash, and a missing log is an empty graph. A line that does not parse stops `readJsonl`, as any bad line does. Which writers may append which statuses is `log.doneWriters`, and how a record takes a task out of the graph is `log.tombstoneRemoves`.",
       "declared": "packages/taskgraph/src/log.ts"
@@ -53,7 +53,7 @@
       ],
       "see": [
         "docs/plans/archive/deleting-things.md#stage-2-tombstones-in-tasksjsonl",
-        "docs/plans/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
       ],
       "detail": "`logTombstone` (`@vn/taskgraph/maintain`) appends the record `tombstoneOf` builds. `loadGraph` leaves a hash out when its last record is a tombstone, so `vngen status` and the Task Graph pane stop counting it. A later task record for the same hash supersedes the tombstone, and the planner plans the task again; `restoreDone` appends such a record, a copy of the `done` record the tombstone replaced, stamped `restored`. The shape is the requeue's plus one field, so a build that predates tombstones replays one as a requeued task, with its `deps`. A bare `{ hash, removed }` record would reach that build's `topoOrder` with no `deps` array, and it would throw. A line that does not parse still stops `readJsonl`, as any bad line does.",
       "declared": "packages/taskgraph/src/log.ts"

@@ -2,13 +2,13 @@
 
 This plan moves every rule in `docs/reference/pipeline-contracts.md` into code and then
 deletes that document; stage 9 deleted it, and the rules are now the index in
-[`../../packages/contracts/contracts.json`](../../packages/contracts/contracts.json). It
-does the move along the seams that
-[`../research/workflows-and-narrative-engines.md`](../research/workflows-and-narrative-engines.md)
+[`../../../packages/contracts/contracts.json`](../../../packages/contracts/contracts.json).
+It does the move along the seams that
+[`../../research/workflows-and-narrative-engines.md`](../../research/workflows-and-narrative-engines.md)
 proposes, so the derivation code is extracted once, in a form a second workflow and a
 second narrative engine can use, rather than extracted in its current VN shape and
 reshaped later. The research behind it is
-[`../research/pipeline-contracts-into-code.md`](../research/pipeline-contracts-into-code.md).
+[`../../research/pipeline-contracts-into-code.md`](../../research/pipeline-contracts-into-code.md).
 
 ## Goal and scope
 
@@ -833,7 +833,7 @@ that adds this note.** As built:
   `branching` is the error `scenes_without_linear`, rather than being ignored. Two
   diagnostics go beyond the defaults the stage was given: the missing list, whose message
   names the scene ids to list, and the duplicate. The table is in
-  [`../guides/cli.md`](../guides/cli.md#how-the-scenes-make-a-story).
+  [`../../guides/cli.md`](../../guides/cli.md#how-the-scenes-make-a-story).
 - **The playable format did not change.** It already had a plain `next` edge;
   `buildPlayable` writes `choices` and `next` from `narrative.exits`.
 - **Tests.** `SCRIPTS.listed` with `LISTED_ORDER` beside it, ids that sort differently
