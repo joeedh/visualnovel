@@ -61,16 +61,13 @@ import {
 } from '../distribution/updates.js';
 import { ensureIgnored } from '../workspace/workspace.js';
 import { routingNotes } from './routing.js';
-import type { WorkspaceSession, LoadedProject, PromptResult, PromptWriteResult } from './core.js';
-import {
-  IMAGE_KINDS,
-  relPath,
-  describeKeySource,
-  loadProject,
-  readProject,
-  buildProviders,
-  withShots,
-} from './core.js';
+import type { WorkspaceSession } from './core.js';
+import { type LoadedProject, loadProject, readProject, withShots } from './load/project.js';
+import type { PromptResult, PromptWriteResult } from './types/results.js';
+import { IMAGE_KINDS } from './rules/assets.js';
+import { relPath } from './load/tree.js';
+import { describeKeySource } from './rules/keys.js';
+import { buildProviders } from './gen/deps.js';
 
 /** Answers with the sent key's label and limits; a wrong key gets a 401 and nothing is billed. */
 const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';

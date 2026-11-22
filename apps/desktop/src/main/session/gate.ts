@@ -11,15 +11,10 @@ import { bindsTo } from '@vn/types';
 import type { ApproveResult, AssetFailure, GateCandidate } from '../../shared/ipc.js';
 import { reorderApprovals, type ApprovalQueue } from '../workspace/approvals.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
-import type { WorkspaceSession, LoadedProject } from './core.js';
-import {
-  suspensionsOf,
-  driftedFrames,
-  withShots,
-  loadProject,
-  relPath,
-  sessionFacts,
-} from './core.js';
+import type { WorkspaceSession } from './core.js';
+import { type LoadedProject, withShots, loadProject, sessionFacts } from './load/project.js';
+import { suspensionsOf, driftedFrames } from './rules/assets.js';
+import { relPath } from './load/tree.js';
 
 export class GatePart {
   constructor(private readonly session: WorkspaceSession) {}

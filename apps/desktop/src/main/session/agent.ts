@@ -62,7 +62,7 @@ import {
   type ResumeState,
 } from '../../shared/threads.js';
 import type { WorkspaceSession } from './core.js';
-import { wroteAuthoredInput, resumedNote } from './core.js';
+import { wroteAuthoredInput, resumedNote } from './rules/agent.js';
 
 export class AgentPart {
   constructor(private readonly session: WorkspaceSession) {}

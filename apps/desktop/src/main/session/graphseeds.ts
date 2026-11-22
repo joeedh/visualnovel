@@ -12,8 +12,7 @@ import type { Graph, GraphId } from '@vn/gengraph';
 import type { GenExecuteOptions } from '@vn/gengraph/state';
 import type { AssetRef, RefBinding } from '@vn/types';
 import { shotsOf } from '@vn/types';
-import type { LoadedProject } from './core.js';
-import { sessionFacts, withShots } from './core.js';
+import { type LoadedProject, sessionFacts, withShots } from './load/project.js';
 
 export type GraphSeeds = NonNullable<GenExecuteOptions['seeds']>;
 

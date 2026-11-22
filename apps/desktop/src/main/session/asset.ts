@@ -51,16 +51,12 @@ import type { AssetInfo, AssetListing } from '../../shared/ipc.js';
 import { graphSlugs, readGraph } from '../doctree/graphs.js';
 import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import { derivePrompt } from '../assets/assetprompt.js';
-import type { WorkspaceSession, LoadedProject, PromptWriteResult } from './core.js';
-import {
-  relPath,
-  ACCEPTABLE,
-  sessionFacts,
-  suspensionsOf,
-  withShots,
-  loadProject,
-  buildProviders,
-} from './core.js';
+import type { WorkspaceSession } from './core.js';
+import { type LoadedProject, sessionFacts, withShots, loadProject } from './load/project.js';
+import type { PromptWriteResult } from './types/results.js';
+import { relPath } from './load/tree.js';
+import { ACCEPTABLE, suspensionsOf } from './rules/assets.js';
+import { buildProviders } from './gen/deps.js';
 
 export class AssetPart {
   constructor(private readonly session: WorkspaceSession) {}

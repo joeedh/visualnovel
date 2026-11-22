@@ -76,8 +76,8 @@ Assets             assetkind:<kind>      → asset:<hash>  (one per slot)
   it).
 - **Wiki** nests `Bible.files()` back into directories. Each entry contains a path and a
   title and nothing else. `DocTreeInput.wikiDirs` lists every folder under `wiki/`
-  (`walkDirs`, in `session/core.ts`), and a folder no page implies gets a `wikidir` row
-  among its siblings by name. An empty folder and a folder holding only images are
+  (`walkDirs`, in `session/load/tree.ts`), and a folder no page implies gets a `wikidir`
+  row among its siblings by name. An empty folder and a folder holding only images are
   therefore drawn, and New wiki page… or New folder… on it has somewhere to land.
 - **Skills** lists every skill the agent can use as one leaf each — the project's own
   under `.aiagent/skills/`, the user's, and the builtin catalog the project has on

@@ -362,3 +362,14 @@ Nothing may import it. See [`docs/guides/testkit.md`](../guides/testkit.md).
 
 `apps/cli`, `apps/authoring`, `apps/desktop`. See docs/reference/desktop-app.md for the
 desktop app's structure, including the nineteen editors.
+
+The desktop's `WorkspaceSession` is laid out under `apps/desktop/src/main/session/`,
+behind the `main/session.ts` re-export:
+
+- `core.ts` holds the class, which builds the `*Part` classes that carry the behavior.
+- `surface/` holds the one-line public delegations to those parts, grouped by concern, and
+  `surface/base.ts` holds the session's state and its busy, permission and transcript
+  substrate.
+- `types/`, `rules/`, `load/`, `gen/` and `edits/` hold what used to be module-level
+  helpers: shared result types, small pure rules, project loading and file walks, provider
+  construction, and the entity override edits.

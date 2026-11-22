@@ -17,7 +17,8 @@ import type { MissingPicture, MissingReport, RepoRole } from '../../shared/histo
 import { BUSY_PASS, BUSY_RUN } from '../../shared/ipc.js';
 import { ASSETCHECK_FILE } from '../workspace/workspace.js';
 import type { WorkspaceSession } from './core.js';
-import { editInputOf, loadProject, relPath } from './core.js';
+import { editInputOf, loadProject } from './load/project.js';
+import { relPath } from './load/tree.js';
 import type { Found } from './history.js';
 
 /** The finding kinds that mean a picture the project names is gone. */

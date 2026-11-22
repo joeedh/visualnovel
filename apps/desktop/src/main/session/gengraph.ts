@@ -62,18 +62,12 @@ import {
   type GraphSlug,
 } from '../doctree/graphs.js';
 import { notify } from '../notify/notifications.js';
-import type { WorkspaceSession, LoadedProject, LoadedGraphDoc, GenDeps } from './core.js';
+import type { WorkspaceSession } from './core.js';
+import { type LoadedProject, loadProject, sessionFacts } from './load/project.js';
+import { type LoadedGraphDoc, stampsOf, unmoved } from './load/held.js';
+import { type GenDeps, activeOutputOf, buildGenDeps, buildProviders } from './gen/deps.js';
+import { relPath } from './load/tree.js';
 import { graphRunPlan, type GraphSeeds } from './graphseeds.js';
-import {
-  relPath,
-  loadProject,
-  stampsOf,
-  unmoved,
-  activeOutputOf,
-  buildGenDeps,
-  buildProviders,
-  sessionFacts,
-} from './core.js';
 
 /** What `gengraph.scaffoldSheet` is about to write, decided once for its check and its run. */
 export interface SheetScaffoldPlan {

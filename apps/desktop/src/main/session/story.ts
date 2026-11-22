@@ -86,8 +86,9 @@ import type {
   StoryGraph,
 } from '../../shared/ipc.js';
 import { storyGraphOf } from '../doctree/storygraph.js';
-import type { WorkspaceSession, LoadedProject } from './core.js';
-import { editInputOf, withShots, relPath, loadProject } from './core.js';
+import type { WorkspaceSession } from './core.js';
+import { type LoadedProject, editInputOf, withShots, loadProject } from './load/project.js';
+import { relPath } from './load/tree.js';
 
 /**
  * The layout verdict the Page editor's header shows: the runner's own `layout` defect over the

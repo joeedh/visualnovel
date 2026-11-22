@@ -26,23 +26,16 @@ import { labelAssets, labelContext } from '../assets/assetlabel.js';
 import { deriveChunks } from '../assets/assetprompt.js';
 import { applyPromptEdit, type PromptEdit } from '../agent/promptedit.js';
 import type { ChunkRefInfo, PromptView } from '../../shared/prompt.js';
-import type {
-  WorkspaceSession,
-  LoadedProject,
-  ChunkOp,
-  ClearPart,
-  PromptResult,
-  PromptWriteResult,
-} from './core.js';
+import type { WorkspaceSession } from './core.js';
+import { type LoadedProject, withShots, loadProject } from './load/project.js';
+import type { ChunkOp, ClearPart, PromptResult, PromptWriteResult } from './types/results.js';
+import { relPath } from './load/tree.js';
 import {
-  relPath,
-  withShots,
   withPromptOverride,
   characterOverrideEdit,
   locationOverrideEdit,
-  frozenReason,
-  loadProject,
-} from './core.js';
+} from './edits/overrides.js';
+import { frozenReason } from './rules/assets.js';
 
 export class PromptPart {
   constructor(private readonly session: WorkspaceSession) {}

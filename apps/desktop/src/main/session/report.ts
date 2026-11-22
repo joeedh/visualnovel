@@ -31,14 +31,10 @@ import {
   type AnalysisRequest,
   type Transcript,
 } from '../agent/agentreport.js';
-import type {
-  WorkspaceSession,
-  PromptResult,
-  ReportAsk,
-  ReportDraft,
-  IssueOpened,
-} from './core.js';
-import { NO_REPORT, leakSentence, loadProject } from './core.js';
+import type { WorkspaceSession } from './core.js';
+import type { PromptResult, ReportAsk, ReportDraft, IssueOpened } from './types/results.js';
+import { NO_REPORT, leakSentence } from './rules/report.js';
+import { loadProject } from './load/project.js';
 
 export class ReportPart {
   constructor(private readonly session: WorkspaceSession) {}

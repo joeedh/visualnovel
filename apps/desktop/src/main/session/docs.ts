@@ -47,16 +47,11 @@ import {
   type SkillEntry,
 } from '../doctree/doctree.js';
 import { renameInText } from '../doctree/rename.js';
-import type { WorkspaceSession, NewDocKind } from './core.js';
-import {
-  relPath,
-  DOC_WRITERS,
-  entityDiagnostic,
-  walkDirs,
-  walkFiles,
-  loadProject,
-  sessionFacts,
-} from './core.js';
+import type { WorkspaceSession } from './core.js';
+import type { NewDocKind } from './types/results.js';
+import { relPath, walkDirs, walkFiles } from './load/tree.js';
+import { DOC_WRITERS, entityDiagnostic } from './rules/docs.js';
+import { loadProject, sessionFacts } from './load/project.js';
 
 /** Why a kind other than a note cannot be filed in a folder of the author's choosing. */
 const NOT_FILED: Record<Exclude<NewDocKind, 'note'>, string> = {

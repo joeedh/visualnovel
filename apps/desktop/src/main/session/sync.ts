@@ -39,7 +39,8 @@ import {
   type SyncOutcome,
 } from '../../shared/history.js';
 import { fileCache } from '../workspace/filecache.js';
-import { DOC_WRITERS, relPath } from './core.js';
+import { DOC_WRITERS } from './rules/docs.js';
+import { relPath } from './load/tree.js';
 import type { WorkspaceSession } from './core.js';
 
 /** What `git.resolve` and `git.continueSync` say when no sync is waiting on a decision. */

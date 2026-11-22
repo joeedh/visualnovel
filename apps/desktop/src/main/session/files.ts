@@ -35,7 +35,8 @@ import type { DocSaveResult } from '../../shared/ipc.js';
 import { relink } from '../doctree/relink.js';
 import { fileCache } from '../workspace/filecache.js';
 import type { WorkspaceSession } from './core.js';
-import { DOC_WRITERS, relPath } from './core.js';
+import { DOC_WRITERS } from './rules/docs.js';
+import { relPath } from './load/tree.js';
 
 /** Filesystems that treat `a.md` and `A.md` as one name, where a taken name is compared so. */
 const FOLDS_CASE = process.platform === 'win32' || process.platform === 'darwin';

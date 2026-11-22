@@ -28,7 +28,7 @@ import { exists, moveFile, readText, writeFileAtomic } from '@vn/util';
 import { BUSY_PASS, BUSY_RUN } from '../../shared/ipc.js';
 import { COLLECTED_DIR } from '../workspace/workspace.js';
 import type { WorkspaceSession } from './core.js';
-import { readProject } from './core.js';
+import { readProject } from './load/project.js';
 
 /** What a holding folder records about its collection. Paths are workspace-relative. */
 interface HeldPlan {

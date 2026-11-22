@@ -13,7 +13,8 @@ import type { PipelineStatus, SlotNode, TaskLogView } from '../../shared/ipc.js'
 import { taskLogView } from './tasklogview.js';
 import { narrowTask } from '../agent/reviews.js';
 import type { WorkspaceSession } from './core.js';
-import { relPath, withShots, loadProject, sessionFacts } from './core.js';
+import { relPath } from './load/tree.js';
+import { withShots, loadProject, sessionFacts } from './load/project.js';
 import { taskActivity } from '../../shared/taskactivity.js';
 
 /** Lists every slot the solver answered, in its order, in the shape the Task Graph pane reads. */
