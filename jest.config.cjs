@@ -138,7 +138,7 @@ module.exports = {
       ...shared,
       displayName     : '@vn/desktop',
       rootDir         : __dirname,
-      testMatch       : ['**/apps/desktop/**/tests/*.test.ts'],
+      testMatch       : ['**/apps/desktop/**/tests/**/*.test.ts'],
       moduleNameMapper: {
         // Before the `.js`-stripping rule, which would otherwise never see it: a renderer module
         // that adopts a stylesheet must still be importable by a node-only test.
