@@ -1,8 +1,8 @@
 /**
  * Tests each stills slot kind's `fromInputs` through the solver's `taskSlot`. It checks which kind
  * fills a task of each kind, the retired `outfit_sheet` included, and the binding the task's
- * inputs name. The
- * addresses these bindings make are pinned in `@vn/pipeline`'s `slotoftask.test.ts`.
+ * inputs name. The addresses these bindings make are pinned in `@vn/pipeline`'s
+ * `slotoftask.test.ts`.
  */
 import { taskSlot } from '@vn/constraint-solver';
 import type { AnyTask, ProjectModel } from '@vn/types';

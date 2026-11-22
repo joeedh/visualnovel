@@ -27,7 +27,7 @@ import {
   type Garden,
 } from './garden.js';
 
-/** Host facts that hold the garden's own fields under one key, as no family's facts do. */
+/** Host facts that nest the garden's own fields under one key, a shape no family's facts take. */
 interface Shed extends SolverFacts {
   plot: Omit<Garden, keyof SolverFacts>;
 }

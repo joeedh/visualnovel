@@ -18,7 +18,7 @@ import { familyOf, waveFacts, type HostFacts } from '../index.js';
 
 const config = projectConfig.parse({ title: 'Test' });
 
-/** Holds the reels a toy family cuts, which no host builds. */
+/** The facts of a toy family that cuts reels. No host builds them. */
 interface ReelFacts extends SolverFacts {
   readonly reels: readonly string[];
 }

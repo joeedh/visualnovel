@@ -370,12 +370,13 @@ implementation. The testkit passes a mock.
   these slots as drifted, because it does not read the task graph, so `vngen status` does
   not name them; `vngen cost` prices them (see Cost).
 - **A deliberate re-render marks nodes invalid instead of re-walking the graph.** With
-  every node clean, a plain requeue would skip straight to the cached image.
-  `PipelineControl.regenerate` on a bound slot, and `gengraph.run` with `force`, append an
-  `invalidated` record for each spending ancestor of the target. That record retires every
-  answer the node has ever given, not only its last, so the node runs again; a node below
-  it runs only if the redraw fed it different bytes, and deterministic prep still resumes.
-  The executor applies the `invalidated` records a `force` writes to its own copy of the
+  every node clean, a plain requeue would skip straight to the cached image. Regenerating
+  or redrawing a bound slot (`asset.regenerate`, `pipeline.draw`, and the agent's
+  `PipelineControl.regenerate`), and `gengraph.run` with `force`, append an `invalidated`
+  record for each spending ancestor of the target. That record retires every answer the
+  node has ever given, not only its last, so the node runs again; a node below it runs
+  only if the redraw fed it different bytes, and deterministic prep still resumes. The
+  executor applies the `invalidated` records a `force` writes to its own copy of the
   journal before it consults `cached`, so a force cannot resume what it just retired.
 
 ## Slots and outputs

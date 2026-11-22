@@ -1,6 +1,6 @@
 /**
- * The one place `@vn/pipeline` builds the facts it solves the stills family over and seeds sheets
- * from, so the planner and the scheduled runner cannot assemble different ones.
+ * The one place `@vn/pipeline` builds the facts it solves the workflow's family over and seeds
+ * sheets from, so the planner and the scheduled runner cannot assemble different ones.
  */
 import type { Asset, BaseAssets, ProjectModel } from '@vn/types';
 import type { ProjectConfig } from '@vn/config';

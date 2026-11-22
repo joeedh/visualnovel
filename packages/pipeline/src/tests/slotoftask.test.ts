@@ -1,7 +1,7 @@
 /**
  * `slotOfTask` reads a task back into the address of the slot it fills. Every address below is
- * the one `graphrun.ts`'s switch on task kind names answered when this test was written, so the
- * cases show that moving the lookup onto the stills family's slot kinds changed no answer.
+ * the one `graphrun.ts` answered when it still switched on the task's kind, so the cases show
+ * that moving the lookup onto the stills family's slot kinds changed no answer.
  */
 import { projectConfig, type AnyTask, type ProjectModel } from '@vn/types';
 import { character, location, model, scene } from '@vn/testkit';

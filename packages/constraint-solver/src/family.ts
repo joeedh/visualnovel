@@ -56,7 +56,10 @@ export interface SlotKind<F extends SolverFacts, B = unknown, K extends TaskKind
    * asks with facts that hold no manifest and an empty task log.
    */
   fromInputs(inputs: Partial<TaskInputs[K]>, facts: F): B | undefined;
-  /** Names task kinds no longer planned whose records still fill this slot, read by `fromInputs`. */
+  /**
+   * Task kinds no longer planned whose records still fill this slot. `taskSlot` matches a record of
+   * one to this kind, and `fromInputs` reads its inputs.
+   */
   readonly retired?: readonly string[];
   /**
    * Lists the task hashes the slot's task runs after, which become `Task.deps`. Only asked of a

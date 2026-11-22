@@ -39,8 +39,8 @@ function hostKind<H extends SolverFacts, F extends SolverFacts>(
 /**
  * Wraps `family` so it is solved over a host's facts `H`. `build` answers the family's own fields
  * once per host facts object, and the solver's fields are the host's, so the solver and the family
- * read the same manifest and task log. Each kind is wrapped once, so every slot the wrapped family
- * answers carries one of its `kinds`.
+ * read the same manifest and task log. Each kind is wrapped once, so every slot the returned
+ * family answers names a kind in the returned family's `kinds`.
  */
 export function withFacts<H extends SolverFacts, F extends SolverFacts>(
   family: Family<F>,

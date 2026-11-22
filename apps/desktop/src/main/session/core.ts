@@ -390,7 +390,7 @@ export async function withShots(project: LoadedProject): Promise<ProjectModel> {
 }
 
 /**
- * Builds the facts the session solves the stills family over and seeds sheets from: the loaded
+ * Builds the facts the session solves the project's family over and seeds sheets from: the loaded
  * project's config, task log and manifest, over `model` (usually {@link withShots}'s), with a
  * sheet row's angle read off its task. The kinds memoise on the object returned, so a caller
  * builds new facts after changing either.
