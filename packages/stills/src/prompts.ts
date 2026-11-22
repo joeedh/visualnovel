@@ -515,7 +515,7 @@ export const promptsPagePanels = contract({
     'tool:set_bubbles',
     'task:shot_image',
   ],
-  see     : ['docs/plans/manga-style.md', 'docs/research/manga-live-tests.md'],
+  see     : ['docs/plans/archive/manga-style.md', 'docs/research/manga-live-tests.md'],
   detail:
     '`shot_form` (`frames`, the default, or `pages`) decides whether a new storyboard is single ' +
     'frames or manga pages of panels. Under `pages`, `decompSystem` tells the model to make every ' +

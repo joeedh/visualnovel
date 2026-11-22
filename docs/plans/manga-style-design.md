@@ -1,7 +1,7 @@
 # Manga pages: the design brief and the design plan
 
-Companion to [`manga-style.md`](manga-style.md), which asks for three new surfaces (the
-panel editor, panel stepping in Play, the bubble editor) to be built under the
+Companion to [`manga-style.md`](archive/manga-style.md), which asks for three new surfaces
+(the panel editor, panel stepping in Play, the bubble editor) to be built under the
 `frontend-design` skill: a brief, a design plan reviewed against the brief before any
 code, and a screenshot critique before the stage lands. This file holds all three. The
 brief and the plan were written on 2026-09-16, before Stage 3's first widget, and

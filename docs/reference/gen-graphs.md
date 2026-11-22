@@ -194,7 +194,7 @@ path.ux's coercion.
   seeded type cannot count task state as authored. Every run seeds the derived prompt, the
   task refs and the refine prompt; the two sheet nodes are seeded only for a shot in a
   sheet group, from `sheetSeeds` in `@vn/stills`, and stay empty otherwise
-  ([`manga-style.md`](../plans/manga-style.md), Stage 4).
+  ([`manga-style.md`](../plans/archive/manga-style.md), Stage 4).
 - The image nodes record the pictures they were shown beside the picture they drew (`refs`
   in the journal record), so a host can tell what a frame was drawn from. The scheduled
   runner reads that for a sheet member: the cell, which is a blob rather than an asset, is
@@ -399,10 +399,10 @@ implementation. The testkit passes a mock.
   draws it, and refuses a slot another graph already draws. The document tree's _Create a
   graph for this slot_ runs this command.
 - `gengraph.scaffoldSheet(scene, sheet)` starts the graph that draws one staging-sheet
-  group ([`manga-style.md`](../plans/manga-style.md), Decision 16): Sheet prompt and Sheet
-  refs feed one Generate image at the layout's aspect, and per member one instance of the
-  `sheet-cell` group feeds an output bound to the member's `shot:` slot, every output
-  active because each claims its own slot. `sheetGraph` and `sheetCellDef` in
+  group ([`manga-style.md`](../plans/archive/manga-style.md), Decision 16): Sheet prompt
+  and Sheet refs feed one Generate image at the layout's aspect, and per member one
+  instance of the `sheet-cell` group feeds an output bound to the member's `shot:` slot,
+  every output active because each claims its own slot. `sheetGraph` and `sheetCellDef` in
   `@vn/gengraph` build both, so every host scaffolds the same graph. The definition is
   written to `lib/sheet-cell.json` on the project's first scaffold and instanced from the
   file after that, so an author's edit to the cell chain reaches every later scaffold.
@@ -869,9 +869,9 @@ in the same three ways a built-in node type is split.
 - There was a second plugin, OpenRouter, whose one `OpenRouterImage` type posted to
   OpenRouter's `/api/v1/images` endpoint so one shot could be drawn by several image
   models through bound graphs
-  ([`../plans/manga-style.md`](../plans/manga-style.md#live-model-testing)). It is
-  retired: the built-in image backend routes a `<vendor>/<model>` id to OpenRouter itself,
-  so a `GenImage` naming `openai/gpt-image-2` draws through the same endpoint
+  ([`../plans/archive/manga-style.md`](../plans/archive/manga-style.md#live-model-testing)).
+  It is retired: the built-in image backend routes a `<vendor>/<model>` id to OpenRouter
+  itself, so a `GenImage` naming `openai/gpt-image-2` draws through the same endpoint
   ([`../plans/archive/openrouter-backend-and-the-image-model-default.md`](../plans/archive/openrouter-backend-and-the-image-model-default.md)).
   `migrateGraphJSON` carries a `RETIRED_TYPES` map, `{ OpenRouterImage: 'GenImage' }`,
   applied before the per-type renames, so a graph that used the plugin loads as the

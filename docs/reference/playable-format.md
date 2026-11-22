@@ -117,7 +117,7 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   letters, and a beat with no `line`, show the page whole. Both fields are optional in the
   schema so a playable written before them still parses. The static site renderer reads
   `line` and `panels[].lines` only to match bubbles, and never reads `shape`
-  ([`../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/manga-style.md#stage-3--panel-stepping-and-the-panel-editor),
+  ([`../plans/archive/manga-style.md#stage-3--panel-stepping-and-the-panel-editor`](../plans/archive/manga-style.md#stage-3--panel-stepping-and-the-panel-editor),
   [`../plans/site-speech-bubbles.md`](../plans/site-speech-bubbles.md)).
 - **A panel's `bubbles` say where the runner reads its lines.** Under `lettering: runner`
   the page is drawn wordless and the author places a bubble per line in the Page editor
@@ -143,7 +143,7 @@ Contracts. Each scene flattens into ordered beats plus its branch edges:
   span it always carries for a screen reader. The static site renderer draws every bubble
   of the lines read under a `show` over its figure at once, drops those lines from the
   text flow, and never dims the page
-  ([`../plans/manga-style.md#stage-5--runner-drawn-bubbles`](../plans/manga-style.md#stage-5--runner-drawn-bubbles),
+  ([`../plans/archive/manga-style.md#stage-5--runner-drawn-bubbles`](../plans/archive/manga-style.md#stage-5--runner-drawn-bubbles),
   [`../plans/site-speech-bubbles.md`](../plans/site-speech-bubbles.md)).
 - **A `transition` line is coverable but produces no beat.** `CUT TO:` is an instruction
   to the reader of a screenplay rather than a line of the story. A shot may cover it, and

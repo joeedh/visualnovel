@@ -216,9 +216,9 @@ One stage, one commit.
       in the Page editor appear on the site; the page is never dimmed; a reader with
       scripts off sees bubbles centred on their anchors, possibly overhanging the
       picture's edge, with no tails.
-    - `docs/plans/manga-style.md`: the Stage 5 sentence "The standalone web player keeps
-      its text overlay and ignores the field" and the as-shipped note "the static site
-      ignores" further down both get a pointer to this plan.
+    - `docs/plans/archive/manga-style.md`: the Stage 5 sentence "The standalone web player
+      keeps its text overlay and ignores the field" and the as-shipped note "the static
+      site ignores" further down both get a pointer to this plan.
     - `docs/plans/index.md`: a row for this plan (written with the plan).
 4. `pnpm check && pnpm test && pnpm lint`, then `pnpm build` and run
    `node apps/desktop/dist/main/vn-site.mjs --project examples/mySampleRepo --out <tmp>`

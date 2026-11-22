@@ -274,7 +274,7 @@ export const identityStagingSheet = contract({
   ],
   see: [
     'docs/reference/gen-graphs.md#slots-and-outputs',
-    'docs/plans/manga-style.md',
+    'docs/plans/archive/manga-style.md',
     'docs/research/manga-live-tests.md',
   ],
   detail:

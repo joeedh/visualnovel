@@ -32,8 +32,8 @@
 
 <!-- tocstop -->
 
-The live checks the [manga-style plan](../plans/manga-style.md#live-model-testing) asks
-for, one section per stage, run against real models after the stage's mock tests were
+The live checks the [manga-style plan](../plans/archive/manga-style.md#live-model-testing)
+asks for, one section per stage, run against real models after the stage's mock tests were
 green. Each section records what was drawn, on which models, what came back, and what it
 cost. The decisions each run settled are copied into the plan's As-shipped section.
 
@@ -460,11 +460,12 @@ asks for, run on the branch after Stages 1 to 5 were green.
 
 ## Stage 4 — perspective coherence (2026-09-17)
 
-The check the plan's [live-model section](../plans/manga-style.md#live-model-testing) asks
-for after Stage 4: one six-shot sequence in one room drawn with no sheet, through the
-scaffolded sheet graph, and with the sheet at two cell counts, judged by a vision model on
-a fixed question list and by a person over contact sheets. It also found two defects in
-what Stage 4 shipped before drawing a frame of its own, fixed in the same session.
+The check the plan's
+[live-model section](../plans/archive/manga-style.md#live-model-testing) asks for after
+Stage 4: one six-shot sequence in one room drawn with no sheet, through the scaffolded
+sheet graph, and with the sheet at two cell counts, judged by a vision model on a fixed
+question list and by a person over contact sheets. It also found two defects in what Stage
+4 shipped before drawing a frame of its own, fixed in the same session.
 
 ### What was checked
 

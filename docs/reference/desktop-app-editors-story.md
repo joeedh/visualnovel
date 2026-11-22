@@ -595,7 +595,7 @@ between the page's panels by the rule in `@vn/scriptedit`'s `coverage.ts`.
 `editors/page.ts` draws one page shot: the page at its own aspect with the panels outlined
 over the render (or over a pale sheet when nothing is drawn yet), and a column beside it
 holding the shot's lines and the selected panel's fields. It is the manga plan's editor
-([`../plans/manga-style.md`](../plans/manga-style.md), design brief in
+([`../plans/archive/manga-style.md`](../plans/archive/manga-style.md), design brief in
 [`../plans/manga-style-design.md`](../plans/manga-style-design.md)). Every write on the
 surface is `story.setPanels`, and every control is an `Offer` judged by the same
 `setPanels` rule in `@vn/scriptedit`'s `panels.ts` that the command runs, so a tooltip

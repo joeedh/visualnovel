@@ -1,9 +1,9 @@
 # Colour manga as a second visual style
 
-**Status: partial.** Stages 1 and 2 have landed; the As-shipped section at the end records
-each commit and every deviation. Between Stages 2 and 3 the image-model handling was
-refactored by
-[`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md)
+**Status: shipped.** All five stages have landed (Stage 5 on 2026-09-17); the As-shipped
+section at the end records each commit and every deviation. Between Stages 2 and 3 the
+image-model handling was refactored by
+[`archive/openrouter-backend-and-the-image-model-default.md`](openrouter-backend-and-the-image-model-default.md)
 (shipped 2026-09-15), which retired the OpenRouter plugin Stage 1 built; the "Between
 Stages 2 and 3" subsection of As-shipped records what that changes for Stages 3–5. The
 proposal completed one review pass; the findings and resulting modifications are
@@ -34,7 +34,7 @@ additions without introducing a global project-level mode:
   establishing → medium → over-the-shoulder → reverse angles).
 
 This document builds on
-[`../research/manga-shot-composition.md`](../research/manga-shot-composition.md). It
+[`../research/manga-shot-composition.md`](../../research/manga-shot-composition.md). It
 adopts that document's single-mode architecture and per-shot `aspect` stages while
 implementing the page and staging-sheet workflows deferred by that research. Other
 proposals in that document (per-subject front sheets, camera enums, geometric scale
@@ -116,8 +116,9 @@ The following implementation details have been validated against the codebase:
   shot records. `withCoverage` (`packages/artgen/src/storyboard.ts:214-224`) prepends the
   first line of a scene to `shots[0].coversLines`.
 - The two open plans that touch the same code
-  ([`creating-shots-by-hand-and-by-agent.md`](creating-shots-by-hand-and-by-agent.md) and
-  [`refine-corrections-tool-schemas-shot-variants-and-commit-subjects.md`](refine-corrections-tool-schemas-shot-variants-and-commit-subjects.md))
+  ([`creating-shots-by-hand-and-by-agent.md`](../creating-shots-by-hand-and-by-agent.md)
+  and
+  [`refine-corrections-tool-schemas-shot-variants-and-commit-subjects.md`](../refine-corrections-tool-schemas-shot-variants-and-commit-subjects.md))
   have largely landed: `newShot` and `deleteShot`
   (`packages/scriptedit/src/shotcreate.ts`), `.strict()` validation for `write_storyboard`
   and `propose_storyboard` (`packages/authoring/src/tools/storyboard.ts:161-197`),
@@ -539,7 +540,7 @@ falls back to.
   paper at 92%, ink text in prose type, a tail to the tail point when there is one — and
   hides the dialogue box for that frame. The standalone web player keeps its text overlay
   and ignores the field (the static site draws it since
-  [`site-speech-bubbles.md`](site-speech-bubbles.md)).
+  [`site-speech-bubbles.md`](../site-speech-bubbles.md)).
 - **Editor.** The layer is drawn only under `lettering: runner`. Each panel shows one
   anchor per line it letters: a placed bubble at its anchor, and for a line with no bubble
   yet a ghost anchor at the panel's centroid (stacked with a small offset when several
@@ -565,10 +566,10 @@ Three surfaces in this plan are new UI rather than a new row in an existing one,
 is built under the `frontend-design` skill: a written design brief, the skill's design
 plan (palette, type, layout with wireframes, principles) reviewed against that brief
 before any code, and a screenshot critique before the stage lands. The design plan and its
-critique are filed beside the plan as [`manga-style-design.md`](manga-style-design.md) so
-the choices survive the conversation that made them. The brief and the plan were written
-on 2026-09-16; the critique waits for Stage 3's first build. The brief places the panel
-editor in a new `Page` editor whose subject is `ui.shotId`, not the Asset pane named
+critique are filed beside the plan as [`manga-style-design.md`](../manga-style-design.md)
+so the choices survive the conversation that made them. The brief and the plan were
+written on 2026-09-16; the critique waits for Stage 3's first build. The brief places the
+panel editor in a new `Page` editor whose subject is `ui.shotId`, not the Asset pane named
 below, because a page before its first render has no asset; the design file records the
 reasoning.
 
@@ -628,19 +629,19 @@ The plugin is gone; the "Between Stages 2 and 3" subsection of As-shipped says w
   checked at the time rather than assumed. Model ids churn, so the research doc records
   which were run, not this plan.
 - The plugin is not a `@vn/providers` backend, so it does not pre-empt
-  [`four-chat-vendors-and-two-more-image-providers.md`](four-chat-vendors-and-two-more-image-providers.md);
+  [`four-chat-vendors-and-two-more-image-providers.md`](../four-chat-vendors-and-two-more-image-providers.md);
   if that plan lands first the same comparison runs through its backends.
 - Privacy:
-  [`../research/openrouter-vs-direct-image-api-privacy.md`](../research/openrouter-vs-direct-image-api-privacy.md)
+  [`../research/openrouter-vs-direct-image-api-privacy.md`](../../research/openrouter-vs-direct-image-api-privacy.md)
   finds that only Google's image models route ZDR on OpenRouter. The live tests run on
   `templates/basic` and the example projects, which hold nothing private, so non-ZDR
   models are allowed for the comparison and `zdr` is left off. A real manuscript is never
   used for a live test.
 - Recording: `scripts/record-fixture-assets.mjs` records live image calls into the
   committed corpus `makeProject({ assets: 'cached' })` replays
-  ([`../guides/testkit.md`](../guides/testkit.md#refreshing-the-corpus)). A page render is
-  larger than the current entries (9 entries, 11.3 MB), so one representative page and one
-  sheet are recorded per stage and the rest are not committed.
+  ([`../guides/testkit.md`](../../guides/testkit.md#refreshing-the-corpus)). A page render
+  is larger than the current entries (9 entries, 11.3 MB), so one representative page and
+  one sheet are recorded per stage and the rest are not committed.
 
 ### What each stage checks live
 
@@ -809,13 +810,13 @@ specification:
   plugin's estimate is one `image` line for the named model, which an author's own price
   table can price or leave unpriced.
 - **The plugin was retired on 2026-09-15** by
-  [`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md),
+  [`archive/openrouter-backend-and-the-image-model-default.md`](openrouter-backend-and-the-image-model-default.md),
   whose Stage 1 moved `draw.ts` into `@vn/providers` as `createOpenRouterImage` and whose
   Stage 3 deleted `plugins/openrouter/` and its test. A graph holding an `OpenRouterImage`
   node loads as a `GenImage` naming the same `<vendor>/<model>` id, through
   `RETIRED_TYPES` in `migrateGraphJSON`, and draws through the same endpoint. The `cost`
   output the plugin recorded is not carried over; the spend column in
-  [`../research/manga-live-tests.md`](../research/manga-live-tests.md) came from the
+  [`../research/manga-live-tests.md`](../../research/manga-live-tests.md) came from the
   plugin as it stood then.
 - **`KeyVendor` is a superset of `ChatVendor`, not a widening of it.** `KEY_VENDORS` gains
   `openrouter`, and `ResolvedKeys` is `Record<KeyVendor, string>`. `ChatVendor` stays
@@ -863,7 +864,7 @@ specification:
   binds one graph per model to a slot, which the pipeline-running stages need. Stage 1
   needs only bytes, so the driver bundled the backend, the plugin's `drawWithOpenRouter`
   and `buildShotPrompt` and called them directly. Results, spend and the model table are
-  in [`../research/manga-live-tests.md`](../research/manga-live-tests.md): 40 of 52
+  in [`../research/manga-live-tests.md`](../../research/manga-live-tests.md): 40 of 52
   OpenRouter models honour all three ratios within 3%, every miss is a quoted provider
   refusal, and `3:4` stands as the default `page_aspect`. Two things the check turned up
   and Stage 1 leaves alone: Recraft's four `styles` models declare ratios their endpoint
@@ -986,7 +987,7 @@ specification:
   carry the same exception. The plan's "Export: preserve single-image export" needed no
   code, since the exporter never read panels.
 - **The Stage 2 live check
-  ([`../research/manga-live-tests.md`](../research/manga-live-tests.md#stage-2--layout-and-lettering-2026-09-15))
+  ([`../research/manga-live-tests.md`](../../research/manga-live-tests.md#stage-2--layout-and-lettering-2026-09-15))
   settled four of its five questions the way the code already had, and changed two
   things.** 150 pages of `templates/basic`'s rooftop scene on ten models (the built-in
   Gemini backend and nine through the OpenRouter plugin), reviewed by the pipeline's own
@@ -1020,7 +1021,7 @@ specification:
 
 ### Between Stages 2 and 3: the image-model refactor
 
-[`archive/openrouter-backend-and-the-image-model-default.md`](archive/openrouter-backend-and-the-image-model-default.md)
+[`archive/openrouter-backend-and-the-image-model-default.md`](openrouter-backend-and-the-image-model-default.md)
 shipped on 2026-09-15, six stages, in answer to the Stage 2 finding above. What it changed
 for the stages still to come:
 
@@ -1060,13 +1061,13 @@ for the stages still to come:
 
 Shipped on 2026-09-16 in three commits: the playable and Play, the command and the tool,
 then the editor. The design brief, plan, review and screenshot critique are in
-[`manga-style-design.md`](manga-style-design.md); what follows is where the build departed
-from this plan or decided something it left open.
+[`manga-style-design.md`](../manga-style-design.md); what follows is where the build
+departed from this plan or decided something it left open.
 
 - **The playable names lines, not just panels.** `show.panels` carries each panel's
   outline and the line ids it letters, and every `say` and `narrate` beat names its line,
   all optional so an older `story.play.json` still parses and the static site ignores them
-  (until [`site-speech-bubbles.md`](site-speech-bubbles.md), which reads the lines to
+  (until [`site-speech-bubbles.md`](../site-speech-bubbles.md), which reads the lines to
   place bubbles). `framesOf` gives a frame the panel that letters its line; a line no
   panel letters shows the page whole. Play dims the rest of the page with an even-odd path
   over the picture's own box, crossfades between two panels of one page, and cuts under
@@ -1165,8 +1166,9 @@ decided something it left open:
   two members running at once read each other's seeds off the shared graph's sockets.
   Every sheet output is now active, the bindings of one graph share its journal, and the
   runs of one graph are serialised (the `identity.stagingSheet` contract in
-  [`sheet.ts`](../../packages/stills/src/sheet.ts)). The full record, with the tables, is
-  [`../research/manga-live-tests.md`](../research/manga-live-tests.md#stage-4--perspective-coherence-2026-09-17).
+  [`sheet.ts`](../../../packages/stills/src/sheet.ts)). The full record, with the tables,
+  is
+  [`../research/manga-live-tests.md`](../../research/manga-live-tests.md#stage-4--perspective-coherence-2026-09-17).
 - **The cell chain shows the model its cell, not the whole sheet.** Decision 17's "crop
   and full sheet as references" made `gemini-2.5-flash-image` redraw the grid in four
   frames of six; with the cell alone every model drew single frames and `gpt-image-2`
@@ -1208,4 +1210,4 @@ build decided something the section left open:
   was. The Page editor was checked against it live (anchors placed and aimed by pointer,
   the file written, Play drawing the bubble over the lit panel with the dialogue box
   gone); the critique is in
-  [`manga-style-design.md`](manga-style-design.md#screenshot-critique).
+  [`manga-style-design.md`](../manga-style-design.md#screenshot-critique).
