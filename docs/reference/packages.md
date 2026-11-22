@@ -63,7 +63,7 @@ neither `@vn/providers` nor `@vn/artgen`, so it does no I/O and calls no model o
 The packages that import `@vn/artgen` import `@vn/stills` directly, since `@vn/artgen`
 does not re-export it. The CLI and the scheduler may not import it, and reach the gate
 through `@vn/pipeline`'s re-exports instead
-([`../plans/archive/contracts-into-code-and-workflows.md`](../plans/archive/contracts-into-code-and-workflows.md#stage-2-the-vnstills-package)).
+([`contracts.md`](contracts.md#the-stills-family)).
 
 `@vn/constraint-solver` sits below `@vn/stills`. It holds the rules every family shares,
 run over whatever slot kinds a family declares, and it may import only `types`, `util`,
@@ -74,13 +74,12 @@ family's own functions through the solver unread. `@vn/stills` is its first fami
 planner plans each wave from `solve(familyOf(config.workflow), facts)`, which is the
 stills family for the one workflow, `vn`, and every other reader of slot state (the
 document tree, the gate pane, the Task Graph pane, takes and the gen-graph loader) solves
-over its host's one facts builder
-([`../plans/archive/contracts-into-code-and-workflows.md`](../plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family),
-stages 6b and 6e). Since stage 6d the take, suspension, the keep set, the base-root
-refusal and graph drift are solver rules too, and every host calls them from the solver.
-The CLI and the scheduler may import neither the solver nor `@vn/stills`, so
-`@vn/pipeline`'s barrel re-exports `baseRefusal`, `suspensions` and `unapprovedTakes` for
-them by name, and they reach the family through `familyOf(config.workflow)`.
+over its host's one facts builder ([`contracts.md`](contracts.md#the-constraint-solver)).
+The take, suspension, the keep set, the base-root refusal and graph drift are solver rules
+too, and every host calls them from the solver. The CLI and the scheduler may import
+neither the solver nor `@vn/stills`, so `@vn/pipeline`'s barrel re-exports `baseRefusal`,
+`suspensions` and `unapprovedTakes` for them by name, and they reach the family through
+`familyOf(config.workflow)`.
 
 `familyOf` answers a `Family<HostFacts>`. `HostFacts` is the type both hosts' facts
 builders return (`waveFacts`, and the desktop's `sessionFacts`), and today it is the

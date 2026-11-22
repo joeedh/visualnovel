@@ -220,7 +220,7 @@ export const providersTransientRetry = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     '`isTransient` reads the status wherever the SDK put it (`status`, `code`, ' +

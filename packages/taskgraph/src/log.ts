@@ -27,7 +27,7 @@ export const logLastWriterWins = contract({
   ],
   see: [
     'docs/history/vn-generator-report.md',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     '`logTask` (`@vn/taskgraph/write`) appends a whole-node snapshot rather than a change, so a ' +
@@ -52,7 +52,7 @@ export const logTombstoneRemoves = contract({
   ],
   see: [
     'docs/plans/archive/deleting-things.md#stage-2-tombstones-in-tasksjsonl',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     '`logTombstone` (`@vn/taskgraph/maintain`) appends the record `tombstoneOf` builds. ' +

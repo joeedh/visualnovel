@@ -47,7 +47,7 @@
       ],
       "see": [
         "docs/plans/archive/INDEX.md#task-failure-visibility-and-retry",
-        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts"
+        "docs/plans/archive/INDEX.md#contracts-into-code-and-workflows"
       ],
       "detail": "`isTransient` reads the status wherever the SDK put it (`status`, `code`, `response.status`, or named in the message) and the transport errors by name. An unrecognized error is terminal by default, because three refusals cost three times what one refusal costs. `providerError` wraps a transient failure as `RetryableProviderError`, carrying the provider's `retry-after` when it sent one; `callWithRetry` waits that long, and otherwise backs off exponentially from `BASE_MS`. A `ProviderError` the backend raised itself, such as an unusable reference or an empty response, passes straight through. The SDKs' own retries are off, the backoff stops for a stop (`execution.stopAtRequest`), and each retry is reported to the listener `reportingRetries` puts in scope, which `runTask` turns into the task's activity line and a task-log entry. These retries sit beneath the scheduler's, which retries a failed task on the next run (`execution.retryBudget`).",
       "declared": "packages/providers/src/backends/transient.ts"

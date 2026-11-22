@@ -27,7 +27,7 @@ export const logDoneWriters = contract({
   see: [
     'docs/plans/archive/INDEX.md#adopting-an-uploaded-asset',
     'docs/plans/archive/INDEX.md#on-demand-concept-images',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-1-tooling-and-guards',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     '`vn/element-types` lets only the scheduler and `@vn/artgen/adopt` import ' +

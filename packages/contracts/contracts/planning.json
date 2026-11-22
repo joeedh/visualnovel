@@ -11,9 +11,7 @@
         "function:packages/stills/src/slotgraph.ts#planSlot",
         "function:packages/constraint-solver/src/solve.ts#solve"
       ],
-      "see": [
-        "docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family"
-      ],
+      "see"     : ["docs/reference/contracts.md#the-constraint-solver"],
       "detail": "A task whose inputs embed an upstream output (a shot embeds its plate and its sheets) has no identity until that upstream task is `done`, so it appears a wave later. `vngen cost` therefore counts only what is plannable when it runs, and undercounts the tasks a finished wave makes plannable. A task's `deps` come from its kind (`planSlot`: a shot's plate and non-default sheets, never a portrait), and `Task.deps` is not hashed. The gate is `gate.perUnit`: the planner asks `unitGates` before decomposing and reads `ready` after.",
       "declared": "packages/pipeline/src/planner.ts"
     },

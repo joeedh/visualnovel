@@ -21,7 +21,7 @@ export const takesSuspensionDerived = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#chunked-prompts',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-6-the-constraint-solver-with-stills-as-its-first-family',
+    'docs/reference/contracts.md#the-constraint-solver',
   ],
   detail:
     'When a slot moves, everything pinned to its old hash is suspended, along with everything ' +

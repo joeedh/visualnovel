@@ -182,7 +182,7 @@ export const executionRetryBudget = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     '`max_task_attempts` is separate from `max_refine_attempts`, which caps the P7 loop within a ' +
@@ -237,7 +237,7 @@ export const executionAbandonedReleased = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     'A run owns the graph while it lasts, so a task the log left at `running` was abandoned by a ' +
@@ -278,8 +278,7 @@ export const executionRedrawDrifted = contract({
   see: [
     'docs/reference/gen-graphs.md#identity-the-journal-and-drift',
     'docs/plans/node-based-asset-generation.md',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-7-the-executor-reads-the-slot-kinds',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     "Which tasks have drifted is `graphs.editInvalidates`: `driftedTasks` asks the solver's " +
@@ -342,7 +341,7 @@ export const executionTargetClosure = contract({
     'command:asset.regenerate',
     'command:pipeline.draw',
   ],
-  see     : ['docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
+  see     : ['docs/plans/archive/INDEX.md#contracts-into-code-and-workflows'],
   detail:
     'The closure is walked over `deps` in the graph as it stands at each wave, because a wave can ' +
     'plan nodes that did not exist before it: a shot task appears once the sheet it depends on is ' +
@@ -386,7 +385,7 @@ export const executionFailureRecorded = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     'This rule and `execution.retryBudget` and `execution.reportFromPlan` each fix one part of the ' +
@@ -413,7 +412,7 @@ export const executionReportFromPlan = contract({
   ],
   see: [
     'docs/plans/archive/INDEX.md#task-failure-visibility-and-retry',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     'The live set is the last planning pass, deduped back to canonical nodes, and every ' +
@@ -440,7 +439,7 @@ export const executionStopAtRequest = contract({
     'function:packages/providers/src/requests.ts#RequestStopped',
     'command:pipeline.stop',
   ],
-  see     : ['docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts'],
+  see     : ['docs/plans/archive/INDEX.md#contracts-into-code-and-workflows'],
   detail:
     'Responses are written atomically under `vngen/state/requests/<execution-id>/`. A task ' +
     'whose final request has completed may finish its local bookkeeping. Provider backoff is ' +

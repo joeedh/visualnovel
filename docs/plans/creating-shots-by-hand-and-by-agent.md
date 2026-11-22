@@ -269,7 +269,7 @@ also say that a hand-made first shot ends that signal. The sentence appears in:
   detail says a hand-placed first shot ends decomposition), the P5 contracts, and the
   scene-heading contract (`identity.headingRekeysShots`). They moved there from the
   pipeline contracts page, which
-  [`archive/contracts-into-code-and-workflows.md`](archive/contracts-into-code-and-workflows.md)
+  [`archive/INDEX.md#contracts-into-code-and-workflows`](archive/INDEX.md#contracts-into-code-and-workflows)
   deleted;
 - [`../guides/cli.md`](../guides/cli.md) states the whole contract ("an absent one is the
   only signal … the file wins forever"), and the first draft of this list missed that

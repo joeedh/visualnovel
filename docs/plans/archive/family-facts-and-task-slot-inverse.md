@@ -1,9 +1,9 @@
 # Widening `familyOf`, and reading a task back into its slot through the family
 
-Two follow-ups left over from
-[`contracts-into-code-and-workflows.md`](contracts-into-code-and-workflows.md) (stage 7's
-"For 8" list and stage 9's "Left over" list). Neither changes what the pipeline does. Both
-remove a place where `@vn/pipeline` assumes the stills family.
+Two follow-ups left over from the archived contracts plan
+([`INDEX.md`](INDEX.md#contracts-into-code-and-workflows), stage 7's "For 8" list and
+stage 9's "Left over" list). Neither changes what the pipeline does. Both remove a place
+where `@vn/pipeline` assumes the stills family.
 
 ## The two problems
 

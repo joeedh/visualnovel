@@ -1,6 +1,6 @@
 /**
- * The P3 gate as the solver's unit gate (stage 6c of
- * `docs/plans/archive/contracts-into-code-and-workflows.md`): a scene waits on the portraits of its
+ * The P3 gate as the solver's unit gate (see
+ * `docs/reference/contracts.md`): a scene waits on the portraits of its
  * whole cast before it is decomposed or any of its shots is planned, the gate reads the manifest
  * row the way `approvedPortraitOf` does, and `gateStatus` answers what the live-scene walk it
  * replaced answered.

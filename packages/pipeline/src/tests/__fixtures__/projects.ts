@@ -1,5 +1,5 @@
 /**
- * The stage 1 planner fixtures (`docs/plans/archive/contracts-into-code-and-workflows.md`):
+ * The planner fixtures (`docs/reference/contracts.md`):
  * small in-memory projects that reach what `prompthash.test.ts` does not, shared by the planner's
  * pinned hashes and recorded waves and by the gate's tests.
  */

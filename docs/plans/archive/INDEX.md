@@ -9,6 +9,22 @@ Regenerated/extended by `.claude/skills/archive-plans`.
 
 <!-- tocstop -->
 
+### contracts-into-code-and-workflows
+
+Moved every rule in the deleted `docs/reference/pipeline-contracts.md` into code, along
+the seams the workflows research note proposes. Each rule is a `contract({...})`
+declaration beside the code that enforces it, with a generated, committed, queryable index
+(`packages/contracts/contracts.json`, `pnpm contracts`). The derivation code (slots,
+identity, takes, approval, the unit gate, suspension, the keep set, drift) now runs in
+`@vn/constraint-solver` over the slot kinds the stills family declares in `@vn/stills`.
+The plan also added `NarrativeStructure` with a `linear` engine, `workflow:` and
+`narrative:` in `project.yaml`, an executor registry keyed by task kind, and a fix for the
+staging-sheet identity bug (stage 0). Ten stages, 0 to 9, landed 2026-11-17 to 2026-11-21
+with `prompthash.test.ts` unchanged throughout. The surviving design and the decisions
+that still bind are in [`../../reference/contracts.md`](../../reference/contracts.md).
+
+Archived 2026-11-22, in `archive.zip`.
+
 ### clustering-the-global-task-graph
 
 The task graph editor's overview stops handing `layoutGraph` the raw per-task graph, where

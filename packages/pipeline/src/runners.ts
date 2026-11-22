@@ -284,7 +284,7 @@ export const executionRefineLoop = contract({
   see: [
     'docs/history/vn-generator-report.md',
     'docs/plans/archive/INDEX.md#refine-loop-inspector',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     "Folding the loop into the runner is a documented deviation from the report's separate " +

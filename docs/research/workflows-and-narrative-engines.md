@@ -7,11 +7,12 @@ today, proposes where the seams should go, and lists the decisions that need to 
 before anyone writes a plan. A storylet engine is assumed to live in its own repository.
 
 Status: partly built.
-[`../plans/archive/contracts-into-code-and-workflows.md`](../plans/archive/contracts-into-code-and-workflows.md)
-built the seams this note proposes for the stills family and the narrative engine:
-`workflow:` and `narrative:` in `project.yaml`, `@vn/stills`, `@vn/constraint-solver` and
-the `linear` engine. The other workflows and the storylet engine are not built. The slot
-switch that step 3 lists was replaced by `SlotKind.fromInputs` in
+[`../plans/archive/INDEX.md#contracts-into-code-and-workflows`](../plans/archive/INDEX.md#contracts-into-code-and-workflows)
+(see also [`../reference/contracts.md`](../reference/contracts.md)) built the seams this
+note proposes for the stills family and the narrative engine: `workflow:` and `narrative:`
+in `project.yaml`, `@vn/stills`, `@vn/constraint-solver` and the `linear` engine. The
+other workflows and the storylet engine are not built. The slot switch that step 3 lists
+was replaced by `SlotKind.fromInputs` in
 [`../plans/archive/family-facts-and-task-slot-inverse.md`](../plans/archive/family-facts-and-task-slot-inverse.md),
 which also lets a second workflow's family register with facts of its own.
 

@@ -19,7 +19,7 @@ export const identityTaskHash = contract({
     'docs/history/vn-generator-report.md',
     'docs/plans/archive/openrouter-backend-and-the-image-model-default.md',
     'docs/plans/openrouter-as-a-fallback-transport.md',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     'The model id is left out so that changing `models.image` in `project.yaml` does not re-key ' +

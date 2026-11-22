@@ -32,7 +32,7 @@ export const executionTaskLogDiagnostic = contract({
   ],
   see: [
     'docs/plans/task-pane-logs.md',
-    'docs/plans/archive/contracts-into-code-and-workflows.md#stage-8-execution-contracts',
+    'docs/plans/archive/INDEX.md#contracts-into-code-and-workflows',
   ],
   detail:
     'The log records provider retries, reviewer replies that did not parse, the error that ' +
