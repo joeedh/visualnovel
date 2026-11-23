@@ -26,8 +26,8 @@ afterwards.
   work proceeds rather than left only in the conversation. Give the plan a descriptive
   name.
 - **A shipped plan moves to [`plans/archive/`](../plans/archive).**
-  [`../plans/index.md`](../plans/index.md) is the authority on status. When its row for a
-  plan flips to shipped, `git mv` the file into `archive/` in the same change and update
+  [`../plans/index.md`](../plans/index.md) is the authority on status. When its entry for
+  a plan flips to shipped, `git mv` the file into `archive/` in the same change and update
   every link to it; `pnpm check:doclinks` (part of `pnpm lint`) reports each link that was
   missed. Open plans (planned or partial) and the tracker files stay at the top level, so
   `docs/plans/` lists only the work that is still open.
