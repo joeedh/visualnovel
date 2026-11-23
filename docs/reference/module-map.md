@@ -370,6 +370,10 @@ behind the `main/session.ts` re-export:
 - `surface/` holds the one-line public delegations to those parts, grouped by concern, and
   `surface/base.ts` holds the session's state and its busy, permission and transcript
   substrate.
+- `asset/` holds the bodies behind `asset.ts`'s `AssetPart`, which delegates to them:
+  asset info and listing, accept and unapprove, regenerate and draw, art notes, seed and
+  model, concept draw, redraw and promote, upload and export, and adopt, restore and
+  replace.
 - `story/` holds the bodies of `story.ts`'s `StoryPart`, which only delegates:
   `branches.ts` (branch markers and scene outfits), `scene.ts` (prose edits, entity
   delete, line ids), `import.ts` (Fountain import), `coverage.ts` (the coverage strip and
