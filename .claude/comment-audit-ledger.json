@@ -797,10 +797,6 @@
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "499e58e00106b79b54681c23cdb0366510c55fd5"
     },
-    "apps/desktop/src/main/tests/session.test.ts": {
-      "auditedAt": "2026-08-20T19:36:24.209Z",
-      "blob"     : "8360faf61eb06d1a57afa6726b10e26c8098a6ce"
-    },
     "apps/desktop/src/main/tests/sessionstore.test.ts": {
       "auditedAt": "2026-08-20T19:36:24.209Z",
       "blob"     : "b0198fb58401ba0e280ae9e890e67b6e0cd187b2"

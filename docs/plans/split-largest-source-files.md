@@ -26,6 +26,15 @@ Deviations from the plan as written, discovered during execution:
   automated coverage is thorough (4160 tests, unchanged pass count from before the split),
   this was accepted rather than re-run.
 
+**Follow-up (2026-11-22).** `session/core.ts` grew back to 3,278 lines and
+`tests/session.test.ts` to 2,641, and both were split again:
+
+- `core.ts` is now the 55-line `WorkspaceSession`, with the public delegations in
+  `session/surface/`, and helpers in `session/{types,rules,load,gen,edits}/`.
+- `session.test.ts` became eight files under `tests/session/` plus a `helpers.ts`, and the
+  `@vn/desktop` `testMatch` now reaches nested `tests/` folders.
+- `session/story.ts` and `session/asset.ts` are each still over 1,200 lines.
+
 Splits the six largest TypeScript files in the repo into a subdirectory tree per file,
 with no behavior change. Purely mechanical: move code, keep every external import path
 resolvable, keep `pnpm check`/`pnpm test`/`pnpm lint` green after each file.
