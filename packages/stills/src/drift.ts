@@ -18,7 +18,7 @@ export const scriptProseDriftReported = contract({
     'function:packages/stills/src/drift.ts#proseHash',
     'function:packages/stills/src/family.ts#shotKind',
     'function:packages/stills/src/prompts.ts#buildShotPrompt',
-    'module:apps/desktop/src/main/session/story.ts',
+    'module:apps/desktop/src/main/session/story/coverage.ts',
     'command:story.setLineText',
   ],
   see: [

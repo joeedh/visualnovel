@@ -370,6 +370,12 @@ behind the `main/session.ts` re-export:
 - `surface/` holds the one-line public delegations to those parts, grouped by concern, and
   `surface/base.ts` holds the session's state and its busy, permission and transcript
   substrate.
+- `story/` holds the bodies of `story.ts`'s `StoryPart`, which only delegates:
+  `branches.ts` (branch markers and scene outfits), `scene.ts` (prose edits, entity
+  delete, line ids), `import.ts` (Fountain import), `coverage.ts` (the coverage strip and
+  `setCoverage`), `shotedit.ts` (per-shot outfit, variant, subjects, cast and panels),
+  `bubbles.ts`, and `shotlife.ts` (sheets, new and deleted shots). Each takes the
+  `WorkspaceSession` as its first parameter.
 - `types/`, `rules/`, `load/`, `gen/` and `edits/` hold what used to be module-level
   helpers: shared result types, small pure rules, project loading and file walks, provider
   construction, and the entity override edits.

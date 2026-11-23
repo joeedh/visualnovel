@@ -560,7 +560,7 @@
         "function:packages/stills/src/drift.ts#proseHash",
         "function:packages/stills/src/family.ts#shotKind",
         "function:packages/stills/src/prompts.ts#buildShotPrompt",
-        "module:apps/desktop/src/main/session/story.ts",
+        "module:apps/desktop/src/main/session/story/coverage.ts",
         "command:story.setLineText",
         "slot:shot"
       ]
@@ -1053,7 +1053,7 @@
     "function:packages/types/src/prompt.ts#RefBinding"                   : ["prompts.refOnClause"],
     "module:apps/desktop/renderer/pathux/doctree/sheetform.ts": ["prompts.artRungsShared"],
     "module:apps/desktop/src/main/session/prompt.ts"                     : ["prompts.refsAcyclic"],
-    "module:apps/desktop/src/main/session/story.ts": ["script.proseDriftReported"],
+    "module:apps/desktop/src/main/session/story/coverage.ts": ["script.proseDriftReported"],
     "module:packages/artgen/src/adopt.ts"                                : ["log.doneWriters"],
     "module:packages/artgen/src/adoptslot.ts": ["storage.baseUnavailable"],
     "module:packages/artgen/src/concept.ts": ["identity.conceptNoNode"],
