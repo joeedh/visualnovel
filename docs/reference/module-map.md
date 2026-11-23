@@ -386,6 +386,12 @@ behind the `main/session.ts` re-export:
   vision models), `skills.ts` (builtin skills), `keys.ts` (API keys, the key guide and key
   tests) and `updates.ts` (update checks and release links). Each takes the
   `WorkspaceSession` as its first parameter.
+- `sync/` holds the bodies of `sync.ts`'s `SyncPart`, which only delegates: `remotes.ts`
+  (add, remove, set-url, sync-with, fetch), `pull.ts` and `push.ts`, `conflicts.ts`
+  (resolve, write, undo and conflict text), `finish.ts` (continue and abandon),
+  `rebase.ts` (the base art's gitlink and replaying a rebase) and `shared.ts` (the
+  refusals and checks every write shares). Each takes the `WorkspaceSession` as its first
+  parameter.
 - `types/`, `rules/`, `load/`, `gen/` and `edits/` hold what used to be module-level
   helpers: shared result types, small pure rules, project loading and file walks, provider
   construction, and the entity override edits.

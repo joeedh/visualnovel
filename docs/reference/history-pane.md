@@ -36,11 +36,11 @@ side of syncing is [`../guides/collaborating.md`](../guides/collaborating.md).
   rules, `finishRebase` and the rewrite table.
 - The desktop's main side is three parts of `WorkspaceSession`: `session/history.ts`
   (`HistoryPart`: the reads, paged and memoized), `session/recovery.ts` (`RecoveryPart`:
-  the six local writes) and `session/sync.ts` (`SyncPart`: the ten sync writes). The
-  commands in `main/commands/vcs/git.ts` are thin wrappers over them.
-  `assets/gitprotocol.ts` serves `vngit://` for a blob at a save. `session/missing.ts`
-  (`MissingPart`) is the missing-picture check with `asset.recover` and `asset.forget`,
-  and `runtime/assetcheck.ts` decides when the check runs.
+  the six local writes) and `session/sync.ts` (`SyncPart`: the ten sync writes, whose
+  bodies are in `session/sync/`). The commands in `main/commands/vcs/git.ts` are thin
+  wrappers over them. `assets/gitprotocol.ts` serves `vngit://` for a blob at a save.
+  `session/missing.ts` (`MissingPart`) is the missing-picture check with `asset.recover`
+  and `asset.forget`, and `runtime/assetcheck.ts` decides when the check runs.
 - The renderer is `renderer/pathux/editors/history.ts` (`HistoryEditor`, area name
   `history`) with the diff renderers under `editors/history/diffs/`, the pure rules in
   `renderer/rules/history.ts` (every control is an `Offer`, so `ux-model.json` records
