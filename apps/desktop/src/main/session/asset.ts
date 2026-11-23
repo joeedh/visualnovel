@@ -1,1198 +1,178 @@
-import { readFile, writeFile } from 'node:fs/promises';
-import { basename, isAbsolute, join } from 'node:path';
-import { entityFile, isBaseKind } from '@vn/store';
-import { activeOutputs, type GraphJournalRecord } from '@vn/gengraph';
-import { appendGraphJournal, graphJournalFile, invalidateGenGraph } from '@vn/gengraph/state';
-import { logRequeue } from '@vn/taskgraph/maintain';
-import { sha256 } from '@vn/util';
-import { approvedPortraitOf, basePromptOf, slotOfTask } from '@vn/pipeline';
-import { baseRefusal } from '@vn/constraint-solver';
-import {
-  adoptSlot,
-  adoptionForSlot,
-  artNotesOf,
-  artModelOf,
-  artSeedOf,
-  generateConcept,
-  promoteConcept,
-  promotionOf,
-  redrawConcept,
-  redrawOf,
-  rungsFor,
-  setArtNotes as writeArtNotes,
-  setArtModel as writeArtModel,
-  setArtSeed as writeArtSeed,
-  uploadOf,
-  uploadReference,
-  type AdoptSlotPlan,
-  type ConceptRequest,
-} from '@vn/artgen';
-import {
-  assetApproved,
-  assetPrereqs,
-  formatSubject,
-  matchSubject,
-  parseSlot,
-  parseSubject,
-  prereqRefusal,
-  resolveSlot,
-  slotKey,
-  slotLabel,
-  slotOf,
-  slotTaskHash,
-  acceptRefusal,
-  resolveBinding,
-  sheetAngleOf,
-  subjectEntity,
-} from '@vn/stills';
-import type { AnyTask, RefBinding } from '@vn/types';
 import type { AdoptVia } from '@vn/artgen';
-import type { AssetInfo, AssetListing } from '../../shared/ipc.js';
-import { graphSlugs, readGraph } from '../doctree/graphs.js';
-import { labelAssets, labelContext } from '../assets/assetlabel.js';
-import { derivePrompt } from '../assets/assetprompt.js';
+import * as info from './asset/info.js';
+import * as approval from './asset/approval.js';
+import * as regenerate from './asset/regenerate.js';
+import * as art from './asset/art.js';
+import * as concept from './asset/concept.js';
+import * as upload from './asset/upload.js';
+import * as adopt from './asset/adopt.js';
 import type { WorkspaceSession } from './core.js';
-import { type LoadedProject, sessionFacts, withShots, loadProject } from './load/project.js';
-import type { PromptWriteResult } from './types/results.js';
-import { relPath } from './load/tree.js';
-import { ACCEPTABLE, suspensionsOf } from './rules/assets.js';
-import { buildProviders } from './gen/deps.js';
 
+/**
+ * The asset surface's behavior. Each method delegates to the module under `asset/` that holds
+ * its rule, passing the session along.
+ */
 export class AssetPart {
   constructor(private readonly session: WorkspaceSession) {}
 
-  /** The clock a hold and its attempt are stamped with. */
-  private readonly clock = (): string => new Date().toISOString();
-
-  async assetLibrary(): Promise<AssetListing[]> {
-    const project = await loadProject(this.session.dir);
-    const manifest = project.store.manifest();
-    const labels = labelContext(project.model, project.graph);
-    const names = labelAssets(manifest, labels);
-    return manifest.map((asset) => {
-      const slot = slotOf(asset, labels.angleOf?.(asset.sourceTask));
-      return {
-        hash    : asset.hash,
-        ext     : asset.ext,
-        kind    : asset.kind,
-        file    : relPath(this.session.dir, project.store.pathOf(asset)),
-        label   : names.get(asset.hash) ?? asset.hash,
-        accepted: assetApproved(asset),
-        ...(slot ? { slot: slotKey(slot) } : {}),
-      };
-    });
+  /** Lists every manifest asset with its label and slot. */
+  assetLibrary() {
+    return info.assetLibrary(this.session);
   }
 
-  /**
-   * Everything the asset editor draws for one asset: what the bytes are, the prompt they were
-   * made from, the prompt the builders would write now, and the art-notes rungs that reach it.
-   * `null` when the manifest has never heard of the hash.
-   */
-  async assetInfo(hash: string): Promise<AssetInfo | null> {
-    const project = await loadProject(this.session.dir);
-    const manifest = project.store.manifest();
-    const asset = manifest.find((a) => a.hash === hash);
-    if (!asset) return null;
-
-    const model = await withShots(project);
-    const suspended = suspensionsOf(project, model).get(hash);
-    const task = project.graph.get(asset.sourceTask);
-    const ctx = { model, config: project.config, ...(task ? { task } : {}) };
-    const derived = derivePrompt(asset, ctx);
-    // The prompt as sent carries any `Corrections:` clause P7 appended; the planner hashed the base.
-    const recorded = asset.prompt === undefined ? undefined : basePromptOf(asset.prompt);
-    const view = await this.session.promptPart.promptViewOf(project, hash);
-    const labels = labelContext(model, project.graph);
-    const label = labelAssets(manifest, labels).get(hash) ?? hash;
-    const prereqs = assetPrereqs(asset, { ...labels, assets: manifest });
-    // Only for the kinds that can be accepted at all: a portrait, a concept and an upload are each
-    // refused by name already, and a second sentence beside those reads as a second rule. Their
-    // prereqs are still listed, because what a sketch was drawn from is worth showing regardless.
-    const unapproved = ACCEPTABLE.has(asset.kind) ? prereqRefusal(label, prereqs) : undefined;
-    const from = slotOf(asset, sheetAngleOf(asset, labels));
-    const current = from ? this.session.gatePart.slotTask(project, from, model) : undefined;
-    // What the slot holds now is the current row, not the identity's output: an old take stays
-    // current through a re-key until the new identity lands. A slot only counts while these are
-    // the bytes in it, because a pane offering to replace a superseded render would supersede a
-    // picture already moved past.
-    const holder = from ? resolveBinding(from, { ...labels, assets: manifest }) : undefined;
-    const slot = from && holder === asset.hash ? from : undefined;
-    const failure = from
-      ? this.session.gatePart.failureOf(project, current, asset.sourceTask)
-      : undefined;
-    const newer = holder !== undefined && holder !== asset.hash ? holder : undefined;
-    // Only a concept bound to a location promotes to a plate, and only that strip asks for a
-    // variant, so nothing else pays for the lookup.
-    const conceptOf = asset.kind === 'concept' ? asset.satisfies[0]?.locationId : undefined;
-    const locationVariants = conceptOf
-      ? (project.model.locations.get(conceptOf)?.variants ?? []).map((v) => v.id)
-      : undefined;
-    return {
-      hash: asset.hash,
-      ext : asset.ext,
-      kind: asset.kind,
-      label,
-      base      : isBaseKind(asset.kind),
-      accepted  : asset.accepted,
-      current   : asset.current === true,
-      approved  : assetApproved(asset),
-      sourceTask: asset.sourceTask,
-      ...(asset.via === undefined ? {} : { via: asset.via }),
-      ...(asset.at === undefined ? {} : { at: asset.at }),
-      ...(asset.prompt === undefined ? {} : { prompt: asset.prompt }),
-      ...(asset.title === undefined ? {} : { title: asset.title }),
-      ...(derived === undefined ? {} : { derived }),
-      // An unknown derivation is not evidence of drift — it means the project no longer describes
-      // this asset, which the editor says a different way. An adopted or promoted picture was
-      // never drawn from the derived prompt, so it has none to have gone stale against.
-      stale:
-        derived !== undefined &&
-        recorded !== undefined &&
-        derived !== recorded &&
-        asset.via !== 'adopt' &&
-        asset.via !== 'promote' &&
-        asset.via !== 'upload',
-      ...(suspended ? { suspended: suspended.reason } : {}),
-      ...(slot ? { slot: slotKey(slot) } : {}),
-      ...(from ? { drawnFor: slotKey(from) } : {}),
-      ...(locationVariants ? { locationVariants } : {}),
-      ...(newer ? { newerTake: newer } : {}),
-      ...(failure ? { failure } : {}),
-      prereqs,
-      ...(unapproved ? { unapproved } : {}),
-      rungs       : rungsFor(asset, { model }),
-      projectModel: project.config.models.image,
-      ...(project.config.image_params.seed === undefined
-        ? {}
-        : { configSeed: project.config.image_params.seed }),
-      ...(view ? { promptView: view } : {}),
-    };
+  /** Everything the asset editor draws for one asset, or `null` for an unknown hash. */
+  assetInfo(hash: string) {
+    return info.assetInfo(this.session, hash);
   }
 
-  /**
-   * Whether accepting this asset is a question worth answering. Three kinds are refused by name:
-   * a portrait, because approving one also writes `character.md` and `approved.png` and that is
-   * `gate.approve`; a concept, because nothing downstream consumes one, so `accepted` would
-   * mean nothing; and a reference, because nothing generated it — it counts by being pointed at.
-   * Already accepted is not a refusal — re-accepting is how an author changes their mind.
-   */
-  async previewAccept(hash: string): Promise<{ ok: boolean; message: string }> {
-    const info = await this.session.assetInfo(hash);
-    if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.` };
-    if (info.kind === 'portrait') {
-      // The character rung is the widest one a portrait has, so its target names the character
-      // without asking for the binding a second time.
-      const who = info.rungs[0]?.target.split(':')[1];
-      const call = who ? `(characterId='${who}' hash='${hash}')` : '';
-      return {
-        ok     : false,
-        message: `${info.label} is a portrait; use gate.approve${call}, which also writes character.md and approved.png.`,
-      };
-    }
-    if (info.kind === 'concept') {
-      return {
-        ok     : false,
-        message: `${info.label} is a concept; nothing downstream consumes one. Use art.promote(hash='${hash}' variant=…) to make it a location plate.`,
-      };
-    }
-    if (info.kind === 'reference') {
-      return {
-        ok     : false,
-        message: `${info.label} is an upload; nothing generated it, so there is no work to bless. It counts by being pointed at with prompt.addRef.`,
-      };
-    }
-    if (info.suspended) {
-      // Accepting says these bytes are the answer, and a suspended asset was drawn against a
-      // reference that has since moved.
-      return {
-        ok     : false,
-        message: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
-      };
-    }
-    // Checked after suspension deliberately: suspension is a claim about these bytes resting on a
-    // reference that moved, which is more specific than a claim about the slot or other bytes
-    // upstream. The rule itself is shared with the CLI and the testkit.
-    const refused = await this.refusalToAccept(hash);
-    if (refused) return { ok: false, message: refused };
-    return {
-      ok     : true,
-      message: info.accepted
-        ? `${info.label} is already accepted; would re-accept it.`
-        : `Would accept ${info.label}.`,
-    };
+  /** Whether accepting this asset would be allowed, and why not. */
+  previewAccept(hash: string) {
+    return approval.previewAccept(this.session, hash);
   }
 
-  /** `acceptRefusal` over the project as it stands: not the slot's take, or unapproved upstream. */
-  private async refusalToAccept(hash: string): Promise<string | undefined> {
-    const project = await loadProject(this.session.dir);
-    const manifest = project.store.manifest();
-    const asset = manifest.find((a) => a.hash === hash);
-    if (!asset) return `No asset "${hash}" in the manifest.`;
-    const labels = labelContext(await withShots(project), project.graph);
-    const label = labelAssets(manifest, labels).get(hash) ?? hash;
-    return acceptRefusal(asset, label, { ...labels, assets: manifest });
+  /** Marks an asset as approved by the author. */
+  acceptAsset(hash: string) {
+    return approval.acceptAsset(this.session, hash);
   }
 
-  /**
-   * Mark an asset as approved by the author. Generic across both roots, and it asks
-   * {@link previewAccept} itself rather than trusting that a check already ran — a caller may
-   * skip the check, so the command cannot rely on it having happened.
-   *
-   * Accepting selects nothing: the take is already the one its slot holds, or the preview refused
-   * and named `asset.restore`, which is the act that puts an older take back.
-   */
-  async acceptAsset(hash: string): Promise<PromptWriteResult> {
-    const allowed = await this.session.previewAccept(hash);
-    if (!allowed.ok) return { ...allowed, written: [] };
-    const project = await loadProject(this.session.dir);
-    if (!project.store.has(hash))
-      return { ok: false, message: `No asset "${hash}" in the store.`, written: [] };
-    // Asked before the write, since which root answers is decided by which one holds the hash and
-    // an accept moves no bytes between them.
-    const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
-    await project.store.accept(hash);
-    return { ok: true, message: `Accepted ${hash.slice(0, 8)}.`, written: [manifest] };
+  /** Whether taking approval back off this asset would be allowed. */
+  previewUnapprove(hash: string) {
+    return approval.previewUnapprove(this.session, hash);
   }
 
-  /**
-   * Which character a portrait was drawn for, from its widest art-notes rung. The same lookup
-   * `previewAccept` uses to name `gate.approve` in its refusal.
-   */
-  private portraitOwner(info: AssetInfo): string | undefined {
-    return info.rungs[0]?.target.split(':')[1];
-  }
-
-  /**
-   * Answers whether taking approval back off this asset is worth doing. A concept and a reference
-   * are refused by name, for the reason {@link previewAccept} refuses them, since neither is ever
-   * approved and there is nothing to take back. An asset that is not the accepted one is refused
-   * too, since un-approving is about the answer a slot has rather than about a losing take.
-   *
-   * A portrait goes through the P3 gate, so its sentence says what else comes back out with it.
-   */
-  async previewUnapprove(hash: string): Promise<{ ok: boolean; message: string }> {
-    const info = await this.session.assetInfo(hash);
-    if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.` };
-    if (info.kind === 'concept' || info.kind === 'reference') {
-      return {
-        ok     : false,
-        message: `${info.label} is a ${info.kind}; nothing ever approved it, so there is nothing to take back.`,
-      };
-    }
-    if (info.kind === 'portrait') {
-      const who = this.portraitOwner(info);
-      if (!who) return { ok: false, message: `${info.label} names no character.` };
-      const project = await loadProject(this.session.dir);
-      const character = project.model.characters.get(who);
-      const approved = character
-        ? approvedPortraitOf(character, project.store.manifest())
-        : undefined;
-      if (!character || approved === undefined) {
-        return { ok: false, message: `${who} has no approved portrait.` };
-      }
-      if (approved !== hash) {
-        return { ok: false, message: `${who}'s approved portrait is a different take.` };
-      }
-      return {
-        ok     : true,
-        message: `Would put ${who} back at the gate, dropping approved.png and the hash in their sheet.`,
-      };
-    }
-    if (!info.accepted) return { ok: false, message: `${info.label} is not accepted.` };
-    return { ok: true, message: `Would un-accept ${info.label}, leaving its slot unanswered.` };
-  }
-
-  /**
-   * Take approval back off an asset: the manifest flag, which for a portrait is the whole P3
-   * gate, since the store clears the sheet's `status:` and `approved_portrait:` and `approved.png`
-   * with it.
-   *
-   * Asks {@link previewUnapprove} itself for the reason {@link acceptAsset} asks its own preview:
-   * a caller may skip the check, so the write cannot rely on one having run.
-   *
-   * The bytes are never touched. Everything drawn from what this un-approves keeps its own
-   * approval, and the slot graph reports it as blocked again until something answers the slot.
-   */
-  async unapproveAsset(hash: string): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const allowed = await this.session.previewUnapprove(hash);
-    if (!allowed.ok) return { ...allowed, written: [] };
-    const info = await this.session.assetInfo(hash);
-    if (!info) return { ok: false, message: `No asset "${hash}" in the manifest.`, written: [] };
-    const project = await loadProject(this.session.dir);
-
-    const manifest = relPath(this.session.dir, project.store.manifestFileOf(hash));
-    if (info.kind !== 'portrait') {
-      await project.store.unaccept(hash);
-      return { ok: true, message: `Un-accepted ${info.label}.`, written: [manifest] };
-    }
-
-    const who = this.portraitOwner(info) ?? '';
-    const file = entityFile(project.inputs.characterDocs, who);
-    if (!file) return { ok: false, message: `No character file for "${who}".`, written: [] };
-    await project.store.unaccept(hash);
-    return {
-      ok     : true,
-      message: `${who} is back at the approval gate.`,
-      written: [
-        relPath(this.session.dir, file),
-        relPath(this.session.dir, project.paths.approvedPortrait(who)),
-        manifest,
-      ],
-    };
-  }
-
-  /**
-   * Whether a regeneration would land, and the task it would requeue. Shared by the check and the
-   * write so the refusal a surface shows is the refusal the command gives.
-   *
-   * Regenerating any take of a slot regenerates the slot: the task requeued is the slot's
-   * identity as the project states it today, not the one these bytes came from. A `stale` take's
-   * own task is an orphan (the prompt moved on, so the planner wants a different hash), and
-   * requeueing it would spend a real image call reproducing the picture the author just edited
-   * away from; `tasks.jsonl` is never pruned, so the log's dead nodes would otherwise stay
-   * re-runnable forever. A slot that has since failed re-runs the task that gave up, which no run
-   * reaches on its own once its retry budget is spent.
-   */
-  private async regeneration(
-    hash: string,
-  ): Promise<{ ok: false; reason: string } | { ok: true; task: AnyTask; note: string }> {
-    const info = await this.session.assetInfo(hash);
-    if (!info) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
-    const project = await loadProject(this.session.dir);
-    if (project.store.base.state === 'unavailable') {
-      return {
-        ok    : false,
-        reason: baseRefusal(project.store.base) ?? 'Base assets are unavailable.',
-      };
-    }
-    // A concept's `sourceTask` is a hash of the request and deliberately not a node, so the
-    // generic "no task" refusal below would be true and useless. Redrawing one is its own act.
-    if (info.kind === 'concept') {
-      return {
-        ok    : false,
-        reason: `${info.label} is a concept: the planner never made it, so there is no task to re-run. Draw it again with art.redraw(hash='${hash}'), which takes an edited prompt.`,
-      };
-    }
-    // Same shape as the concept refusal, for the same reason: an upload's `sourceTask` is a hash of
-    // the request that brought the bytes in, and no node ever answered to it.
-    if (info.kind === 'reference') {
-      return {
-        ok    : false,
-        reason: `${info.label} is an upload: nothing generated it, so there is no task to re-run. Bring in a different image with asset.upload(file=…).`,
-      };
-    }
-    // A re-render the project has already given up on is the picture the author is asking for,
-    // not the one these bytes came from. The scheduler will not requeue it once its retry budget
-    // is spent, and the orphan refusal below would send the author to a run that does nothing.
-    if (info.failure?.later) {
-      const later = project.graph.get(info.failure.task);
-      if (later) {
-        return {
-          ok  : true,
-          task: later,
-          note: `Would re-run the ${later.kind} that gave up on ${info.label}. The picture on screen is the last one that got through, and it stays until the new render lands.`,
-        };
-      }
-    }
-    const from = info.drawnFor ? parseSlot(info.drawnFor) : undefined;
-    const slotTask = from
-      ? this.session.gatePart.slotTask(project, from, await withShots(project))
-      : undefined;
-    const task =
-      (slotTask ? project.graph.get(slotTask) : undefined) ??
-      (info.sourceTask ? project.graph.get(info.sourceTask) : undefined);
-    if (!task) {
-      return {
-        ok    : false,
-        reason: `${info.label} records no task in the graph, so there is nothing to re-run.`,
-      };
-    }
-    if (task.hash !== info.sourceTask && info.stale) {
-      return {
-        ok: true,
-        task,
-        note: `Would re-run the ${task.kind} for ${info.drawnFor}: these bytes were rendered from a prompt the project has since changed, so the slot is drawn afresh from today's.`,
-      };
-    }
-    if (info.stale) {
-      return {
-        ok    : false,
-        reason: `${info.label} was rendered from a prompt the project has since changed, so its task is an orphan. Run the pipeline — a fresh task is already planned for it.`,
-      };
-    }
-    // With a fixed seed the same prompt and the same references give back the same bytes, so
-    // say so rather than letting an author spend a call finding out.
-    const seeded = project.config.image_params.seed !== undefined;
-    return {
-      ok: true,
-      task,
-      note: seeded
-        ? `Would re-run ${task.kind} for ${info.label} — image_params.seed is fixed, so expect the same picture. Art notes are how the picture changes.`
-        : `Would re-run ${task.kind} for ${info.label}.`,
-    };
+  /** Takes approval back off an asset. */
+  unapproveAsset(hash: string) {
+    return approval.unapproveAsset(this.session, hash);
   }
 
   /** What `asset.regenerate` would do, without doing it. */
-  async previewRegenerate(hash: string): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.regeneration(hash);
-    return decided.ok
-      ? { ok: true, message: decided.note }
-      : { ok: false, message: decided.reason };
+  previewRegenerate(hash: string) {
+    return regenerate.previewRegenerate(this.session, hash);
   }
 
-  /**
-   * Put an asset's task back to `pending` so the next run re-renders it. Appending a `pending`
-   * snapshot to `tasks.jsonl` performs the requeue — `loadGraph` replays last-writer-wins, which
-   * is how `requeueFailed` already works — so this needs no new scheduler machinery.
-   *
-   * A slot a generation graph draws needs a second step. The graph's own journal resumes every
-   * node whose hash still matches, so requeuing the task alone would replay the same picture out
-   * of the journal; the paid nodes upstream of that graph's output are invalidated as well.
-   */
-  async regenerateAsset(
-    hash: string,
-  ): Promise<{ ok: boolean; message: string; written: string[]; task?: string }> {
-    const decided = await this.regeneration(hash);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const project = await loadProject(this.session.dir);
-    const written = await this.requeue(project, decided.task);
-    return {
-      ok     : true,
-      message: `Queued ${decided.task.kind} ${decided.task.hash.slice(0, 8)} for re-run.`,
-      written,
-      task: decided.task.hash,
-    };
+  /** Puts an asset's task back to `pending` so the next run re-renders it. */
+  regenerateAsset(hash: string) {
+    return regenerate.regenerateAsset(this.session, hash);
   }
 
-  /** Puts one task back to `pending`, invalidates the graph bound to it, and reports the writes. */
-  private async requeue(project: LoadedProject, task: AnyTask): Promise<string[]> {
-    await logRequeue(project.paths, task);
-    const written = [relPath(this.session.dir, project.paths.tasksLog)];
-    const invalidated = await this.invalidateBound(project, task);
-    if (invalidated !== undefined) written.push(invalidated);
-    return written;
-  }
-
-  /**
-   * The task one slot's picture is, as the project states it today, and what drawing it would do:
-   * a first render where nothing has run, a re-render where one has. Refused with the resolver's
-   * own sentence when the slot's identity cannot be stated yet — a shot whose sheets are not
-   * drawn, an unknown address.
-   */
-  async drawing(
-    slot: string,
-  ): Promise<
-    | { ok: true; task: string; queued: AnyTask | undefined; note: string }
-    | { ok: false; reason: string }
-  > {
-    const binding = parseSlot(slot);
-    if (!binding) return { ok: false, reason: `"${slot}" is not a slot address.` };
-    const project = await loadProject(this.session.dir);
-    const refused = baseRefusal(project.store.base);
-    if (refused) return { ok: false, reason: refused };
-    const decided = resolveSlot(binding, {
-      model : await withShots(project),
-      config: project.config,
-      assets: project.store.manifest(),
-      graph : project.graph,
-    });
-    if (!decided.ok) return { ok: false, reason: decided.reason };
-    const hash = slotTaskHash(decided.plan);
-    const task = project.graph.get(hash);
-    const label = slotLabel(binding);
-    if (task === undefined || task.status === 'pending') {
-      return { ok: true, task: hash, queued: undefined, note: `Would draw ${label}.` };
-    }
-    if (task.status === 'running') {
-      return Object.hasOwn(this.session.progress.activity ?? {}, task.hash)
-        ? { ok: false, reason: `${label} is being drawn now.` }
-        : { ok: true, task: hash, queued: undefined, note: `Would resume drawing ${label}.` };
-    }
-    const seeded = project.config.image_params.seed !== undefined;
-    return {
-      ok    : true,
-      task  : hash,
-      queued: task,
-      note: seeded
-        ? `Would draw ${label} again — image_params.seed is fixed, so expect the same picture unless the model or the art notes changed.`
-        : `Would draw ${label} again.`,
-    };
+  /** The task one slot's picture is, and what drawing it would do. */
+  drawing(slot: string) {
+    return regenerate.drawing(this.session, slot);
   }
 
   /** What `pipeline.draw` would do, without doing it. */
-  async previewDraw(slot: string): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.drawing(slot);
-    return decided.ok
-      ? { ok: true, message: decided.note }
-      : { ok: false, message: decided.reason };
+  previewDraw(slot: string) {
+    return regenerate.previewDraw(this.session, slot);
   }
 
-  /**
-   * Draw one slot: requeue its task where it has already run, then run the pipeline for that
-   * task and what it needs alone.
-   */
-  async drawSlot(
-    slot: string,
-  ): Promise<{ ok: boolean; message: string; written: string[]; task?: string }> {
-    const decided = await this.drawing(slot);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const written =
-      decided.queued === undefined
-        ? []
-        : await this.requeue(await loadProject(this.session.dir), decided.queued);
-    return { ok: true, message: decided.note, written, task: decided.task };
-  }
-
-  /**
-   * Invalidates the paid nodes feeding the graph bound to this task's slot, and reports the
-   * journal that was appended to. Answers undefined when no graph claims the slot, which is
-   * every task in a project that has authored none.
-   */
-  private async invalidateBound(
-    project: LoadedProject,
-    task: AnyTask,
-  ): Promise<string | undefined> {
-    const slot = slotOfTask(task, sessionFacts(project, await withShots(project)));
-    if (slot === undefined) return undefined;
-
-    for (const slug of await graphSlugs(this.session.dir)) {
-      const read = await readGraph(this.session.dir, slug);
-      if (!read.ok) continue;
-
-      const bound = activeOutputs(read.graph).find((output) => output.slot === slot);
-      if (bound === undefined) continue;
-
-      await invalidateGenGraph(
-        read.graph,
-        { record: (record: GraphJournalRecord) => appendGraphJournal(project.paths, slug, record) },
-        [bound.id],
-      );
-      return relPath(this.session.dir, graphJournalFile(project.paths, slug));
-    }
-    return undefined;
+  /** Draws one slot, requeueing its task where it has already run. */
+  drawSlot(slot: string) {
+    return regenerate.drawSlot(this.session, slot);
   }
 
   /** What `art.setNotes` would do, without writing it. */
-  async previewArtNotes(target: string, notes: string): Promise<{ ok: boolean; message: string }> {
-    const { config, paths } = await loadProject(this.session.dir);
-    const decided = await artNotesOf({ config, paths }, { target, notes });
-    return decided.ok
-      ? { ok: true, message: decided.plan.note }
-      : { ok: false, message: decided.reason };
+  previewArtNotes(target: string, notes: string) {
+    return art.previewArtNotes(this.session, target, notes);
   }
 
-  /**
-   * Write one art-notes rung, through the rule `vnauthor`'s `set_art_notes` runs — an entity rung
-   * into the sheet the model was built from, a shot rung into `work/shots/<sceneId>.json`.
-   */
-  async setArtNotes(
-    target: string,
-    notes: string,
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const { config, paths } = await loadProject(this.session.dir);
-    const deps = { config, paths };
-    const decided = await artNotesOf(deps, { target, notes });
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const plan = await writeArtNotes(deps, { target, notes });
-    return { ok: true, message: plan.note, written: [relPath(this.session.dir, plan.file)] };
+  /** Writes one art-notes rung. */
+  setArtNotes(target: string, notes: string) {
+    return art.setArtNotes(this.session, target, notes);
   }
 
   /** What `art.setSeed` would do, without writing it. */
-  async previewArtSeed(
-    target: string,
-    seed: number | null,
-  ): Promise<{ ok: boolean; message: string }> {
-    const { config, paths } = await loadProject(this.session.dir);
-    const decided = await artSeedOf({ config, paths }, { target, seed });
-    return decided.ok
-      ? { ok: true, message: decided.plan.note }
-      : { ok: false, message: decided.reason };
+  previewArtSeed(target: string, seed: number | null) {
+    return art.previewArtSeed(this.session, target, seed);
   }
 
-  /** Write one rung's image seed, into the same two files `setArtNotes` writes. */
-  async setArtSeed(
-    target: string,
-    seed: number | null,
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const { config, paths } = await loadProject(this.session.dir);
-    const deps = { config, paths };
-    const decided = await artSeedOf(deps, { target, seed });
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const plan = await writeArtSeed(deps, { target, seed });
-    return { ok: true, message: plan.note, written: [relPath(this.session.dir, plan.file)] };
+  /** Writes one rung's image seed. */
+  setArtSeed(target: string, seed: number | null) {
+    return art.setArtSeed(this.session, target, seed);
   }
 
   /** What `art.setModel` would do, without writing it. */
-  async previewArtModel(target: string, model: string): Promise<{ ok: boolean; message: string }> {
-    const { config, paths } = await loadProject(this.session.dir);
-    const decided = await artModelOf({ config, paths }, { target, model });
-    return decided.ok
-      ? { ok: true, message: decided.plan.note }
-      : { ok: false, message: decided.reason };
+  previewArtModel(target: string, model: string) {
+    return art.previewArtModel(this.session, target, model);
   }
 
-  /** Write one rung's image model, into the same two files `setArtNotes` writes. */
-  async setArtModel(
-    target: string,
-    model: string,
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const { config, paths } = await loadProject(this.session.dir);
-    const deps = { config, paths };
-    const decided = await artModelOf(deps, { target, model });
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const plan = await writeArtModel(deps, { target, model });
-    return { ok: true, message: plan.note, written: [relPath(this.session.dir, plan.file)] };
-  }
-
-  /**
-   * The composed prompt for one asset: the chunks the builders derived, what the author's override
-   * does to them, and the one string that would be sent. `null` when the manifest has never heard
-   * of the hash.
-   *
-   * The pane reads this off `assetInfo`, so a picture and its prompt are one round trip; the
-   * command is the same projection for an agent and for CDP.
-   */
-  private async conceptPlan(
-    sentence: string,
-    subject: string,
-  ): Promise<
-    | { ok: false; reason: string }
-    | { ok: true; note: string; project: LoadedProject; req: ConceptRequest }
-  > {
-    const said = sentence.trim();
-    if (!said) return { ok: false, reason: 'Nothing to draw: the description is empty.' };
-    const named = subject ? parseSubject(subject) : undefined;
-    if (subject && !named) {
-      return {
-        ok    : false,
-        reason: `"${subject}" names no subject; expected location:<id> or character:<id>.`,
-      };
-    }
-    const project = await loadProject(this.session.dir);
-    const refusal = baseRefusal(project.store.base);
-    if (refusal) return { ok: false, reason: refusal };
-    const bound = named ?? matchSubject(project.model, said);
-    if (bound && !subjectEntity(project.model, bound)) {
-      return { ok: false, reason: `No ${bound.kind} "${bound.id}" in this project.` };
-    }
-    const of = bound ? `of ${formatSubject(bound)}` : 'bound to nothing in the project';
-    return {
-      ok  : true,
-      note: `Would draw a concept ${of}. It is a sketch — nothing in the pipeline plans or renders it.`,
-      project,
-      req: { sentence: said, ...(bound ? { subject: bound } : {}) },
-    };
+  /** Writes one rung's image model. */
+  setArtModel(target: string, model: string) {
+    return art.setArtModel(this.session, target, model);
   }
 
   /** What `art.generate` would draw, without spending the call. */
-  async previewConcept(
-    sentence: string,
-    subject: string,
-  ): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.conceptPlan(sentence, subject);
-    return decided.ok
-      ? { ok: true, message: decided.note }
-      : { ok: false, message: decided.reason };
+  previewConcept(sentence: string, subject: string) {
+    return concept.previewConcept(this.session, sentence, subject);
   }
 
-  /**
-   * Draw one concept image: a sentence in, an asset out, with no task node and no place in any
-   * plan — the one path to an image the planner deliberately does not have. Providers come from
-   * the session's own `mock` flag, so there is no second policy about whether this run makes
-   * real art.
-   */
-  async drawConcept(
-    sentence: string,
-    subject: string,
-  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    const decided = await this.conceptPlan(sentence, subject);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const { project, req } = decided;
-    const result = await this.session.while('a concept image', async () => {
-      const providers = await buildProviders(project, this.session.mock);
-      return generateConcept(
-        {
-          config: project.config,
-          model : project.model,
-          store : project.store,
-          image : providers.image,
-        },
-        req,
-      );
-    });
-    const of = result.subject ? ` of ${formatSubject(result.subject)}` : '';
-    return {
-      ok     : true,
-      message: `Drew a concept${of}: ${result.ref.hash.slice(0, 8)}.`,
-      hash   : result.ref.hash,
-      written: [
-        relPath(this.session.dir, result.file),
-        relPath(this.session.dir, project.paths.baseManifest),
-      ],
-    };
-  }
-
-  /**
-   * The rule behind both upload halves: read the bytes once, then let `uploadOf` say everything
-   * that can be refused. A relative path is resolved against the project, so a command reads the
-   * same file the file picker named.
-   */
-  private async uploadPlan(
-    file: string,
-    title: string,
-    slot: string,
-    replace: boolean,
-  ): Promise<
-    | { ok: false; reason: string }
-    | { ok: true; project: LoadedProject; path: string; note: string; slot?: RefBinding }
-  > {
-    const said = file.trim();
-    if (!said) return { ok: false, reason: 'Nothing to upload: no file was named.' };
-    const path = isAbsolute(said) ? said : join(this.session.dir, said);
-    const project = await loadProject(this.session.dir);
-    let bytes: Uint8Array;
-    try {
-      bytes = new Uint8Array(await readFile(path));
-    } catch {
-      return { ok: false, reason: `Cannot read ${relPath(this.session.dir, path)}.` };
-    }
-    const decided = uploadOf(project.store, { file: path, title, bytes });
-    if (!decided.ok) return { ok: false, reason: decided.reason };
-    if (!slot.trim()) return { ok: true, project, path, note: decided.plan.note };
-
-    // Both refusals before either write: an upload that names a slot is one act, and hearing
-    // "that slot is already rendered" after the bytes are copied is hearing it too late.
-    const hash = sha256(bytes);
-    const adoption = await this.adoptPlan(hash, slot, replace, bytes);
-    if (!adoption.ok) return { ok: false, reason: adoption.reason };
-    const supersede = adoption.plan.supersedes
-      ? ` It supersedes the render ${adoption.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
-      : ' The next run adopts it instead of rendering one.';
-    return {
-      ok: true,
-      project,
-      path,
-      slot: adoption.slot,
-      note: `Would bring ${basename(path)} in as ${hash.slice(0, 8)} and make it the ${adoption.plan.label}.${supersede}`,
-    };
+  /** Draws one concept image from a sentence. */
+  drawConcept(sentence: string, subject: string) {
+    return concept.drawConcept(this.session, sentence, subject);
   }
 
   /** What `asset.upload` would bring in, without writing anything. */
-  async previewUpload(
-    file: string,
-    title: string,
-    slot = '',
-    replace = false,
-  ): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.uploadPlan(file, title, slot, replace);
-    return decided.ok
-      ? { ok: true, message: decided.note }
-      : { ok: false, message: decided.reason };
+  previewUpload(file: string, title: string, slot = '', replace = false) {
+    return upload.previewUpload(this.session, file, title, slot, replace);
   }
 
-  /**
-   * Bring an outside image into the base asset store. With no slot it is a `reference`: nothing
-   * generated it, so it is never accepted and never planned — it exists only to be pointed at by a
-   * prompt chunk. With a slot it is filed the same way and then adopted as that slot's output.
-   */
-  async uploadAsset(
-    file: string,
-    title: string,
-    slot = '',
-    replace = false,
-  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    const decided = await this.uploadPlan(file, title, slot, replace);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const { project, path } = decided;
-    const result = await uploadReference({ store: project.store }, { file: path, title });
-    const already = result.known ? ' It was already in the store; nothing new was written.' : '';
-    const uploaded = `Uploaded "${result.title}" as ${result.ref.hash.slice(0, 8)}.${already}`;
-    const written = [
-      relPath(this.session.dir, result.stored),
-      relPath(this.session.dir, project.paths.baseManifest),
-    ];
-    if (!decided.slot) return { ok: true, message: uploaded, hash: result.ref.hash, written };
-
-    // The bytes are in by now, so a refusal here is recoverable rather than lost — which is what
-    // the message has to say, because the author's file did land somewhere.
-    const adopted = await this.session.adoptAsset(result.ref.hash, slot, replace, 'upload');
-    if (!adopted.ok) {
-      return {
-        ok     : false,
-        message: `${uploaded} It could not be adopted, and stays a reference: ${adopted.message} Finish with asset.adopt(hash='${result.ref.hash}' slot='${slot}').`,
-        hash   : result.ref.hash,
-        written,
-      };
-    }
-    return {
-      ok     : true,
-      message: `${uploaded} ${adopted.message}`,
-      hash   : result.ref.hash,
-      written: [...written, ...adopted.written],
-    };
-  }
-
-  /**
-   * Both adoption halves follow the same rule. Read the slot address, then let
-   * `adoptionForSlot` decide everything else. `bytes` is for the pre-upload case, where the
-   * hash is not in the store yet.
-   */
-  private async adoptPlan(
-    hash: string,
-    slot: string,
-    replace: boolean,
-    bytes?: Uint8Array,
-  ): Promise<
-    | { ok: false; code: string; reason: string }
-    | { ok: true; project: LoadedProject; slot: RefBinding; plan: AdoptSlotPlan }
-  > {
-    const said = parseSlot(slot);
-    if (!said) {
-      return {
-        ok    : false,
-        code  : 'NOT_A_SLOT',
-        reason: `"${slot}" is not a picture in this project. A slot reads like plate:cafe/night, sheet:aiko/gala/front or shot:greet/s2.`,
-      };
-    }
-    const project = await loadProject(this.session.dir);
-    const decided = await adoptionForSlot(
-      { config: project.config, paths: project.paths, store: project.store },
-      { hash, slot: said, replace, via: 'adopt', ...(bytes ? { bytes } : {}) },
-    );
-    return decided.ok
-      ? { ok: true, project, slot: said, plan: decided.plan }
-      : { ok: false, code: decided.code, reason: decided.reason };
+  /** Brings an outside image into the base asset store. */
+  uploadAsset(file: string, title: string, slot = '', replace = false) {
+    return upload.uploadAsset(this.session, file, title, slot, replace);
   }
 
   /** What `asset.adopt` would make this picture, without writing anything. */
-  async previewAdopt(
-    hash: string,
-    slot: string,
-    replace: boolean,
-  ): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.adoptPlan(hash, slot, replace);
-    return decided.ok
-      ? { ok: true, message: decided.plan.note }
-      : { ok: false, message: decided.reason };
+  previewAdopt(hash: string, slot: string, replace: boolean) {
+    return adopt.previewAdopt(this.session, hash, slot, replace);
   }
 
-  /**
-   * Record bytes already in the store as a slot's output — the general form of promotion. The task
-   * identity is derived from the project as it stands and logged `done`, so the next run adopts the
-   * picture rather than rendering over it.
-   */
-  async adoptAsset(
-    hash: string,
-    slot: string,
-    replace: boolean,
-    via: AdoptVia = 'adopt',
-  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    const decided = await this.adoptPlan(hash, slot, replace);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const { project, slot: binding } = decided;
-    const result = await adoptSlot(
-      { config: project.config, paths: project.paths, store: project.store, now: this.clock },
-      { hash, slot: binding, replace, via },
-    );
-    const superseded = result.plan.supersedes
-      ? ` It supersedes the render ${result.plan.supersedes.slice(0, 8)}, whose bytes stay in the store.`
-      : '';
-    return {
-      ok     : true,
-      message: `${hash.slice(0, 8)} is now the ${result.plan.label}.${superseded}`,
-      hash   : result.ref.hash,
-      written: this.adoptWrote(project, binding, result.plan),
-    };
+  /** Records bytes already in the store as a slot's output. */
+  adoptAsset(hash: string, slot: string, replace: boolean, via: AdoptVia = 'adopt') {
+    return adopt.adoptAsset(this.session, hash, slot, replace, via);
   }
 
-  /**
-   * The rule behind both replace halves: the asset names its own slot, so an author replacing
-   * the picture in front of them never types one. Refusals come from {@link adoptionForSlot}
-   * asked about these very bytes — a portrait, a concept and an upload are refused there by
-   * name. Both the preview and the act ask the same question, so the strip on screen and the
-   * command it runs apply the same rule.
-   */
-  private async replacePlan(
-    hash: string,
-  ): Promise<{ ok: false; reason: string } | { ok: true; slot: RefBinding; note: string }> {
-    const info = await this.session.assetInfo(hash);
-    if (!info) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
-    if (!info.slot) {
-      return {
-        ok    : false,
-        reason: `${info.label} fills no slot — nothing planned it, or a later render took the slot over, so there is nothing for a file to replace.`,
-      };
-    }
-    const slot = parseSlot(info.slot);
-    if (!slot) return { ok: false, reason: `"${info.slot}" is not a picture in this project.` };
-
-    // Apply every refusal except `MOCK_PLACEHOLDER`: that one judges the incoming bytes, and
-    // the chooser has not produced any yet — `uploadOf` refuses mock art at the upload, which is
-    // where that check belongs. This call only exists to check the slot itself.
-    const decided = await this.adoptPlan(hash, info.slot, false);
-    if (!decided.ok && decided.code !== 'MOCK_PLACEHOLDER') {
-      return { ok: false, reason: decided.reason };
-    }
-    const label = decided.ok ? decided.plan.label : slotLabel(slot);
-    return {
-      ok: true,
-      slot,
-      note: `Opens a file chooser; what you choose becomes the ${label}, superseding ${hash.slice(0, 8)} — whose bytes stay in the store.`,
-    };
-  }
-
-  /**
-   * An older take goes back only where it was a take of a slot and a later render has taken that
-   * slot over. Anything else has nothing to be put back into.
-   *
-   * The three kinds `previewAccept` refuses by name are refused here for the same reasons, and the
-   * suspension and upstream-approval refusals are the ones accepting would give, because the whole
-   * act ends in an accept.
-   */
-  private async restorePlan(
-    hash: string,
-  ): Promise<
-    { ok: false; reason: string } | { ok: true; slot: string; newer: string; label: string }
-  > {
-    const info = await this.session.assetInfo(hash);
-    if (!info) return { ok: false, reason: `No asset "${hash}" in the manifest.` };
-    if (info.kind === 'portrait') {
-      const who = this.portraitOwner(info);
-      const call = who ? `(characterId='${who}' hash='${hash}')` : '';
-      return {
-        ok    : false,
-        reason: `${info.label} is a portrait; an earlier look goes back through gate.approve${call}.`,
-      };
-    }
-    if (info.kind === 'concept' || info.kind === 'reference') {
-      return {
-        ok    : false,
-        reason: `${info.label} is a ${info.kind}; nothing planned it, so it was never a take of anything.`,
-      };
-    }
-    if (info.newerTake === undefined) {
-      return {
-        ok    : false,
-        reason: info.slot
-          ? `${info.label} is already the ${info.slot}.`
-          : `${info.label} fills no slot, so there is nothing to put it back into.`,
-      };
-    }
-    if (!info.drawnFor) {
-      return { ok: false, reason: `${info.label} names no picture in this project any more.` };
-    }
-    if (info.suspended) {
-      return {
-        ok    : false,
-        reason: `${info.label} is suspended: ${info.suspended}. Repin or regenerate it first.`,
-      };
-    }
-    if (info.unapproved) return { ok: false, reason: info.unapproved };
-    const decided = await this.adoptPlan(hash, info.drawnFor, true);
-    if (!decided.ok) return { ok: false, reason: decided.reason };
-    return { ok: true, slot: info.drawnFor, newer: info.newerTake, label: info.label };
-  }
-
-  /**
-   * Copy one asset's bytes to a path the author chose. Nothing about the project changes — this is
-   * the picture leaving, not the project being edited — so no manifest is touched and no
-   * provenance is written, and the path is deliberately not narrowed to the workspace.
-   */
-  async exportAsset(
-    hash: string,
-    file: string,
-  ): Promise<{ ok: boolean; message: string; file?: string }> {
-    const project = await loadProject(this.session.dir);
-    const asset = project.store.manifest().find((a) => a.hash === hash);
-    if (!asset) return { ok: false, message: `No asset "${hash}" in the manifest.` };
-    const bytes = await project.store.read({ hash: asset.hash, ext: asset.ext });
-    await writeFile(file, bytes);
-    return { ok: true, message: `Saved ${basename(file)}.`, file };
+  /** Copies one asset's bytes to a path the author chose. */
+  exportAsset(hash: string, file: string) {
+    return upload.exportAsset(this.session, hash, file);
   }
 
   /** What `asset.restore` would put back, without writing it. */
-  async previewRestore(hash: string): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.restorePlan(hash);
-    if (!decided.ok) return { ok: false, message: decided.reason };
-    return {
-      ok     : true,
-      message:
-        `Would make ${decided.label} the ${decided.slot} again and accept it, superseding ` +
-        `${decided.newer.slice(0, 8)} — whose bytes stay in the store, and whose prompt is then ` +
-        'the one nothing is drawn from.',
-    };
+  previewRestore(hash: string) {
+    return adopt.previewRestore(this.session, hash);
   }
 
-  /**
-   * Put an older take back in its slot and accept it, as one act.
-   *
-   * Accepting alone would only flip a manifest flag: the slot's task still names the later render,
-   * so the runner and the exporter would go on using it. The adoption is what makes the picture
-   * the slot's answer, and the accept is what the author meant by clicking Accept.
-   *
-   * The prompt these bytes were drawn from is kept rather than restamped with the slot's current
-   * one, so the picture goes on reporting the drift it really has.
-   */
-  async restoreAsset(hash: string): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const decided = await this.restorePlan(hash);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const project = await loadProject(this.session.dir);
-    const slot = parseSlot(decided.slot);
-    if (!slot)
-      return {
-        ok     : false,
-        message: `"${decided.slot}" is not a picture in this project.`,
-        written: [],
-      };
-    const result = await adoptSlot(
-      { config: project.config, paths: project.paths, store: project.store, now: this.clock },
-      { hash, slot, replace: true, keepPrompt: true, via: 'restore' },
-    );
-    const accepted = await this.session.acceptAsset(hash);
-    if (!accepted.ok) return { ok: false, message: accepted.message, written: [] };
-    return {
-      ok     : true,
-      message: `${decided.label} is the ${result.plan.label} again, and accepted. It supersedes ${decided.newer.slice(0, 8)}, whose bytes stay in the store.`,
-      written: this.adoptWrote(project, slot, result.plan),
-    };
+  /** Puts an older take back in its slot and accepts it. */
+  restoreAsset(hash: string) {
+    return adopt.restoreAsset(this.session, hash);
   }
 
   /** What `asset.replace` would replace, before the chooser is opened. */
-  async previewReplace(hash: string): Promise<{ ok: boolean; message: string }> {
-    const decided = await this.replacePlan(hash);
-    return decided.ok
-      ? { ok: true, message: decided.note }
-      : { ok: false, message: decided.reason };
+  previewReplace(hash: string) {
+    return adopt.previewReplace(this.session, hash);
   }
 
-  /**
-   * Put an outside file in the place of a picture the project generated: upload it, then adopt
-   * it onto the slot those bytes fill. It is a single act, so a file that lands but cannot be
-   * adopted reports that in one answer — `uploadAsset` produces that message.
-   */
-  async replaceAsset(
-    hash: string,
-    file: string,
-  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    const decided = await this.replacePlan(hash);
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    return this.session.uploadAsset(file, '', slotKey(decided.slot), true);
+  /** Puts an outside file in the place of a generated picture. */
+  replaceAsset(hash: string, file: string) {
+    return adopt.replaceAsset(this.session, hash, file);
   }
 
-  /** What an adoption touched: the manifest its kind routes to, the log, and a shot's own file. */
-  private adoptWrote(project: LoadedProject, slot: RefBinding, plan: AdoptSlotPlan): string[] {
-    const manifest =
-      plan.kind === 'shot_image' ? project.paths.manifest : project.paths.baseManifest;
-    return [
-      ...(slot.kind === 'shot'
-        ? [relPath(this.session.dir, project.paths.shotsFile(slot.sceneId))]
-        : []),
-      relPath(this.session.dir, manifest),
-      relPath(this.session.dir, project.paths.tasksLog),
-    ];
+  /** What `art.redraw` would draw, without spending the call. */
+  previewRedraw(hash: string, prompt: string, title: string) {
+    return concept.previewRedraw(this.session, hash, prompt, title);
   }
 
-  /** What `art.redraw` would draw, decided from the manifest without spending the call. */
-  async previewRedraw(
-    hash: string,
-    prompt: string,
-    title: string,
-  ): Promise<{ ok: boolean; message: string }> {
-    const project = await loadProject(this.session.dir);
-    const decided = redrawOf(
-      project.store,
-      { hash, prompt, title },
-      { seeded: this.seeded(project) },
-    );
-    return decided.ok
-      ? { ok: true, message: decided.plan.note }
-      : { ok: false, message: decided.reason };
+  /** Draws a concept again, from an edited prompt or the same one. */
+  redrawAsset(hash: string, prompt: string, title: string) {
+    return concept.redrawAsset(this.session, hash, prompt, title);
   }
 
-  /**
-   * Draw a concept again, from an edited prompt or the same one. A concept is the one asset whose
-   * prompt is authored rather than derived, so it is the one asset an author can rewrite; the
-   * result is a new sketch beside the old one, because bytes are content-addressed.
-   */
-  async redrawAsset(
-    hash: string,
-    prompt: string,
-    title: string,
-  ): Promise<{ ok: boolean; message: string; hash?: string; written: string[] }> {
-    const project = await loadProject(this.session.dir);
-    const decided = redrawOf(
-      project.store,
-      { hash, prompt, title },
-      { seeded: this.seeded(project) },
-    );
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const result = await this.session.while('a concept image', async () => {
-      const providers = await buildProviders(project, this.session.mock);
-      return redrawConcept(
-        {
-          config: project.config,
-          model : project.model,
-          store : project.store,
-          image : providers.image,
-        },
-        { hash, prompt, title },
-      );
-    });
-    const same = result.unchanged
-      ? ' The same prompt and a fixed seed gave back the same picture, so nothing new was written.'
-      : ` ${hash.slice(0, 8)} is still there.`;
-    return {
-      ok     : true,
-      message: `Redrew ${hash.slice(0, 8)} as ${result.ref.hash.slice(0, 8)}.${same}`,
-      hash   : result.ref.hash,
-      written: [
-        relPath(this.session.dir, result.file),
-        relPath(this.session.dir, project.paths.baseManifest),
-      ],
-    };
+  /** What `art.promote` would do, without writing anything. */
+  previewPromote(hash: string, variant: string) {
+    return concept.previewPromote(this.session, hash, variant);
   }
 
-  /** Whether a re-roll would come back identical — one fixed seed, one prompt, one picture. */
-  private seeded(project: LoadedProject): boolean {
-    return project.config.image_params.seed !== undefined;
-  }
-
-  /** What `art.promote` would do, decided from the manifest without writing anything. */
-  async previewPromote(hash: string, variant: string): Promise<{ ok: boolean; message: string }> {
-    const project = await loadProject(this.session.dir);
-    const decided = promotionOf(project.store, { hash, variant });
-    return decided.ok
-      ? { ok: true, message: decided.plan.note }
-      : { ok: false, message: decided.reason };
-  }
-
-  /**
-   * Promote a concept to the location plate the planner would have rendered: the variant goes onto
-   * the sheet, the bytes are re-recorded as a `location_ref`, and that plate's task is logged
-   * `done` so the next run adopts the sketch rather than rendering over it.
-   */
-  async promoteAsset(
-    hash: string,
-    variant: string,
-    description: string,
-  ): Promise<{ ok: boolean; message: string; written: string[] }> {
-    const project = await loadProject(this.session.dir);
-    const decided = promotionOf(project.store, { hash, variant });
-    if (!decided.ok) return { ok: false, message: decided.reason, written: [] };
-    const result = await promoteConcept(
-      { config: project.config, paths: project.paths, store: project.store },
-      { hash, variant, ...(description.trim() ? { description: description.trim() } : {}) },
-    );
-    const added = result.addedVariant ? ` "${result.variant}" is new on its sheet.` : '';
-    return {
-      ok     : true,
-      message: `Promoted ${hash.slice(0, 8)} to the ${result.variant} plate for ${result.locationId}.${added}`,
-      written: [
-        ...(result.file ? [relPath(this.session.dir, result.file)] : []),
-        relPath(this.session.dir, project.paths.baseManifest),
-        relPath(this.session.dir, project.paths.tasksLog),
-      ],
-    };
+  /** Promotes a concept to the location plate the planner would have rendered. */
+  promoteAsset(hash: string, variant: string, description: string) {
+    return concept.promoteAsset(this.session, hash, variant, description);
   }
 
   /**
