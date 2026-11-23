@@ -380,6 +380,12 @@ behind the `main/session.ts` re-export:
   `setCoverage`), `shotedit.ts` (per-shot outfit, variant, subjects, cast and panels),
   `bubbles.ts`, and `shotlife.ts` (sheets, new and deleted shots). Each takes the
   `WorkspaceSession` as its first parameter.
+- `project/` holds the bodies of `project.ts`'s `ProjectPart`, which only delegates:
+  `view.ts` (the project view, validation, the model catalog), `settings.ts` (art style,
+  storyboard notes, lettering, shot form, bubble names), `models.ts` (image, text and
+  vision models), `skills.ts` (builtin skills), `keys.ts` (API keys, the key guide and key
+  tests) and `updates.ts` (update checks and release links). Each takes the
+  `WorkspaceSession` as its first parameter.
 - `types/`, `rules/`, `load/`, `gen/` and `edits/` hold what used to be module-level
   helpers: shared result types, small pure rules, project loading and file walks, provider
   construction, and the entity override edits.

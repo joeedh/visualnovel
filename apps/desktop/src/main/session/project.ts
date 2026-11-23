@@ -1,820 +1,151 @@
-import {
-  CONFIG_FILENAME,
-  KEY_VENDORS,
-  keyStatus,
-  loadConfig,
-  missingRouteError,
-  resolveKeys,
-  secretDirsFor,
-  secretFileFor,
-  setArtStyle,
-  setBuiltinSkills,
-  setImageModel,
-  setBubbleNames,
-  setLettering,
-  setShotForm,
-  setStoryboardNotes,
-  setTextModel,
-  setVisionModels,
-  userKeysDir,
-  type ResolvedKeys,
-  type VendorKeyStatus,
-} from '@vn/config';
-import { chmod, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { exists, writeFileAtomic } from '@vn/util';
-import {
-  chatBackendFor,
-  chatVendorFor,
-  createMockProviders,
-  imageVendorOf,
-  listOpenRouterImageModels,
-  listTextModels,
-  type FetchImpl,
-  type OpenRouterListing,
-} from '@vn/providers';
-import { discoverSkills, skillRoots } from '@vn/authoring';
-import { shippedImageModels } from '@vn/gengraph';
-import { readModelCatalog, validateProject, writeModelCatalog } from '@vn/gengraph/state';
-import type { ProjectFinding } from '@vn/artgen';
-import {
-  chatRouteFor,
-  imageRouteFor,
-  type KeysPresent,
-  type Lettering,
-  type ShotForm,
-  type ProjectConfig,
-  type TextLLM,
-} from '@vn/types';
-import type { BuiltinSkillView, KeyScope, KeyStatusView, ProjectView } from '../../shared/ipc.js';
-import { parseKeyGuide, type GuideUrlField, type KeyGuide } from '../../shared/apikeys.js';
-import { builtinSkillsDir, readResource } from '../distribution/resources.js';
-import {
-  CHECK_TIMEOUT_MS,
-  COLLABORATING_GUIDE,
-  RELEASES_API,
-  RELEASES_PAGE,
-  checkAgainst,
-  runningVersion,
-  unreachable,
-  type UpdateCheck,
-} from '../distribution/updates.js';
-import { ensureIgnored } from '../workspace/workspace.js';
-import { routingNotes } from './routing.js';
+import type { ResolvedKeys } from '@vn/config';
+import type { FetchImpl } from '@vn/providers';
+import type { Lettering, ShotForm } from '@vn/types';
+import type { KeyScope } from '../../shared/ipc.js';
+import type { GuideUrlField } from '../../shared/apikeys.js';
 import type { WorkspaceSession } from './core.js';
-import { type LoadedProject, loadProject, readProject, withShots } from './load/project.js';
-import type { PromptResult, PromptWriteResult } from './types/results.js';
-import { IMAGE_KINDS } from './rules/assets.js';
-import { relPath } from './load/tree.js';
-import { describeKeySource } from './rules/keys.js';
-import { buildProviders } from './gen/deps.js';
-
-/** Answers with the sent key's label and limits; a wrong key gets a 401 and nothing is billed. */
-const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
-
-/** How much of an OpenRouter error body {@link ProjectPart.testKey} quotes. */
-const OPENROUTER_ERROR_CHARS = 200;
+import type { LoadedProject } from './load/project.js';
+import * as keys from './project/keys.js';
+import * as models from './project/models.js';
+import * as settings from './project/settings.js';
+import * as skills from './project/skills.js';
+import * as updates from './project/updates.js';
+import * as view from './project/view.js';
 
 /**
- * How many of a project's shots are pages, which is what a change of lettering re-keys. A
- * storyboard that will not parse counts for nothing here, since its pages cannot render either.
+ * The project view, the `project.*` settings writes and their previews, API keys, and update
+ * checks. Each method delegates to a module under `project/`, grouped by what the code touches:
+ * the view and model catalog, `project.yaml` settings, model choices, builtin skills, keys, and
+ * release links.
  */
-async function pageShotCount(project: LoadedProject): Promise<number> {
-  let pages = 0;
-  for (const board of (await withShots(project)).production.values()) {
-    for (const shot of board.shots) if (shot.panels) pages += 1;
-  }
-  return pages;
-}
-
 export class ProjectPart {
   constructor(private readonly session: WorkspaceSession) {}
 
-  /** Lists every reference that would fail a run or a read, from a read that repairs nothing. */
-  async validate(): Promise<ProjectFinding[]> {
-    const { model } = await readProject(this.session.dir);
-    return validateProject({ root: this.session.dir, model });
+  validate() {
+    return view.validate(this.session);
   }
 
-  async projectView(): Promise<ProjectView> {
-    const project = await loadProject(this.session.dir);
-    const { config } = project;
-    const cached = await readModelCatalog();
-    return {
-      root         : this.session.dir,
-      title        : config.title,
-      artStyle     : config.art_style,
-      start        : config.start ?? '',
-      models       : { ...config.models },
-      imageParams  : { ...config.image_params },
-      bubbleNames  : config.bubble_names,
-      shotForm     : config.shot_form,
-      imageTasks   : project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length,
-      imageModels: {
-        shipped   : shippedImageModels(),
-        openrouter: cached?.openrouter ?? [],
-        default   : config.models.image,
-        text      : cached?.text ?? [],
-        ...(cached === undefined ? {} : { asOf: cached.asOf }),
-      },
-      builtinSkills: await this.builtinSkills(),
-    };
+  projectView() {
+    return view.projectView(this.session);
   }
 
-  /**
-   * The builtin catalog as this project sees it: every shipped skill, on or off. Read from the
-   * catalog root alone rather than through the three-tier roots, so a project skill that shadows
-   * a builtin one still leaves the builtin one listed here — the checkbox is about the catalog,
-   * not about which copy the agent would run.
-   */
-  private async builtinSkills(): Promise<BuiltinSkillView[]> {
-    const roots = await skillRoots(this.session.dir, { builtinDir: builtinSkillsDir() });
-    const builtin = roots.filter((root) => root.tier === 'builtin');
-    const skills = await discoverSkills(builtin, { keepDisabled: true });
-    return skills.map((skill) => ({
-      id         : skill.id,
-      name       : skill.name,
-      description: skill.description,
-      enabled    : skill.enabled,
-    }));
+  previewBuiltinSkills(ids: readonly string[]) {
+    return skills.previewBuiltinSkills(this.session, ids);
   }
 
-  /**
-   * What `project.setBuiltinSkills` would do, without writing it. The list is compared as a set:
-   * the order in the file is the order the author last ticked things in, and re-saving it in
-   * another order is not a change.
-   */
-  async previewBuiltinSkills(ids: readonly string[]): Promise<PromptResult> {
-    const catalog = await this.builtinSkills();
-    const known = new Set(catalog.map((skill) => skill.id));
-    const unknown = ids.filter((id) => !known.has(id));
-    if (unknown.length > 0) {
-      return { ok: false, message: `Not a builtin skill: ${unknown.join(', ')}.` };
-    }
-    const wanted = new Set(ids);
-    const before = new Set(catalog.filter((skill) => skill.enabled).map((skill) => skill.id));
-    const turnedOn = catalog.filter((s) => wanted.has(s.id) && !before.has(s.id)).map((s) => s.id);
-    const turnedOff = catalog.filter((s) => before.has(s.id) && !wanted.has(s.id)).map((s) => s.id);
-    if (turnedOn.length === 0 && turnedOff.length === 0) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    const parts = [
-      turnedOn.length > 0 ? `turns on ${turnedOn.join(', ')}` : '',
-      turnedOff.length > 0 ? `turns off ${turnedOff.join(', ')}` : '',
-    ].filter(Boolean);
-    return {
-      ok     : true,
-      message: `This ${parts.join(' and ')}. The agent sees a builtin skill only while it is on.`,
-    };
+  setProjectBuiltinSkills(ids: readonly string[]) {
+    return skills.setProjectBuiltinSkills(this.session, ids);
   }
 
-  /**
-   * Write which builtin skills the project enables, spliced into `project.yaml` like the art
-   * style. Ids the catalog does not have are refused here rather than dropped, since a checkbox
-   * cannot send one and the palette should hear about a typo.
-   */
-  async setProjectBuiltinSkills(ids: readonly string[]): Promise<PromptWriteResult> {
-    const preview = await this.previewBuiltinSkills(ids);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setBuiltinSkills(this.session.dir, ids))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  refreshModelCatalog(fetchImpl?: FetchImpl) {
+    return view.refreshModelCatalog(this.session, fetchImpl);
   }
 
-  /**
-   * Fetches OpenRouter's image-model listing and the text-model listings, and replaces the cached
-   * file. The image listing is the part that has to succeed: when it fails the file is left as it
-   * was and the reason comes back. Anthropic and Gemini are asked for their text models only
-   * when a key for them resolves; a text vendor that is skipped or fails is named in the message
-   * and the others still land. A model whose endpoints call failed is written without a price
-   * and counted in the message.
-   */
-  async refreshModelCatalog(
-    fetchImpl: FetchImpl = fetch,
-  ): Promise<{ ok: true; message: string; listed: number } | { ok: false; reason: string }> {
-    let listing: OpenRouterListing;
-    try {
-      listing = await listOpenRouterImageModels(fetchImpl);
-    } catch (err) {
-      return { ok: false, reason: (err as Error).message };
-    }
-    const keys = await resolveKeys(await loadConfig(this.session.dir), {
-      secretsDirs: await secretDirsFor(this.session.dir),
-    });
-    const text = await listTextModels(
-      {
-        ...(keys.anthropic ? { anthropic: keys.anthropic } : {}),
-        ...(keys.gemini ? { gemini: keys.gemini } : {}),
-      },
-      fetchImpl,
-    );
-    const asOf = new Date().toISOString().slice(0, 10);
-    await writeModelCatalog({ asOf, openrouter: listing.models, text: text.models });
-
-    const priced = listing.models.filter((entry) => entry.priceUsd !== undefined).length;
-    const failed =
-      listing.unpriced.length === 0
-        ? ''
-        : `; ${listing.unpriced.length} endpoints call(s) failed, so those are listed unpriced`;
-    const textNotes = [
-      ...text.skipped.map((vendor) => `${vendor} was not asked, since no key for it resolved`),
-      ...text.failed.map((f) => `${f.vendor}'s listing failed: ${f.reason}`),
-    ];
-    const textSaid =
-      ` Listed ${text.models.length} text model(s)` +
-      (textNotes.length === 0 ? '.' : ` (${textNotes.join('; ')}).`);
-    return {
-      ok     : true,
-      listed : listing.models.length + text.models.length,
-      message:
-        `Listed ${listing.models.length} OpenRouter image model(s) as of ${asOf}, ` +
-        `${priced} with a per-picture price${failed}.${textSaid}`,
-    };
+  previewArtStyle(style: string) {
+    return settings.previewArtStyle(this.session, style);
   }
 
-  /** What `project.setArtStyle` would do, without writing it. */
-  async previewArtStyle(style: string): Promise<PromptResult> {
-    const project = await loadProject(this.session.dir);
-    if (project.config.art_style === style) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    const count = project.graph.all().filter((task) => IMAGE_KINDS.has(task.kind)).length;
-    const said = style.trim() ? `Set the art style to "${style.trim()}".` : 'Clear the art style.';
-    return {
-      ok     : true,
-      message: `${said} It opens every image prompt, so it re-keys ${count} image task(s).`,
-    };
+  setProjectArtStyle(style: string) {
+    return settings.setProjectArtStyle(this.session, style);
   }
 
-  /**
-   * Write the project's art style. It is spliced into `project.yaml` rather than re-serialized,
-   * so an author's comments and key order survive — the same posture the prose writers take with
-   * front-matter.
-   */
-  async setProjectArtStyle(style: string): Promise<PromptWriteResult> {
-    const preview = await this.session.previewArtStyle(style);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setArtStyle(this.session.dir, style))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  previewImageModel(modelId: string) {
+    return models.previewImageModel(this.session, modelId);
   }
 
-  /**
-   * What `project.setImageModel` would do, without writing it. A model whose vendor has no key is
-   * refused here rather than at the first task that would draw with it. The count is of the
-   * image tasks still to draw, which are the ones the new model reaches: the model is not in a
-   * task's hash, so a rendered one keeps its picture.
-   */
-  async previewImageModel(modelId: string): Promise<PromptResult> {
-    const id = modelId.trim();
-    if (!id) return { ok: false, message: 'No image model given.' };
-
-    const project = await loadProject(this.session.dir);
-    if (project.config.models.image === id) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-
-    if (imageRouteFor(id, await this.keysPresent(project.config)) === undefined) {
-      const refusal = missingRouteError(project.config, id, imageVendorOf(id));
-      return { ok: false, message: `${refusal.message}; provide one in Setup first` };
-    }
-
-    const count = project.graph
-      .all()
-      .filter((task) => IMAGE_KINDS.has(task.kind) && task.status !== 'done').length;
-    return {
-      ok     : true,
-      message: `Set the image model to \`${id}\`. Pictures already drawn stay; ${count} image task(s) still to draw, and anything regenerated, will use it.`,
-    };
+  setProjectImageModel(modelId: string) {
+    return models.setProjectImageModel(this.session, modelId);
   }
 
-  /** Write the project's image model, spliced into `project.yaml`'s `models:` block. */
-  async setProjectImageModel(modelId: string): Promise<PromptWriteResult> {
-    const preview = await this.session.previewImageModel(modelId);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setImageModel(this.session.dir, modelId.trim()))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  previewTextModel(modelId: string) {
+    return models.previewTextModel(this.session, modelId);
   }
 
-  /** Which keys resolve, as the route tables read them. */
-  private async keysPresent(config: ProjectConfig): Promise<KeysPresent> {
-    const status = await keyStatus(config, { secretsDirs: await secretDirsFor(this.session.dir) });
-    return Object.fromEntries(status.map((s) => [s.vendor, s.resolved])) as unknown as KeysPresent;
+  setProjectTextModel(modelId: string) {
+    return models.setProjectTextModel(this.session, modelId);
   }
 
-  /**
-   * What `project.setTextModel` would do, without writing it. A model no resolved key can carry
-   * is refused here rather than at the first pipeline call that would use it. The pipeline's
-   * text calls read the key on their next run; the agent's own model is chosen per conversation
-   * and is not this setting.
-   */
-  async previewTextModel(modelId: string): Promise<PromptResult> {
-    const id = modelId.trim();
-    if (!id) return { ok: false, message: 'No text model given.' };
-    const project = await loadProject(this.session.dir);
-    if (project.config.models.text === id) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    if (chatRouteFor(id, await this.keysPresent(project.config)) === undefined) {
-      const refusal = missingRouteError(project.config, id, chatVendorFor(id));
-      return { ok: false, message: `${refusal.message}; provide one in Setup first` };
-    }
-    return {
-      ok     : true,
-      message: `Set the text model to \`${id}\`. The pipeline's text calls — decomposition, reviews, refine critiques — use it from the next run.`,
-    };
+  previewVisionModels(modelIds: readonly string[]) {
+    return models.previewVisionModels(this.session, modelIds);
   }
 
-  /** Write the project's text model, spliced into `project.yaml`'s `models:` block. */
-  async setProjectTextModel(modelId: string): Promise<PromptWriteResult> {
-    const preview = await this.previewTextModel(modelId);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setTextModel(this.session.dir, modelId.trim()))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  setProjectVisionModels(modelIds: readonly string[]) {
+    return models.setProjectVisionModels(this.session, modelIds);
   }
 
-  /**
-   * What `project.setVisionModels` would do, without writing it. The list is the whole set of
-   * reviewers, in order; an empty list is refused because a run with no reviewer cannot judge a
-   * picture, and a model no key can carry is refused by name.
-   */
-  async previewVisionModels(modelIds: readonly string[]): Promise<PromptResult> {
-    const ids = modelIds.map((id) => id.trim()).filter(Boolean);
-    if (ids.length === 0) return { ok: false, message: 'At least one vision model is needed.' };
-    const project = await loadProject(this.session.dir);
-    const before = project.config.models.vision;
-    if (before.length === ids.length && before.every((id, i) => id === ids[i])) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    const present = await this.keysPresent(project.config);
-    const unrouted = ids.find((id) => chatRouteFor(id, present) === undefined);
-    if (unrouted !== undefined) {
-      const refusal = missingRouteError(project.config, unrouted, chatVendorFor(unrouted));
-      return { ok: false, message: `${refusal.message}; provide one in Setup first` };
-    }
-    return {
-      ok     : true,
-      message: `Set the vision models to ${ids.map((id) => `\`${id}\``).join(', ')}. The next run's picture reviews use them.`,
-    };
+  previewStoryboardNotes(notes: string) {
+    return settings.previewStoryboardNotes(this.session, notes);
   }
 
-  /** Write the project's vision reviewers, spliced into `project.yaml`'s `models:` block. */
-  async setProjectVisionModels(modelIds: readonly string[]): Promise<PromptWriteResult> {
-    const preview = await this.previewVisionModels(modelIds);
-    if (!preview.ok) return { ...preview, written: [] };
-    const ids = modelIds.map((id) => id.trim()).filter(Boolean);
-    if (!(await setVisionModels(this.session.dir, ids))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  setProjectStoryboardNotes(notes: string) {
+    return settings.setProjectStoryboardNotes(this.session, notes);
   }
 
-  /** What `project.setStoryboardNotes` would do, without writing it. */
-  async previewStoryboardNotes(notes: string): Promise<PromptResult> {
-    const project = await loadProject(this.session.dir);
-    if (project.config.storyboard_notes === notes) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    const said = notes.trim()
-      ? `Set the storyboard notes to "${notes.trim()}".`
-      : 'Clear the storyboard notes.';
-    return {
-      ok     : true,
-      message:
-        `${said} The decomposer reads them the next time a scene is storyboarded; no shot ` +
-        'already written is re-keyed.',
-    };
+  previewLettering(lettering: Lettering) {
+    return settings.previewLettering(this.session, lettering);
   }
 
-  /** Write the decomposer's directives, spliced into `project.yaml` like the art style. */
-  async setProjectStoryboardNotes(notes: string): Promise<PromptWriteResult> {
-    const preview = await this.session.previewStoryboardNotes(notes);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setStoryboardNotes(this.session.dir, notes))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  setProjectLettering(lettering: Lettering) {
+    return settings.setProjectLettering(this.session, lettering);
   }
 
-  /**
-   * What `project.setLettering` would do, without writing it. Lettering is in a page shot's
-   * prompt and nowhere else, so the price is the page shots the project holds.
-   */
-  async previewLettering(lettering: Lettering): Promise<PromptResult> {
-    const project = await loadProject(this.session.dir);
-    if (project.config.lettering === lettering) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    const pages = await pageShotCount(project);
-    return {
-      ok     : true,
-      message:
-        `Set lettering to "${lettering}". It applies to page shots alone, so it re-keys ` +
-        `${pages} of them.`,
-    };
+  previewShotForm(form: ShotForm) {
+    return settings.previewShotForm(this.session, form);
   }
 
-  /** Write who letters a page shot, spliced into `project.yaml` like the art style. */
-  async setProjectLettering(lettering: Lettering): Promise<PromptWriteResult> {
-    const preview = await this.session.previewLettering(lettering);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setLettering(this.session.dir, lettering))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  setProjectShotForm(form: ShotForm) {
+    return settings.setProjectShotForm(this.session, form);
   }
 
-  /** What `project.setShotForm` would do, without writing it. */
-  async previewShotForm(form: ShotForm): Promise<PromptResult> {
-    const project = await loadProject(this.session.dir);
-    if (project.config.shot_form === form) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    return {
-      ok     : true,
-      message:
-        form === 'pages'
-          ? 'Storyboard new scenes as manga pages of panels. A storyboard already written keeps its shape.'
-          : 'Storyboard new scenes as single frames. A storyboard already written keeps its shape.',
-    };
+  previewBubbleNames(on: boolean) {
+    return settings.previewBubbleNames(this.session, on);
   }
 
-  /** Write what a shot is, spliced into `project.yaml` like the art style. */
-  async setProjectShotForm(form: ShotForm): Promise<PromptWriteResult> {
-    const preview = await this.session.previewShotForm(form);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setShotForm(this.session.dir, form))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  setProjectBubbleNames(on: boolean) {
+    return settings.setProjectBubbleNames(this.session, on);
   }
 
-  /** What `project.setBubbleNames` would do, without writing it. */
-  async previewBubbleNames(on: boolean): Promise<PromptResult> {
-    const project = await loadProject(this.session.dir);
-    if (project.config.bubble_names === on) {
-      return { ok: false, message: 'The project already says that.' };
-    }
-    return {
-      ok     : true,
-      message: on
-        ? "Show the speaker's name in every speech bubble the runner draws, except where a " +
-          'bubble says otherwise. Nothing is drawn again.'
-        : "Leave the speaker's name out of the bubbles the runner draws, except where a bubble " +
-          'says otherwise. Nothing is drawn again.',
-    };
+  previewKey(vendor: keyof ResolvedKeys, scope: KeyScope = 'project') {
+    return keys.previewKey(this.session, vendor, scope);
   }
 
-  /** Write whether bubbles name their speaker, spliced into `project.yaml` like the art style. */
-  async setProjectBubbleNames(on: boolean): Promise<PromptWriteResult> {
-    const preview = await this.session.previewBubbleNames(on);
-    if (!preview.ok) return { ...preview, written: [] };
-    if (!(await setBubbleNames(this.session.dir, on))) {
-      return { ok: false, message: 'The project already says that.', written: [] };
-    }
-    return {
-      ok     : true,
-      message: preview.message,
-      written: [relPath(this.session.dir, join(this.session.dir, CONFIG_FILENAME))],
-    };
+  setKey(vendor: keyof ResolvedKeys, key: string, scope: KeyScope = 'project') {
+    return keys.setKey(this.session, vendor, key, scope);
   }
 
-  /**
-   * Where a vendor's key file sits, whether one is already there, and whether an environment
-   * variable would shadow it — `resolveKeys` reads `$NAME` first, so a file written under a set
-   * variable is a key that never gets used. Reads no key back, here or anywhere.
-   */
-  private async keyFile(
-    vendor: keyof ResolvedKeys,
-    scope: KeyScope,
-  ): Promise<{ path: string; shown: string; had: boolean; shadow: string }> {
-    const file = secretFileFor(vendor);
-    // The project scope is shown as a relative path because it sits inside the workspace the
-    // author is looking at; the user scope is shown in full because it deliberately does not.
-    const path =
-      scope === 'user' ? join(userKeysDir(), file) : join(this.session.dir, 'keys', file);
-    const shown = scope === 'user' ? path : `keys/${file}`;
-    const envName = (await loadConfig(this.session.dir)).keys[vendor];
-    const set = (process.env[envName] ?? '').trim() !== '';
-    return {
-      path,
-      shown,
-      had   : await exists(path),
-      shadow: set ? ` $${envName} is set and is read first, so the file goes unused.` : '',
-    };
+  keyStatusView() {
+    return keys.keyStatusView(this.session);
   }
 
-  /** What `project.setKey` would do, without writing it. */
-  async previewKey(vendor: keyof ResolvedKeys, scope: KeyScope = 'project'): Promise<PromptResult> {
-    const { shown, had, shadow } = await this.keyFile(vendor, scope);
-    const reach =
-      scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
-    return {
-      ok     : true,
-      message: `${had ? 'Replace' : 'Write'} the ${vendor} key in ${shown}.${reach}${shadow}`,
-    };
+  keyGuide() {
+    return keys.keyGuide();
   }
 
-  /**
-   * Store an API key. The value reaches exactly one file — the first name `resolveKeys` looks
-   * for — and nothing else: not the message, not the log, and not `commands.jsonl`, where
-   * `prop.secret` has already replaced it.
-   *
-   * At the project scope, `keys` is ignored before the write happens, because commit-on-save runs
-   * `git commit -A` and would otherwise commit the file within the second. At the user scope
-   * there is no repository to ignore it in — the directory is deliberately outside every one —
-   * so the guard is the file mode instead: `0600` on POSIX. A project's `keys/` never needed
-   * that because the repository boundary already kept it out of history.
-   */
-  async setKey(
-    vendor: keyof ResolvedKeys,
-    key: string,
-    scope: KeyScope = 'project',
-  ): Promise<PromptWriteResult> {
-    const value = key.trim();
-    if (!value) return { ok: false, message: 'No key given.', written: [] };
-
-    const { path, shown, had, shadow } = await this.keyFile(vendor, scope);
-    const ignored = scope === 'project' ? await ensureIgnored(this.session.dir, ['keys']) : false;
-    await mkdir(dirname(path), { recursive: true });
-    await writeFileAtomic(path, `${value}\n`);
-    if (scope === 'user' && process.platform !== 'win32') {
-      await chmod(path, 0o600).catch(() => undefined);
-    }
-
-    // The key file itself is never reported as written: it is ignored (or outside the repo
-    // entirely), so nothing downstream may treat it as a document. The `.gitignore` is, because
-    // it is committed.
-    const safety = scope === 'user' ? ', which is outside every repository' : ', which git ignores';
-    const reach =
-      scope === 'user' ? ' Every project on this machine reads it.' : ' This project reads it.';
-    return {
-      ok     : true,
-      message: `${had ? 'Replaced' : 'Wrote'} the ${vendor} key in ${shown}${safety}.${reach}${shadow}`,
-      written: ignored ? ['.gitignore'] : [],
-    };
+  openKeyLink(vendor: keyof ResolvedKeys, link: GuideUrlField) {
+    return keys.openKeyLink(this.session, vendor, link);
   }
 
-  /**
-   * For each vendor, whether a key resolved and which source answered — never the value. The
-   * Setup pane is built on this, and so is the first-run check that decides whether to offer it.
-   */
-  async keyStatusView(): Promise<KeyStatusView> {
-    const config = await loadConfig(this.session.dir);
-    const status = await keyStatus(config, { secretsDirs: await secretDirsFor(this.session.dir) });
-    const byVendor = new Map<string, VendorKeyStatus>(status.map((s) => [s.vendor, s]));
-    const present = Object.fromEntries(
-      status.map((s) => [s.vendor, s.resolved]),
-    ) as unknown as KeysPresent;
-    const { notes, unrouted } = routingNotes(config, present);
-    return {
-      userKeysDir: userKeysDir(),
-      unrouted,
-      vendors: KEY_VENDORS.map((vendor) => {
-        const s = byVendor.get(vendor);
-        return {
-          vendor,
-          resolved : s?.resolved ?? false,
-          source   : describeKeySource(this.session.dir, s),
-          envName  : s?.envName ?? config.keys[vendor],
-          envShadow: s?.envShadow ?? false,
-          writesTo: {
-            project: `keys/${secretFileFor(vendor)}`,
-            user   : join(userKeysDir(), secretFileFor(vendor)),
-          },
-          routing  : notes[vendor],
-        };
-      }),
-    };
+  checkForUpdates() {
+    return updates.checkForUpdates(this.session);
   }
 
-  /**
-   * The key walkthrough, read from the one file that holds it and parsed into blocks.
-   *
-   * Parsed here rather than in the pane because main is the side with a filesystem: what crosses
-   * the IPC boundary is already drawable, and the pane cannot end up with a second opinion about
-   * what the page says.
-   */
-  async keyGuide(): Promise<KeyGuide> {
-    return parseKeyGuide(await readResource('docs', 'guides', 'api-keys.md'));
+  openReleases() {
+    return updates.openReleases(this.session);
   }
 
-  /**
-   * Open one of a vendor's pages — its key console, its documentation, its pricing — in the
-   * system browser.
-   *
-   * The URL is looked up here, from the shipped guide, rather than passed in. A renderer that
-   * could name any URL for the OS to open is a renderer that can be talked into opening one, and
-   * nothing about these buttons needs that: the pages they may reach are three fields of a file
-   * the app ships.
-   */
-  async openKeyLink(vendor: keyof ResolvedKeys, link: GuideUrlField): Promise<PromptResult> {
-    const guide = await this.session.keyGuide();
-    const url = guide.vendors.find((entry) => entry.vendor === vendor)?.[link] ?? '';
-    if (!/^https:\/\//.test(url)) {
-      return { ok: false, message: `The setup guide names no ${link} page for ${vendor}.` };
-    }
-    const open = this.session.deps.openExternal;
-    if (!open) return { ok: false, message: 'This build cannot open a browser.' };
-    await open(url);
-    return { ok: true, message: `Opened ${url}.` };
+  openCollaboratingGuide() {
+    return updates.openCollaboratingGuide(this.session);
   }
 
-  /**
-   * Ask GitHub whether there is a newer VN Studio than this one.
-   *
-   * The decision is `updates.ts`'s and is pure; this is the request. Unauthenticated, so it is
-   * rate-limited at 60 an hour per IP — fine for one desktop app, which is why nothing automated
-   * may ever call this.session.
-   *
-   * It never throws. Every failure comes back as an `unreachable` verdict carrying its own
-   * sentence, because a check the author did not ask for must be able to fail without filing an
-   * `error` notification at someone mid-scene. `announcementFor` is what decides whether the
-   * verdict is worth saying out loud.
-   */
-  async checkForUpdates(): Promise<UpdateCheck> {
-    const running = runningVersion(this.session.deps.appVersion ?? '');
-    try {
-      const response = await fetch(RELEASES_API, {
-        headers: {
-          accept      : 'application/vnd.github+json',
-          // GitHub asks every client to name itself, and answers 403 to one that does not.
-          'user-agent': `vnstudio/${running || 'dev'} (+${RELEASES_PAGE})`,
-        },
-        signal : AbortSignal.timeout(CHECK_TIMEOUT_MS),
-      });
-      // 403 and 429 are the rate limit, and 404 is a repository with no release yet. All three
-      // are "no answer today" rather than anything the author can act on.
-      if (!response.ok) return unreachable(running, `GitHub answered ${response.status}`);
-      return checkAgainst(running, await response.json());
-    } catch (err) {
-      return unreachable(running, err instanceof Error ? err.message : String(err));
-    }
+  previewTestKey(vendor: keyof ResolvedKeys) {
+    return keys.previewTestKey(this.session, vendor);
   }
 
-  /**
-   * Open VN Studio's own releases page — the notes and the installers are one page there.
-   *
-   * The address is derived from `ISSUE_REPO` rather than passed in, for the reason
-   * {@link openKeyLink} states: nothing in this app opens a URL it was handed, and a notification
-   * — a line of a file git union-merges across clones — is exactly the input that rule is for.
-   */
-  async openReleases(): Promise<PromptResult> {
-    const open = this.session.deps.openExternal;
-    if (!open) return { ok: false, message: 'This build cannot open a browser.' };
-    await open(RELEASES_PAGE);
-    return { ok: true, message: `Opened ${RELEASES_PAGE}.` };
+  testKey(vendor: keyof ResolvedKeys) {
+    return keys.testKey(this.session, vendor);
   }
 
-  /** Open the collaborating guide, the page a refused send or get points at, in the browser. */
-  async openCollaboratingGuide(): Promise<PromptResult> {
-    const open = this.session.deps.openExternal;
-    if (!open) return { ok: false, message: 'This build cannot open a browser.' };
-    await open(COLLABORATING_GUIDE);
-    return { ok: true, message: `Opened ${COLLABORATING_GUIDE}.` };
+  condensingText(project: LoadedProject, flat: string) {
+    return view.condensingText(this.session, project, flat);
   }
-
-  /**
-   * Whether {@link testKey} has anything to try, in its own sentence either way — so the Setup
-   * pane's greyed-out button says why it is grey rather than looking broken.
-   */
-  async previewTestKey(vendor: keyof ResolvedKeys): Promise<PromptResult> {
-    if (this.session.mock) {
-      return { ok: false, message: 'Mock mode makes no calls, so there is nothing to test.' };
-    }
-    const entry = (await this.session.keyStatusView()).vendors.find((v) => v.vendor === vendor);
-    if (!entry?.resolved) {
-      return { ok: false, message: `No ${vendor} key resolves yet, so there is nothing to try.` };
-    }
-    return { ok: true, message: `One small ${vendor} call, with the key it already reads.` };
-  }
-
-  /**
-   * Make one real, cheap call with a vendor's key and say whether it worked.
-   *
-   * The Setup pane exists to end the state of "I pasted something and I do not know". A key can
-   * resolve and still be wrong — revoked, mistyped, or belonging to an account with no credit —
-   * and every one of those failures otherwise surfaces much later, inside a run, as a stack of
-   * pipeline errors that name a task rather than a key.
-   *
-   * The model is one the project already configures for that vendor, not a name written down
-   * here: a model id this file invented could be one the account has no access to, and the
-   * refusal would then be about our choice rather than about their key.
-   */
-  async testKey(vendor: keyof ResolvedKeys): Promise<PromptResult> {
-    if (this.session.mock)
-      return { ok: true, message: 'Mock mode makes no calls, so there is nothing to test.' };
-
-    const config = await loadConfig(this.session.dir);
-    if (vendor === 'openrouter') return this.testOpenRouterKey(config);
-    const modelId = [config.models.text, ...config.models.vision].find(
-      (id) => chatVendorFor(id) === vendor,
-    );
-    if (!modelId) {
-      return {
-        ok     : false,
-        message: `This project configures no ${vendor} chat model, so there is nothing cheap to call.`,
-      };
-    }
-
-    try {
-      // This is the one caller that means a specific key: the route is narrowed to the vendor
-      // under test so the call cannot slip through OpenRouter and report the wrong key working
-      const keys = await resolveKeys(config, {
-        secretsDirs: await secretDirsFor(this.session.dir),
-        require    : [vendor],
-      });
-      const only = { anthropic: false, gemini: false, openrouter: false, [vendor]: true };
-      const backend = chatBackendFor(chatRouteFor(modelId, only)!, keys).backend;
-      await backend.message({ prompt: 'Reply with the single word OK.' });
-      return { ok: true, message: `The ${vendor} key works — ${modelId} answered.` };
-    } catch (err) {
-      // The provider's own sentence, which is the one that distinguishes "no credit" from
-      // "revoked" from "no access to that model". `resolveKeys` names sources, never values, and
-      // a vendor SDK does not echo the key back, so this is safe to show.
-      return { ok: false, message: `The ${vendor} key did not work: ${(err as Error).message}` };
-    }
-  }
-
-  /**
-   * OpenRouter has no chat backend here, so the cheap call is its key endpoint, which describes
-   * the key it was sent and bills nothing.
-   */
-  private async testOpenRouterKey(config: ProjectConfig): Promise<PromptResult> {
-    try {
-      const keys = await resolveKeys(config, {
-        secretsDirs: await secretDirsFor(this.session.dir),
-        require    : ['openrouter'],
-      });
-      const response = await fetch(OPENROUTER_KEY_URL, {
-        headers: { authorization: `Bearer ${keys.openrouter}` },
-        signal : AbortSignal.timeout(CHECK_TIMEOUT_MS),
-      });
-      if (!response.ok) {
-        // The error body carries the reason (401 for an unknown key) and no copy of the key, so
-        // it is safe to show
-        const body = (await response.text()).slice(0, OPENROUTER_ERROR_CHARS);
-        return {
-          ok     : false,
-          message: `The openrouter key did not work: HTTP ${response.status} ${body}`,
-        };
-      }
-      return { ok: true, message: 'The openrouter key works — OpenRouter recognised it.' };
-    } catch (err) {
-      return { ok: false, message: `The openrouter key did not work: ${(err as Error).message}` };
-    }
-  }
-
-  /**
-   * The text provider a condensation runs against. Under `--mock` the backend echoes the prompt,
-   * which no schema accepts, so every condensation would take the deterministic fallback and the
-   * real path would never run; the canned answer is the identity condensation, which exercises it
-   * with the chunks' own words.
-   */
-  condensingText(project: LoadedProject, flat: string): Promise<TextLLM> {
-    if (!this.session.mock) return buildProviders(project, false).then((p) => p.text);
-    return Promise.resolve(
-      createMockProviders({ textResponses: [JSON.stringify({ prompt: flat, omitted: [] })] }).text,
-    );
-  }
-
-  /** The derivation an override sits on: the chunks, the rung, and what is stored there today. */
 }
